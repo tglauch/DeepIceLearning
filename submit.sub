@@ -1,0 +1,11 @@
+  executable   = Neural_Network.py                                                   
+  Universe     = vanilla         
+  request_gpus = 1 
+  request_memory = 8GB
+  requirements = CUDACapability                                           
+  Log          = foo.log                                              
+  output       = output.out
+  getenv       = True
+  error        = error.err      
+  queue 1
+
