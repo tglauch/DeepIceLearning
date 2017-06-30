@@ -1,19 +1,24 @@
 # coding: utf-8
 
-import numpy as np
+import os
 import sys
+import numpy as np
+os.environ['THEANO_FLAGS'] = "device=gpu"  
+import theano
+# theano.config.device = 'gpu'
+# theano.config.floatX = 'float32'
 import keras
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Activation, Flatten, Convolution2D, BatchNormalization, MaxPooling2D
+from keras.layers import Dense, Dropout, Activation, Flatten, Convolution2D, BatchNormalization, MaxPooling2D,Convolution3D
 from keras.wrappers.scikit_learn import KerasRegressor
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import KFold
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
-import os
 
-input_data = np.array(np.load('./training_data/charge.npy'))
-output_data = np.load('./training_data/truevals.npy')
+
+input_data = np.array(np.load('./charge.npy'))
+output_data = np.load('./truevals.npy')
 
 print 'Shape of Input Data: {}'.format(np.shape(input_data))
 print 'Shape of Output Data: {}'.format(np.shape(output_data))
@@ -52,7 +57,7 @@ def add_block(model, nfilters, dropout=False, **kwargs):
      - either MaxPooling to reduce resolution, or Dropout
      - BatchNormalization
     """
-    model.add(Convolution2D(nfilters, 10, 5, **kwargs)) #border_mode='same', init="he_normal", 
+    model.add(Convolution3D(nfilters, 5, 5,5, **kwargs)) #border_mode='same', init="he_normal", 
     model.add(BatchNormalization())
     model.add(Activation('relu'))
     if dropout:
@@ -61,33 +66,32 @@ def add_block(model, nfilters, dropout=False, **kwargs):
         model.add(MaxPooling2D((2, 2), border_mode='same'))
 
 def base_model():
-    # # convolution part
-    model = Sequential()
-    model.add(Convolution2D(8, 10, 5,input_shape=(86, 64,1))) #border_mode='same', init="he_normal", 
-    model.add(BatchNormalization())
-    model.add(Activation('relu'))
-    
-    ##possible things to implement
-    
-    #model.add(Dropout(dropout))
-    #model.add(MaxPooling2D((2, 2), border_mode='same'))
-    
-    model.add(Flatten()) 
-    model.add(Dense(64))
-    model.add(Activation('relu'))
-    
-    model.add(Dense(1, kernel_initializer='normal'))
-    print(model.summary())
-    
-    model.compile(loss='mean_squared_error', optimizer='adam',metrics=['accuracy'])
-    return model
+  model = Sequential()
+  model.add(Convolution3D(10, (3,3,3) , input_shape=(21, 21,51,1))) #border_mode='same', init="he_normal", 
+  model.add(BatchNormalization())
+  model.add(Activation('relu'))
+
+  ##possible things to implement
+
+  #model.add(Dropout(dropout))
+  #model.add(MaxPooling2D((2, 2), border_mode='same'))
+
+  model.add(Flatten()) 
+  model.add(Dense(64))
+  model.add(Activation('relu'))
+
+  model.add(Dense(1, kernel_initializer='normal'))
+  print(model.summary())
+
+  model.compile(loss='mean_squared_error', optimizer='adam',metrics=['accuracy'])
+  return model
 
 
 # # ----------------------------------------------------------
 # # Training
 # # ----------------------------------------------------------
 
-estimator = KerasRegressor(build_fn=base_model, nb_epoch=20, batch_size=5, verbose=1)
+estimator = KerasRegressor(build_fn=base_model, nb_epoch=1, batch_size=5, verbose=1)
 seed = 7
 np.random.seed(seed)
 
@@ -95,15 +99,4 @@ estimator.fit(np.expand_dims(train, axis=4),train_out,
               validation_data=(np.expand_dims(valid, axis=4), valid_out),
               callbacks=[keras.callbacks.CSVLogger('./train_hist/history.csv')],
               verbose=1)
-estimator.save('./train_hist/model.h5')  # save trained network
-
-# print('Model performance (loss, accuracy)')
-# print('Train: %.4f, %.4f' % tuple(model.evaluate(train, verbose=0, batch_size=128)))
-# print('Valid: %.4f, %.4f' % tuple(model.evaluate(valid, verbose=0, batch_size=128)))
-# print('Test:  %.4f, %.4f' % tuple(model.evaluate(test,  verbose=0, batch_size=128)))
-
-res = estimator.predict(np.expand_dims(test, axis=4))
-
-estimator.score(np.expand_dims(test, axis=4),test_out)
-
-
+model.save('./train_hist/model.h5')  # save trained network
