@@ -3,7 +3,7 @@
 import os
 import sys
 import numpy as np
-os.environ['THEANO_FLAGS'] = "device=gpu"  
+os.environ['THEANO_FLAGS'] = "device=gpu, floatX = float32"  
 import theano
 # theano.config.device = 'gpu'
 # theano.config.floatX = 'float32'
@@ -49,25 +49,25 @@ test_out = np.concatenate(output_data[valid_end+1:data_len-1, 0:1])
 # # ----------------------------------------------------------
 
 
-def add_block(model, nfilters, dropout=False, **kwargs):
-    """ 
-    Add basic convolution block: 
-     - 3x3 Convolution with padding
-     - Activation: ReLU
-     - either MaxPooling to reduce resolution, or Dropout
-     - BatchNormalization
-    """
-    model.add(Convolution3D(nfilters, 5, 5,5, **kwargs)) #border_mode='same', init="he_normal", 
-    model.add(BatchNormalization())
-    model.add(Activation('relu'))
-    if dropout:
-        model.add(Dropout(dropout))
-    else:
-        model.add(MaxPooling2D((2, 2), border_mode='same'))
+# def add_block(model, nfilters, dropout=False, **kwargs):
+#     """ 
+#     Add basic convolution block: 
+#      - 3x3 Convolution with padding
+#      - Activation: ReLU
+#      - either MaxPooling to reduce resolution, or Dropout
+#      - BatchNormalization
+#     """
+#     model.add(Convolution3D(nfilters, 5, 5,5, **kwargs)) #border_mode='same', init="he_normal", 
+#     model.add(BatchNormalization())
+#     model.add(Activation('relu'))
+#     if dropout:
+#         model.add(Dropout(dropout))
+#     else:
+#         model.add(MaxPooling2D((2, 2), border_mode='same'))
 
 def base_model():
   model = Sequential()
-  model.add(Convolution3D(10, (3,3,3) , input_shape=(21, 21,51,1))) #border_mode='same', init="he_normal", 
+  model.add(Convolution3D(20, (3,3,3) , input_shape=(21, 21,51,1))) #border_mode='same', init="he_normal", 
   model.add(BatchNormalization())
   model.add(Activation('relu'))
 
@@ -91,7 +91,7 @@ def base_model():
 # # Training
 # # ----------------------------------------------------------
 
-estimator = KerasRegressor(build_fn=base_model, nb_epoch=1, batch_size=5, verbose=1)
+estimator = KerasRegressor(build_fn=base_model, nb_epoch=20, batch_size=5, verbose=1)
 seed = 7
 np.random.seed(seed)
 
@@ -99,4 +99,4 @@ estimator.fit(np.expand_dims(train, axis=4),train_out,
               validation_data=(np.expand_dims(valid, axis=4), valid_out),
               callbacks=[keras.callbacks.CSVLogger('./train_hist/history.csv')],
               verbose=1)
-model.save('./train_hist/model.h5')  # save trained network
+estimator.model.save('./train_hist/model.h5')  # save trained network
