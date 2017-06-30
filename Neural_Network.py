@@ -17,13 +17,13 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 
 
-input_data = np.array(np.load('./charge.npy'))/100 ### Scale to a reasonable input 
-output_data = np.load('./truevals.npy')
+input_data = np.array(np.load('./charge.npy'))[0:10000]/100 ### Scale to a reasonable input 
+output_data = np.load('./truevals.npy')[0:10000]
 
 print 'Shape of Input Data: {}'.format(np.shape(input_data))
 print 'Shape of Output Data: {}'.format(np.shape(output_data))
 
-tvt_ratio=[10,4,2] ##ratio of test validation and test dataset
+tvt_ratio=[10,2,1] ##ratio of test validation and test dataset
 data_len = len(input_data)
 test_end = int(float(tvt_ratio[0])/np.sum(tvt_ratio)*data_len)
 valid_end = int(float(tvt_ratio[1])/np.sum(tvt_ratio)*data_len)+test_end
@@ -48,15 +48,15 @@ test_out = np.log10(np.concatenate(output_data[valid_end+1:data_len-1, 0:1]))
 
 def base_model():
   model = Sequential()
-  model.add(Convolution3D(32, (5,5,5) , padding="same", kernel_initializer="he_normal",input_shape=(21, 21,51,1)))
+  model.add(Convolution3D(5, (3,3,3) , padding="same", kernel_initializer="he_normal",input_shape=(21, 21,51,1)))
   model.add(BatchNormalization())
   model.add(Activation('relu'))
-  model.add(Dropout(0.3))
+  model.add(Dropout(0.6))
 
-  model.add(Convolution3D(64, (5,5,5), padding="same", kernel_initializer="he_normal"))
+  model.add(Convolution3D(10, (3,3,3), padding="same", kernel_initializer="he_normal"))
   model.add(BatchNormalization())
   model.add(Activation('relu'))
-  model.add(MaxPooling3D((2, 2, 2), padding='same'))
+  model.add(MaxPooling3D((5, 5, 5), padding='same'))
 
   ##possible things to implement
 
@@ -64,7 +64,8 @@ def base_model():
   #model.add(MaxPooling2D((2, 2), border_mode='same'))
 
   model.add(Flatten()) 
-  model.add(Dense(64,kernel_initializer='normal', activation='relu'))
+  model.add(Dropout(0.6))
+  model.add(Dense(8,kernel_initializer='normal', activation='relu'))
   model.add(Dense(1, kernel_initializer='normal'))
   print(model.summary())
 
@@ -83,5 +84,7 @@ np.random.seed(seed)
 estimator.fit(np.expand_dims(train, axis=4),train_out, 
               validation_data=(np.expand_dims(valid, axis=4), valid_out),
               callbacks=[keras.callbacks.CSVLogger('./train_hist/history.csv')], 
-              epochs=8, verbose=1)
+              epochs=4, verbose=1)
 estimator.model.save('./train_hist/model.h5')  # save trained network
+res= estimator.predict(np.expand_dims(test, axis=4), verbose=1)
+np.save('./train_hist/model.h5', [res, test])
