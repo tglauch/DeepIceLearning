@@ -17,7 +17,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 
 
-input_data = np.array(np.load('./charge.npy'))
+input_data = np.array(np.load('./charge.npy'))/100 ### Scale to a reasonable input 
 output_data = np.load('./truevals.npy')
 
 print 'Shape of Input Data: {}'.format(np.shape(input_data))
@@ -39,31 +39,12 @@ for folder in folders:
 train = input_data[0:test_end]
 valid = input_data[test_end+1:valid_end]
 test  = input_data[valid_end+1:data_len-1]
-train_out = np.concatenate(output_data[0:test_end,0:1])
-valid_out = np.concatenate(output_data[test_end+1:valid_end, 0:1])
-test_out = np.concatenate(output_data[valid_end+1:data_len-1, 0:1])
 
+######### Use log10(Energy) in order to avoid large values ##############
 
-# # ----------------------------------------------------------
-# # Define model
-# # ----------------------------------------------------------
-
-
-# def add_block(model, nfilters, dropout=False, **kwargs):
-#     """ 
-#     Add basic convolution block: 
-#      - 3x3 Convolution with padding
-#      - Activation: ReLU
-#      - either MaxPooling to reduce resolution, or Dropout
-#      - BatchNormalization
-#     """
-#     model.add(Convolution3D(nfilters, 5, 5,5, **kwargs)) #border_mode='same', init="he_normal", 
-#     model.add(BatchNormalization())
-#     model.add(Activation('relu'))
-#     if dropout:
-#         model.add(Dropout(dropout))
-#     else:
-#         model.add(MaxPooling2D((2, 2), border_mode='same'))
+train_out = np.log10(np.concatenate(output_data[0:test_end,0:1]))
+valid_out = np.log10(np.concatenate(output_data[test_end+1:valid_end, 0:1]))
+test_out = np.log10(np.concatenate(output_data[valid_end+1:data_len-1, 0:1]))
 
 def base_model():
   model = Sequential()
