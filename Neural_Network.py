@@ -17,12 +17,15 @@ from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import KFold
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
+import h5py
 
 
 print('Loading Data...')
 
-input_data = np.array(np.load('./charge.npy')) ### Scale to a reasonable input 
-output_data = np.load('./truevals.npy')
+data = h5py.File('training_data/numu_train_data.h5')
+
+input_data = data['charge'] ### Scale to a reasonable input 
+output_data = data['reco_vals']
 
 print('Shape of Input Data: {}'.format(np.shape(input_data)))
 print('Shape of Output Data: {}'.format(np.shape(output_data)))
@@ -53,26 +56,37 @@ test_out = np.log10(np.concatenate(output_data[valid_end+1:data_len-1, 0:1]))
 def base_model():
   model = Sequential()
 
-  model.add(Convolution3D(16, (3,3,3) , padding="same", kernel_initializer="he_normal",input_shape=(21, 21,51,1)))
-  model.add(BatchNormalization())
-  model.add(Activation('relu'))
-  model.add(Dropout(0.3))
+  # model.add(Convolution3D(16, (3,3,3) , padding="same", kernel_initializer="he_normal",input_shape=(21, 21,51,1)))
+  # model.add(BatchNormalization())
+  # model.add(Activation('relu'))
+  # model.add(Dropout(0.3))
 
-  model.add(Convolution3D(32, (3,3,3), padding="same", kernel_initializer="he_normal"))
-  model.add(BatchNormalization())
-  model.add(Activation('relu'))
-  model.add(MaxPooling3D((3, 3, 3), padding='same'))
+  # model.add(Convolution3D(32, (3,3,3), padding="same", kernel_initializer="he_normal"))
+  # model.add(BatchNormalization())
+  # model.add(Activation('relu'))
+  # model.add(MaxPooling3D((3, 3, 3), padding='same'))
 
-  model.add(Convolution3D(64, (3,3,3), padding="same", kernel_initializer="he_normal"))
-  model.add(BatchNormalization())
-  model.add(Activation('relu'))
-  model.add(MaxPooling3D((3, 3, 3), padding='same'))
+  # model.add(Convolution3D(64, (3,3,3), padding="same", kernel_initializer="he_normal"))
+  # model.add(BatchNormalization())
+  # model.add(Activation('relu'))
+  # model.add(MaxPooling3D((3, 3, 3), padding='same'))
 
-  model.add(Flatten()) 
+  # model.add(Flatten()) 
+  # model.add(Dropout(0.4))
+  # model.add(Dense(256,kernel_initializer='normal', activation='relu'))
+  # model.add(BatchNormalization())
+  # model.add(Dense(64,kernel_initializer='normal', activation='relu'))
+  # model.add(Dense(1, kernel_initializer='normal'))
+
+  model.add(Flatten(input_shape=(21, 21,51,1))) 
+  model.add(BatchNormalization())
+  model.add(Dense(2056,kernel_initializer='normal', activation='relu'))
   model.add(Dropout(0.4))
-  model.add(Dense(256,kernel_initializer='normal', activation='relu'))
+  model.add(Dense(512,kernel_initializer='normal', activation='relu'))
   model.add(BatchNormalization())
-  model.add(Dense(64,kernel_initializer='normal', activation='relu'))
+  model.add(Dense(512,kernel_initializer='normal', activation='relu'))
+  model.add(Dropout(0.4))
+  model.add(Dense(32,kernel_initializer='normal', activation='relu'))
   model.add(Dense(1, kernel_initializer='normal'))
   print(model.summary())
 
@@ -90,8 +104,8 @@ np.random.seed(seed)
 
 estimator.fit(np.expand_dims(train, axis=4),train_out, 
               validation_data=(np.expand_dims(valid, axis=4), valid_out),
-              callbacks=[keras.callbacks.CSVLogger('./train_hist/history2.csv')], 
-              epochs=10, batch_size=20, verbose=1)
-estimator.model.save('./train_hist/last_model.h5')  # save trained network
+              callbacks=[keras.callbacks.CSVLogger('./train_hist/history_noCNN2.csv')], 
+              epochs=30, batch_size=100, verbose=1)
+estimator.model.save('./train_hist/last_model_noCNN2.h5')  # save trained network
 res= estimator.predict(np.expand_dims(test, axis=4), verbose=1)
-np.save('./train_hist/last_model2.npy', [res, test_out])
+np.save('./train_hist/last_model_noCNN2.npy', [res, test_out])
