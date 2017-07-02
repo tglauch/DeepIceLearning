@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 from icecube import dataclasses, dataio, icetray
@@ -8,11 +8,12 @@ import itertools
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import math
+import tables
 
-input_shape = [20,20,50]
+input_shape = [20,20,50]  ### hardcoded at the moment
 
 def make_grid_dict(input_shape, geometry):
-    """Put the Icecube Geometry in a cubic grid. For each DOM calculate the grid position
+    """Put the Icecube Geometry in a cubic grid. For each DOM calculate the corresponding grid position
 
     Arguments:
     input_shape : The shape of the grid (x,y,z)
@@ -49,21 +50,35 @@ geometry_file='/data/sim/sim-new/downloads/GCD/GeoCalibDetectorStatus_2012.56063
 geometry = dataio.I3File(geometry_file)
 geo = geometry.pop_frame()['I3Geometry'].omgeo
 
-######### New Version ##########
+######### Create HDF5 File ##########
+
+h5file = tables.open_file("./training_data/numu_train_data.h5", 
+    mode = "w", title = "Events for training the NN")
+
+charge = h5file.create_earray(h5file.root, 'charge', 
+    tables.Float64Atom(), (0,input_shape[0]+1,input_shape[1]+1,input_shape[2]+1),
+    title = "Charge Distribution")
+time = h5file.create_earray(h5file.root, 'time', 
+    tables.Float64Atom(), (0,input_shape[0]+1,input_shape[1]+1,input_shape[2]+1), 
+    title = "Timestamp Distribution")
+reco_vals = h5file.create_earray(h5file.root, 'reco_vals', tables.Float64Atom(), 
+    (0,3),title = "Timestamp Distribution")
+
+print('Created a new HDF File with the Settings:')
+print(h5file)
+
 grid, DOM_list = make_grid_dict(input_shape,geo)
 j=0
-charge_arr = []
-time_arr = []
-trueval_arr = []
 for counter, in_file in enumerate(filelist):
-    if counter > 100:
-        continue
-    print counter
+    print('Processing File {}/{}'.format(counter, len(filelist)))
     event_file = dataio.I3File(os.path.join(folderpath, in_file))
     while event_file.more():
-            ######### The +1 is not optimel....probably reconsider 
-            charge_arr.append(np.zeros((input_shape[0]+1,input_shape[1]+1,input_shape[2]+1)))
-            time_arr.append(np.full((input_shape[0]+1,input_shape[1]+1,input_shape[2]+1), np.inf))
+
+
+            ######### The +1 is not optimal....probably reconsider 
+            charge_arr = np.zeros((1,input_shape[0]+1,input_shape[1]+1,input_shape[2]+1))
+            time_arr = np.full((1,input_shape[0]+1,input_shape[1]+1,input_shape[2]+1), np.inf)
+
             ###############################################
             physics_event = event_file.pop_physics()
             pulses = physics_event['InIceDSTPulses'].apply(physics_event)
@@ -75,20 +90,27 @@ for counter, in_file in enumerate(filelist):
                     for pulse in pulses[omkey]:
                         temp_time.append(pulse.time)
                         temp_charge.append(pulse.charge)
-                    final_dict[(omkey.string, omkey.om)] = (np.mean(temp_charge) ,np.mean(temp_time))
+                    final_dict[(omkey.string, omkey.om)] = (np.sum(temp_charge), np.mean(temp_time))
                     if np.mean(temp_time)<t_zero:
                         t_zero = np.mean(temp_time)
             for dom in DOM_list:
                 grid_pos = grid[dom]
                 if  dom in final_dict:
-                    charge_arr[j][grid_pos[0]][grid_pos[1]][grid_pos[2]] += final_dict[dom][0]
-                    time_arr[j][grid_pos[0]][grid_pos[1]][grid_pos[2]] += final_dict[dom][1]
+                    charge_arr[0][grid_pos[0]][grid_pos[1]][grid_pos[2]] += final_dict[dom][0]
+                    time_arr[0][grid_pos[0]][grid_pos[1]][grid_pos[2]] += final_dict[dom][1]
+
             energy = physics_event['MCMostEnergeticTrack'].energy
             azmiuth = physics_event['MCMostEnergeticTrack'].dir.azimuth 
             zenith = physics_event['MCMostEnergeticTrack'].dir.zenith
-            trueval_arr.append([energy,azmiuth, zenith])
+            charge.append(np.array(charge_arr))
+            time.append(np.array(time_arr))
+            reco_vals.append(np.array([energy,azmiuth, zenith])[np.newaxis])
             j+=1
+    charge.flush()
+    time.flush()
+    reco_vals.flush()
 
-np.save('truevals.npy', np.array(trueval_arr))
-np.save('time.npy', np.array(time_arr))
-np.save('charge.npy', np.array(charge_arr))
+h5file.close()
+# np.save('truevals.npy', np.array(trueval_arr))
+# np.save('time.npy', np.array(time_arr))
+# np.save('charge.npy', np.array(charge_arr))
