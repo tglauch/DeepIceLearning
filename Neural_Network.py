@@ -27,7 +27,8 @@ from configparser import ConfigParser
 
 if __name__ == "__main__":
   parser = ConfigParser()
-  parser.read('config.cfg')
+  print(os.listdir('.'))
+  parser.read('../config.cfg')
   print('Loading Data...')
   file_location = parser.get('Basics', 'thisfolder')
   data_file = os.path.join(file_location, 'training_data/numu_train_data.h5')
