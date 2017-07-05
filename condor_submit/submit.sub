@@ -5,7 +5,8 @@ request_memory = 8GB
 requirements = TARGET.CUDACapability                                   
 log          = NN.log                                              
 output       = NN_output.out
-error        = NN_error.err    
+error        = NN_error.err  
+stream_output = True  
 getenv = True  
 queue 1
 
