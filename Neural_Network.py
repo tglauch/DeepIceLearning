@@ -132,9 +132,9 @@ if __name__ == "__main__":
   estimator.fit(train,train_out, 
                 validation_data = (valid , valid_out),
                 callbacks = [CSV_log, early_stop], 
-                epochs = parser.get('Training_Parameters', 'epochs'), 
-                batch_size = parser.get('Training_Parameters', 'batch_size'), 
-                verbose = parser.get('Training_Parameters', 'verbose'), 
+                epochs = int(parser.get('Training_Parameters', 'epochs')), 
+                batch_size = int(parser.get('Training_Parameters', 'batch_size')), 
+                verbose = int(parser.get('Training_Parameters', 'verbose')), 
                 shuffle = 'batch') #np.expand_dims(train, axis=4)
   print('Save the model')
   estimator.model.save(os.path.join(file_location,'train_hist/{}/last_model_noCNN_complete.h5'.format(datetime.date.today())))  # save trained network
