@@ -23,28 +23,41 @@ import h5py
 import datetime
 import gc
 from configparser import ConfigParser
+import argparse
+
+
+def parseArguments():
+  parser = argparse.ArgumentParser()
+  parser.add_argument("--Project", help="The name for the Project", type=str ,default='some_NN')
+  parser.add_argument("--version", action="version", version='%(prog)s - Version 1.0')
+    # Parse arguments
+  args = parser.parse_args()
+
+  return args
+
 
 
 if __name__ == "__main__":
+
+  # Parse the arguments
+
   parser = ConfigParser()
-  print(os.listdir('.'))
   parser.read('../config.cfg')
-  print('Loading Data...')
   file_location = parser.get('Basics', 'thisfolder')
+
+  # Raw print arguments
+  args = parseArguments()
+  print"\n ############################################"
+  print("You are running the script with arguments: ")
+  for a in args.__dict__:
+      print(str(a) + ": " + str(args.__dict__[a]))
+  print"############################################\n "
+
+  project_name = args.__dict__['Project']
+
+  print('Loading Data...')
+
   data_file = os.path.join(file_location, 'training_data/numu_train_data.h5')
-
-  # for obj in gc.get_objects():   # Browse through ALL objects
-  #     if isinstance(obj, h5py.File):   # Just HDF5 files
-  #         try:
-  #             obj.close()
-  #         except:
-  #             pass # Was already closed
-
-  # # input_data = data['charge'] ### Scale to a reasonable input 
-  # # output_data = data['reco_vals']
-
-  # print('Shape of Input Data: {}'.format(np.shape(input_data)))
-  # print('Shape of Output Data: {}'.format(np.shape(output_data)))
 
   tvt_ratio=[float(parser.get('Training_Parameters', 'training_fraction')),
   float(parser.get('Training_Parameters', 'validation_fraction')),
@@ -65,10 +78,7 @@ if __name__ == "__main__":
           os.makedirs('{}'.format(os.path.join(file_location,folder)))
 
   print('Prepare Training Data Input')
-  ######### Remove as soon as possible #########
-  # test_end = 100
-  # valid_end = 200
-  # data_len = 300
+
   train = HDF5Matrix(data_file, 'charge', start=0, end=test_end)
   valid = HDF5Matrix(data_file, 'charge', start=test_end+1, end=valid_end)
   test  = HDF5Matrix(data_file, 'charge', start=valid_end+1, end=data_len-1)
@@ -76,9 +86,11 @@ if __name__ == "__main__":
   ######### Use log10(Energy) in order to avoid output values to go over several orders of magnitude ##############
   reco_vals = HDF5Matrix(data_file, 'reco_vals')
   print('Prepare Training Data Output')
+
   # train_out = HDF5Matrix(data_file, 'reco_vals', start=0, end=test_end)
   # valid_out = HDF5Matrix(data_file, 'reco_vals', start=test_end+1, end=valid_end)
   # test_out  = HDF5Matrix(data_file, 'reco_vals', start=valid_end+1, end=data_len-1)
+
   train_out = np.log10(reco_vals.data[0:test_end,0:1])
   valid_out = np.log10(reco_vals.data[test_end+1:valid_end,0:1])
   test_out = np.log10(reco_vals.data[valid_end+1:data_len-1,0:1])
@@ -86,35 +98,35 @@ if __name__ == "__main__":
   def base_model():
     model = Sequential()
 
-    model.add(Convolution2D(8, (3,3) , padding="same", kernel_initializer="he_normal",input_shape=(21, 21,51)))
-    model.add(BatchNormalization())
-    model.add(Activation('relu'))
-    model.add(Dropout(0.3))
-
-    model.add(Convolution2D(8, (3,3), padding="same", kernel_initializer="he_normal"))
-    model.add(BatchNormalization())
-    model.add(Activation('relu'))
-    model.add(MaxPooling2D((3, 3), padding='same'))
-
-    model.add(Convolution2D(8, (3,3), padding="same", kernel_initializer="he_normal"))
-    model.add(BatchNormalization())
-    model.add(Activation('relu'))
-    model.add(MaxPooling2D((3, 3), padding='same'))
-
-    model.add(Flatten()) 
-    model.add(Dropout(0.4))
-    model.add(BatchNormalization())
-    model.add(Dense(32,kernel_initializer='normal', activation='relu'))
-    model.add(Dense(1, kernel_initializer='normal'))
-
-    # model.add(Flatten(input_shape=(21, 21,51))) 
+    # model.add(Convolution2D(8, (3,3) , padding="same", kernel_initializer="he_normal",input_shape=(21, 21,51)))
     # model.add(BatchNormalization())
-    # model.add(Dense(128,kernel_initializer='normal', activation='relu',kernel_regularizer=regularizers.l2(0.01)))
+    # model.add(Activation('relu'))
+    # model.add(Dropout(0.3))
+
+    # model.add(Convolution2D(8, (3,3), padding="same", kernel_initializer="he_normal"))
+    # model.add(BatchNormalization())
+    # model.add(Activation('relu'))
+    # model.add(MaxPooling2D((3, 3), padding='same'))
+
+    # model.add(Convolution2D(8, (3,3), padding="same", kernel_initializer="he_normal"))
+    # model.add(BatchNormalization())
+    # model.add(Activation('relu'))
+    # model.add(MaxPooling2D((3, 3), padding='same'))
+
+    # model.add(Flatten()) 
     # model.add(Dropout(0.4))
-    # model.add(Dense(64,kernel_initializer='normal', activation='relu',kernel_regularizer=regularizers.l2(0.01)))
     # model.add(BatchNormalization())
-    # model.add(Dense(16,kernel_initializer='normal', activation='relu',kernel_regularizer=regularizers.l2(0.01)))
+    # model.add(Dense(32,kernel_initializer='normal', activation='relu'))
     # model.add(Dense(1, kernel_initializer='normal'))
+
+    model.add(Flatten(input_shape=(21, 21,51))) 
+    model.add(BatchNormalization())
+    model.add(Dense(128,kernel_initializer='normal', activation='relu',kernel_regularizer=regularizers.l2(0.01)))
+    model.add(Dropout(0.4))
+    model.add(Dense(64,kernel_initializer='normal', activation='relu',kernel_regularizer=regularizers.l2(0.01)))
+    model.add(BatchNormalization())
+    model.add(Dense(16,kernel_initializer='normal', activation='relu',kernel_regularizer=regularizers.l2(0.01)))
+    model.add(Dense(1, kernel_initializer='normal'))
     print(model.summary())
 
     model.compile(loss='mean_squared_error', optimizer='adam',metrics=['accuracy'])
@@ -127,7 +139,7 @@ if __name__ == "__main__":
 
   estimator = KerasRegressor(build_fn=base_model, verbose=1)
 
-  CSV_log = keras.callbacks.CSVLogger(os.path.join(file_location,'train_hist/{}/history_noCNN_complete.csv'.format(datetime.date.today())))
+  CSV_log = keras.callbacks.CSVLogger(os.path.join(file_location,'train_hist/{}/{}.csv'.format(datetime.date.today(), project_name)))
   early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=0, verbose=0, mode='auto')
   estimator.fit(train,train_out, 
                 validation_data = (valid , valid_out),
@@ -137,8 +149,8 @@ if __name__ == "__main__":
                 verbose = int(parser.get('Training_Parameters', 'verbose')), 
                 shuffle = 'batch') #np.expand_dims(train, axis=4)
   print('Save the model')
-  estimator.model.save(os.path.join(file_location,'train_hist/{}/last_model_noCNN_complete.h5'.format(datetime.date.today())))  # save trained network
+  estimator.model.save(os.path.join(file_location,'train_hist/{}/{}.h5'.format(datetime.date.today(),project_name)))  # save trained network
   print('calculate results...')
   res= estimator.predict(test, verbose=1)
 
-  np.save(os.path.join(file_location,'train_hist/{}/last_model_noCNN_complete.npy'.format(datetime.date.today())), [res, np.squeeze(test_out)])
+  np.save(os.path.join(file_location,'train_hist/{}/{}.npy'.format(datetime.date.today(), project_name)), [res, np.squeeze(test_out)])
