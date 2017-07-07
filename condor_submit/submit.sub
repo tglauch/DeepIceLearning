@@ -3,10 +3,11 @@ universe     = vanilla
 request_gpus = 1 
 request_memory = 8GB
 requirements = TARGET.CUDACapability                                   
-log          = NN.log                                              
-output       = NN_output.out
-error        = NN_error.err  
+log          = condor_submit/NN_log/NN.log                                              
+output       = condor_submit/NN_log/NN_output.out
+error        = condor_submit/NN_log/NN_error.err  
 stream_output = True  
 getenv = True  
+IWD = /data/user/tglauch/ML_Reco/ 
 queue 1
 
