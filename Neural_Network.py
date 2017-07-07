@@ -29,6 +29,7 @@ import argparse
 def parseArguments():
   parser = argparse.ArgumentParser()
   parser.add_argument("--Project", help="The name for the Project", type=str ,default='some_NN')
+  parser.add_argument("--input", help="Name of the input file", type=str ,default='onlyhighE.h5')
   parser.add_argument("--version", action="version", version='%(prog)s - Version 1.0')
     # Parse arguments
   args = parser.parse_args()
@@ -42,7 +43,7 @@ if __name__ == "__main__":
   # Parse the arguments
 
   parser = ConfigParser()
-  parser.read('../config.cfg')
+  parser.read('config.cfg')
   file_location = parser.get('Basics', 'thisfolder')
 
   # Raw print arguments
@@ -57,7 +58,7 @@ if __name__ == "__main__":
 
   print('Loading Data...')
 
-  data_file = os.path.join(file_location, 'training_data/numu_train_data.h5')
+  data_file = os.path.join(file_location, 'training_data/{}'.format(args.__dict__['input']))
 
   tvt_ratio=[float(parser.get('Training_Parameters', 'training_fraction')),
   float(parser.get('Training_Parameters', 'validation_fraction')),
@@ -98,20 +99,20 @@ if __name__ == "__main__":
   def base_model():
     model = Sequential()
 
-    # model.add(Convolution2D(8, (3,3) , padding="same", kernel_initializer="he_normal",input_shape=(21, 21,51)))
+    # model.add(Convolution3D(8, (3,3,3) , padding="same", kernel_initializer="he_normal",input_shape=(1,21, 21,51)))
     # model.add(BatchNormalization())
     # model.add(Activation('relu'))
     # model.add(Dropout(0.3))
 
-    # model.add(Convolution2D(8, (3,3), padding="same", kernel_initializer="he_normal"))
+    # model.add(Convolution3D(8, (3,3,3), padding="same", kernel_initializer="he_normal"))
     # model.add(BatchNormalization())
     # model.add(Activation('relu'))
-    # model.add(MaxPooling2D((3, 3), padding='same'))
+    # model.add(MaxPooling3D((3, 3, 3), padding='same'))
 
-    # model.add(Convolution2D(8, (3,3), padding="same", kernel_initializer="he_normal"))
+    # model.add(Convolution3D(8, (3,3,3), padding="same", kernel_initializer="he_normal"))
     # model.add(BatchNormalization())
     # model.add(Activation('relu'))
-    # model.add(MaxPooling2D((3, 3), padding='same'))
+    # model.add(MaxPooling3D((3, 3, 3), padding='same'))
 
     # model.add(Flatten()) 
     # model.add(Dropout(0.4))

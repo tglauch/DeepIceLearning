@@ -1,4 +1,4 @@
-    #!/usr/bin/env python
+#!/usr/bin/env python
 # coding: utf-8
 
 from icecube import dataclasses, dataio, icetray
@@ -7,9 +7,18 @@ import numpy as np
 import itertools
 import math
 import tables
+import argparse
 
-input_shape = [20,20,50]  ### hardcoded at the moment
-file_location = '/data/user/tglauch/ML_Reco/'
+
+def parseArguments():
+  parser = argparse.ArgumentParser()
+  parser.add_argument("--Project", help="The name for the Project", type=str ,default='highE_new')
+  parser.add_argument("--Num_Files", help="The name for the Project", type=int ,default=-1)
+  parser.add_argument("--version", action="version", version='%(prog)s - Version 1.0')
+    # Parse arguments
+  args = parser.parse_args()
+
+  return args
 
 def make_grid_dict(input_shape, geometry):
     """Put the Icecube Geometry in a cubic grid. For each DOM calculate the corresponding grid position
@@ -20,7 +29,7 @@ def make_grid_dict(input_shape, geometry):
     """
     
     grid = dict()
-    DOM_List = geometry.keys()
+    DOM_List = [i for i in geometry.keys() if i.om<61]
     xpos=[geo[i].position.x for i in DOM_List]
     ypos=[geo[i].position.y for i in DOM_List]
     zpos=[geo[i].position.z for i in DOM_List]
@@ -39,56 +48,79 @@ def make_grid_dict(input_shape, geometry):
                       )
     return grid, dom_list_ret
 
+if __name__ == "__main__":
 
-folderpath = '/data/ana/PointSource/PS/IC86_2012/files/sim/2012/neutrino-generator/11069/00000-00999/'
-#folderpath = '../ba_code/data/'
-filelist = [ f_name for f_name in os.listdir(folderpath) if f_name[-6:]=='i3.bz2']
+    # Raw print arguments
+    args = parseArguments()
+    print"\n ############################################"
+    print("You are running the script with arguments: ")
+    for a in args.__dict__:
+      print(str(a) + ": " + str(args.__dict__[a]))
+    print"############################################\n "
 
-geometry_file='/data/sim/sim-new/downloads/GCD/GeoCalibDetectorStatus_2012.56063_V0.i3.gz'
-#geometry_file='../ba_code/data/GeoCalibDetectorStatus_2012.56063_V0.i3.gz'
-geometry = dataio.I3File(geometry_file)
-geo = geometry.pop_frame()['I3Geometry'].omgeo
+    project_name = args.__dict__['Project']
 
-######### Create HDF5 File ##########
-h5file = tables.open_file(os.path.join(file_location, 'training_data/numu_train_data.h5'), 
-    mode = "w", title = "Events for training the NN")
+    input_shape = [20,20,50]  ### hardcoded at the moment
+    file_location = '/data/user/tglauch/ML_Reco/'
 
-charge = h5file.create_earray(h5file.root, 'charge', 
-    tables.Float64Atom(), (0,input_shape[0]+1,input_shape[1]+1,input_shape[2]+1),
-    title = "Charge Distribution")
-time = h5file.create_earray(h5file.root, 'time', 
-    tables.Float64Atom(), (0,input_shape[0]+1,input_shape[1]+1,input_shape[2]+1), 
-    title = "Timestamp Distribution")
-reco_vals = h5file.create_earray(h5file.root, 'reco_vals', tables.Float64Atom(), 
-    (0,3),title = "True Values")
 
-print('Created a new HDF File with the Settings:')
-print(h5file)
 
-grid, DOM_list = make_grid_dict(input_shape,geo)
-j=0
-basepath = '/data/ana/PointSource/PS/IC86_2012/files/sim/2012/neutrino-generator/'
-folders = ['11029/00000-00999/', '11069/00000-00999/']
-#folderpath = '../ba_code/data/'
-for folder in folders:
-    print('Process Folder: {}'.format(os.path.join(basepath,folder)))
-    filelist = [ f_name for f_name in os.listdir(os.path.join(basepath,folder)) if f_name[-6:]=='i3.bz2']
-    for counter, in_file in enumerate(filelist):
-        print('Processing File {}/{}'.format(counter, len(filelist)))
-        if counter > len(filelist)/2:
-            continue
-        event_file = dataio.I3File(os.path.join(basepath, folder, in_file))
-        while event_file.more():
-                physics_event = event_file.pop_physics()
+
+    folderpath = '/data/ana/PointSource/PS/IC86_2012/files/sim/2012/neutrino-generator/11069/00000-00999/'
+    #folderpath = '../ba_code/data/'
+    filelist = [ f_name for f_name in os.listdir(folderpath) if f_name[-6:]=='i3.bz2']
+
+    geometry_file = '/data/sim/sim-new/downloads/GCD/GeoCalibDetectorStatus_2012.56063_V0.i3.gz'
+    #geometry_file='../ba_code/data/GeoCalibDetectorStatus_2012.56063_V0.i3.gz'
+    geometry = dataio.I3File(geometry_file)
+    geo = geometry.pop_frame()['I3Geometry'].omgeo
+
+    ######### Create HDF5 File ##########
+    h5file = tables.open_file(os.path.join(file_location, 'training_data/{}.h5'.format(project_name)), 
+        mode = "w", title = "Events for training the NN")
+
+    charge = h5file.create_earray(h5file.root, 'charge', 
+        tables.Float64Atom(), (0, 1 ,input_shape[0]+1,input_shape[1]+1,input_shape[2]+1),
+        title = "Charge Distribution")
+    time = h5file.create_earray(h5file.root, 'time', 
+        tables.Float64Atom(), (0, 1,input_shape[0]+1,input_shape[1]+1,input_shape[2]+1), 
+        title = "Timestamp Distribution")
+    reco_vals = h5file.create_earray(h5file.root, 'reco_vals', tables.Float64Atom(), 
+        (0,4),title = "Energy,Azimuth,Zenith,MuEx")
+
+    print('Created a new HDF File with the Settings:')
+    print(h5file)
+
+    grid, DOM_list = make_grid_dict(input_shape,geo)
+    #np.save('grid.npy', grid)
+    j=0
+    basepath = '/data/ana/PointSource/PS/IC86_2012/files/sim/2012/neutrino-generator/'
+    # folders = ['11029/00000-00999/', '11069/00000-00999/']
+    folders = ['11069/00000-00999/']
+    #folderpath = '../ba_code/data/'
+    for folder in folders:
+        print('Process Folder: {}'.format(os.path.join(basepath,folder)))
+        filelist = [ f_name for f_name in os.listdir(os.path.join(basepath,folder)) if f_name[-6:]=='i3.bz2']
+        for counter, in_file in enumerate(filelist):
+            if counter > args.__dict__['Num_Files'] and not args.__dict__['Num_Files']==-1:
+                continue
+            print('Processing File {}/{}'.format(counter, len(filelist)))
+            event_file = dataio.I3File(os.path.join(basepath, folder, in_file))
+            while event_file.more():
+                try:
+                    physics_event = event_file.pop_physics()
+                except:
+                    continue
                 energy = physics_event['MCMostEnergeticTrack'].energy
                 if energy<100:
                     continue
                 azmiuth = physics_event['MCMostEnergeticTrack'].dir.azimuth 
                 zenith = physics_event['MCMostEnergeticTrack'].dir.zenith
+                muex = physics_event['SplineMPEMuEXDifferential'].energy
 
                 ######### The +1 is not optimal....probably reconsider 
-                charge_arr = np.zeros((1,input_shape[0]+1,input_shape[1]+1,input_shape[2]+1))
-                time_arr = np.full((1,input_shape[0]+1,input_shape[1]+1,input_shape[2]+1), np.inf)
+                charge_arr = np.zeros((1, 1,input_shape[0]+1,input_shape[1]+1,input_shape[2]+1))
+                time_arr = np.full((1, 1,input_shape[0]+1,input_shape[1]+1,input_shape[2]+1), np.inf)
 
                 ###############################################
                 pulses = physics_event['InIceDSTPulses'].apply(physics_event)
@@ -106,18 +138,18 @@ for folder in folders:
                 for dom in DOM_list:
                     grid_pos = grid[dom]
                     if  dom in final_dict:
-                        charge_arr[0][grid_pos[0]][grid_pos[1]][grid_pos[2]] += final_dict[dom][0]
-                        time_arr[0][grid_pos[0]][grid_pos[1]][grid_pos[2]] += final_dict[dom][1]
+                        charge_arr[0][0][grid_pos[0]][grid_pos[1]][grid_pos[2]] += final_dict[dom][0]
+                        time_arr[0][0][grid_pos[0]][grid_pos[1]][grid_pos[2]] += final_dict[dom][1]
 
                 charge.append(np.array(charge_arr))
                 time.append(np.array(time_arr))
-                reco_vals.append(np.array([energy,azmiuth, zenith])[np.newaxis])
+                reco_vals.append(np.array([energy,azmiuth, zenith, muex])[np.newaxis])
                 j+=1
-        charge.flush()
-        time.flush()
-        reco_vals.flush()
+            charge.flush()
+            time.flush()
+            reco_vals.flush()
 
-h5file.close()
-# np.save('truevals.npy', np.array(trueval_arr))
-# np.save('time.npy', np.array(time_arr))
-# np.save('charge.npy', np.array(charge_arr))
+    h5file.close()
+    # np.save('truevals.npy', np.array(trueval_arr))
+    # np.save('time.npy', np.array(time_arr))
+    # np.save('charge.npy', np.array(charge_arr))
