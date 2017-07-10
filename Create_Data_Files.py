@@ -12,8 +12,8 @@ import argparse
 
 def parseArguments():
   parser = argparse.ArgumentParser()
-  parser.add_argument("--Project", help="The name for the Project", type=str ,default='highE_new')
-  parser.add_argument("--Num_Files", help="The name for the Project", type=int ,default=-1)
+  parser.add_argument("--project", help="The name for the Project", type=str ,default='numu_complete')
+  parser.add_argument("--num_files", help="The name for the Project", type=int ,default=-1)
   parser.add_argument("--version", action="version", version='%(prog)s - Version 1.0')
     # Parse arguments
   args = parser.parse_args()
@@ -58,7 +58,7 @@ if __name__ == "__main__":
       print(str(a) + ": " + str(args.__dict__[a]))
     print"############################################\n "
 
-    project_name = args.__dict__['Project']
+    project_name = args.__dict__['project']
 
     input_shape = [20,20,50]  ### hardcoded at the moment
     file_location = '/data/user/tglauch/ML_Reco/'
@@ -76,8 +76,9 @@ if __name__ == "__main__":
     geo = geometry.pop_frame()['I3Geometry'].omgeo
 
     ######### Create HDF5 File ##########
+    FILTERS = tables.Filters(complib='zlib', complevel=9)
     h5file = tables.open_file(os.path.join(file_location, 'training_data/{}.h5'.format(project_name)), 
-        mode = "w", title = "Events for training the NN")
+        mode = "w", title = "Events for training the NN", filters=FILTERS)
 
     charge = h5file.create_earray(h5file.root, 'charge', 
         tables.Float64Atom(), (0, 1 ,input_shape[0]+1,input_shape[1]+1,input_shape[2]+1),
@@ -95,56 +96,59 @@ if __name__ == "__main__":
     #np.save('grid.npy', grid)
     j=0
     basepath = '/data/ana/PointSource/PS/IC86_2012/files/sim/2012/neutrino-generator/'
-    # folders = ['11029/00000-00999/', '11069/00000-00999/']
-    folders = ['11069/00000-00999/']
+    folders = ['11029', '11069']
+    #folders = ['11069/00000-00999/']
     #folderpath = '../ba_code/data/'
     for folder in folders:
+        subfolders = os.listdir(os.path.join(basepath,folder))
         print('Process Folder: {}'.format(os.path.join(basepath,folder)))
-        filelist = [ f_name for f_name in os.listdir(os.path.join(basepath,folder)) if f_name[-6:]=='i3.bz2']
-        for counter, in_file in enumerate(filelist):
-            if counter > args.__dict__['Num_Files'] and not args.__dict__['Num_Files']==-1:
-                continue
-            print('Processing File {}/{}'.format(counter, len(filelist)))
-            event_file = dataio.I3File(os.path.join(basepath, folder, in_file))
-            while event_file.more():
-                try:
-                    physics_event = event_file.pop_physics()
-                except:
+        for subfolder in subfolders:
+            filelist = [ f_name for f_name in os.listdir(os.path.join(basepath,folder,subfolder)) if f_name[-6:]=='i3.bz2']
+            for counter, in_file in enumerate(filelist):
+                if counter > args.__dict__['num_files'] and not args.__dict__['num_files']==-1:
                     continue
-                energy = physics_event['MCMostEnergeticTrack'].energy
-                if energy<100:
-                    continue
-                azmiuth = physics_event['MCMostEnergeticTrack'].dir.azimuth 
-                zenith = physics_event['MCMostEnergeticTrack'].dir.zenith
-                muex = physics_event['SplineMPEMuEXDifferential'].energy
+                print('Processing File {}/{}'.format(counter, len(filelist)))
+                event_file = dataio.I3File(os.path.join(basepath, folder, subfolder, in_file))
+                while event_file.more():
+                    try:
+                        physics_event = event_file.pop_physics()
+                        energy = physics_event['MCMostEnergeticTrack'].energy
+                    except AttributeError:
+                        print('Attribute Error occured')
+                        continue
+                    if energy<100:
+                        continue
+                    azmiuth = physics_event['MCMostEnergeticTrack'].dir.azimuth 
+                    zenith = physics_event['MCMostEnergeticTrack'].dir.zenith
+                    muex = physics_event['SplineMPEMuEXDifferential'].energy
 
-                ######### The +1 is not optimal....probably reconsider 
-                charge_arr = np.zeros((1, 1,input_shape[0]+1,input_shape[1]+1,input_shape[2]+1))
-                time_arr = np.full((1, 1,input_shape[0]+1,input_shape[1]+1,input_shape[2]+1), np.inf)
+                    ######### The +1 is not optimal....probably reconsider 
+                    charge_arr = np.zeros((1, 1,input_shape[0]+1,input_shape[1]+1,input_shape[2]+1))
+                    time_arr = np.full((1, 1,input_shape[0]+1,input_shape[1]+1,input_shape[2]+1), np.inf)
 
-                ###############################################
-                pulses = physics_event['InIceDSTPulses'].apply(physics_event)
-                final_dict = dict()
-                for omkey in pulses.keys():
-                        temp_time = []
-                        temp_charge = []
-                        t_zero = np.inf
-                        for pulse in pulses[omkey]:
-                            temp_time.append(pulse.time)
-                            temp_charge.append(pulse.charge)
-                        final_dict[(omkey.string, omkey.om)] = (np.sum(temp_charge), np.mean(temp_time))
-                        if np.mean(temp_time)<t_zero:
-                            t_zero = np.mean(temp_time)
-                for dom in DOM_list:
-                    grid_pos = grid[dom]
-                    if  dom in final_dict:
-                        charge_arr[0][0][grid_pos[0]][grid_pos[1]][grid_pos[2]] += final_dict[dom][0]
-                        time_arr[0][0][grid_pos[0]][grid_pos[1]][grid_pos[2]] += final_dict[dom][1]
+                    ###############################################
+                    pulses = physics_event['InIceDSTPulses'].apply(physics_event)
+                    final_dict = dict()
+                    for omkey in pulses.keys():
+                            temp_time = []
+                            temp_charge = []
+                            t_zero = np.inf
+                            for pulse in pulses[omkey]:
+                                temp_time.append(pulse.time)
+                                temp_charge.append(pulse.charge)
+                            final_dict[(omkey.string, omkey.om)] = (np.sum(temp_charge), np.mean(temp_time))
+                            if np.mean(temp_time)<t_zero:
+                                t_zero = np.mean(temp_time)
+                    for dom in DOM_list:
+                        grid_pos = grid[dom]
+                        if  dom in final_dict:
+                            charge_arr[0][0][grid_pos[0]][grid_pos[1]][grid_pos[2]] += final_dict[dom][0]
+                            time_arr[0][0][grid_pos[0]][grid_pos[1]][grid_pos[2]] += final_dict[dom][1]
 
-                charge.append(np.array(charge_arr))
-                time.append(np.array(time_arr))
-                reco_vals.append(np.array([energy,azmiuth, zenith, muex])[np.newaxis])
-                j+=1
+                    charge.append(np.array(charge_arr))
+                    time.append(np.array(time_arr))
+                    reco_vals.append(np.array([energy,azmiuth, zenith, muex])[np.newaxis])
+                    j+=1
             charge.flush()
             time.flush()
             reco_vals.flush()
