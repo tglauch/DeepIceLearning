@@ -29,7 +29,7 @@ import argparse
 def parseArguments():
   parser = argparse.ArgumentParser()
   parser.add_argument("--Project", help="The name for the Project", type=str ,default='some_NN')
-  parser.add_argument("--input", help="Name of the input file", type=str ,default='onlyhighE.h5')
+  parser.add_argument("--input", help="Name of the input file", type=str ,default='numu_complete.h5')
   parser.add_argument("--version", action="version", version='%(prog)s - Version 1.0')
     # Parse arguments
   args = parser.parse_args()
@@ -117,10 +117,10 @@ if __name__ == "__main__":
     # model.add(Flatten()) 
     # model.add(Dropout(0.4))
     # model.add(BatchNormalization())
-    # model.add(Dense(32,kernel_initializer='normal', activation='relu'))
+    # model.add(Dense(32,kernel_in  itializer='normal', activation='relu'))
     # model.add(Dense(1, kernel_initializer='normal'))
 
-    model.add(Flatten(input_shape=(21, 21,51))) 
+    model.add(Flatten(input_shape=(1, 21, 21,51))) 
     model.add(BatchNormalization())
     model.add(Dense(128,kernel_initializer='normal', activation='relu',kernel_regularizer=regularizers.l2(0.01)))
     model.add(Dropout(0.4))
