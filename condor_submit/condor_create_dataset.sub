@@ -2,9 +2,9 @@
 executable = ../Create_Data_Files.py
 universe     = vanilla
 request_memory = 3.5GB
-log          = ../training_data/run_log.log
-output       = ../training_data/output.out
+log          = ./create_dataset_log/run_log.log
+output       = ./create_dataset_log/output.out
 stream_output = True
-getenv       = True
-error        = ../training_data/error.err
+error        = ./create_dataset_log/error.err
+arguments = --folder 10069/01000-01999
 queue 1

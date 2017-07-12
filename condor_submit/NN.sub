@@ -1,0 +1,14 @@
+executable   = ../Neural_Network.py                                                  
+universe     = vanilla         
+request_gpus = 1 
+request_memory = 8GB
+requirements = TARGET.CUDACapability                                   
+log          = condor_submit/NN_log/NN.log                                              
+output       = condor_submit/NN_log/NN_output.out
+error        = condor_submit/NN_log/NN_error.err  
+stream_output = True  
+getenv = True  
+IWD = /data/user/tglauch/ML_Reco/
+arguments =  --input 11029_02000-02999.h5:11029_03000-03999.h5 --project lowE 
+queue 1
+
