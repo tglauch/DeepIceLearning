@@ -156,7 +156,7 @@ if __name__ == "__main__":
                         if dom in final_dict:
                             charge_arr[0][0][grid_pos[0]][grid_pos[1]][grid_pos[2]] += final_dict[dom][0]
                             time_arr[0][0][grid_pos[0]][grid_pos[1]][grid_pos[2]] = \
-                                np.min(time_arr[0][0][grid_pos[0]][grid_pos[1]][grid_pos[2]], final_dict[dom][1])
+                                np.minimum(time_arr[0][0][grid_pos[0]][grid_pos[1]][grid_pos[2]], final_dict[dom][1])
 
                     charge.append(np.array(charge_arr))
                     # normalize time on [0,1]. not hit bins will still carry np.inf as time value
