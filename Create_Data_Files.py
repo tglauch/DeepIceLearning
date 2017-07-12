@@ -99,10 +99,10 @@ if __name__ == "__main__":
     with tables.open_file(OUTFILE, mode = "w", title = "Events for training the NN", filters=FILTERS) as h5file:
 
         charge = h5file.create_earray(h5file.root, 'charge', 
-            tables.Float64Atom(), (0, 1 ,input_shape[0]+1,input_shape[1]+1,input_shape[2]+1),
+            tables.Float64Atom(), (0, 1 ,input_shape[0],input_shape[1],input_shape[2]),
             title = "Charge Distribution")
         time = h5file.create_earray(h5file.root, 'time', 
-            tables.Float64Atom(), (0, 1,input_shape[0]+1,input_shape[1]+1,input_shape[2]+1), 
+            tables.Float64Atom(), (0, 1,input_shape[0],input_shape[1],input_shape[2]), 
             title = "Timestamp Distribution")
         reco_vals = h5file.create_earray(h5file.root, 'reco_vals', tables.Float64Atom(), 
             (0,4),title = "Energy,Azimuth,Zenith,MuEx")
