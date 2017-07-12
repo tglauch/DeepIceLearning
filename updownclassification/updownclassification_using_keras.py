@@ -35,41 +35,100 @@ import time
 
 data =   np.load("datasets/updownclassification_using_keras_chargedata_filtered.npy")
 labels = np.load("datasets/updownclassification_using_keras_labels_filtered.npy")
+logfile = "logger.txt"
 
-# In[9]:
-
-#(trainData, testData, trainLabels, testLabels) = train_test_split(data, labels, test_size=0.25, random_state=42)
-trainData, trainLabels = data, labels
-
-#trying with onedimensional output layer
-#(trainData, testData, trainLabels, testLabels) = train_test_split(data, np.array([0,1])[labels.argmax(1)], test_size=0.25, random_state=42)
-
-# In[10]:
-
-def create_model(neurons1=1024,neurons2=512, activations = ("relu", "relu")):
-    model = Sequential()
-    model.add(Dense(neurons1, input_dim=5160, kernel_initializer="uniform",
-        activation=activations[0]))
-    model.add(Dense(neurons2, kernel_initializer="uniform", activation=activations[1]))
-    model.add(Dense(2))
-    model.add(Activation("softmax"))
-    #sgd = SGD(lr=0.01)
-    adagrad = Adagrad()
-    model.compile(loss="binary_crossentropy", optimizer=adagrad, metrics=["accuracy"])
-    return model
+def train_model(data, labels, tuning=False, randomtune=True, n_iter=20, params=None, test_size = 0.25, logfile = None, verbose = 0, savefile=None, epochs = 20, batch_size = 128):
+    if logfile:
+        orig_stdout = sys.stdout
+        f = open(logfile, 'a', buffering=0)
+        sys.stdout = f
+        timestamp = time.strftime("%d/%m %H:%M:%S")
+        print '\n'*2 + '----\n' + timestamp
+        
+    
+    if tuning:
+        print "tuning model" + "with RandomSearchCV" if randomtune else "with GridSearchCV"
+        trainData, trainLabels = data, labels
+    else:
+        print "Training model"
+        #trying with onedimensional output layer
+        #labels = np.array([0,1])[labels.argmax(1)]
+        (trainData, testData, trainLabels, testLabels) = train_test_split(data, labels, test_size=test_size, random_state=42)
 
 
-#train the model
-start=time.time()
+    def create_model(neurons=(1824, 612), activations = ("relu", "softplus"), inits=("uniform","uniform")):
+        model = Sequential()
+        model.add(Dense(neurons[0], input_dim=5160, kernel_initializer=inits[0],
+            activation=activations[0]))
+        model.add(Dense(neurons[1], kernel_initializer=inits[1], activation=activations[1]))
+        model.add(Dense(2))
+        model.add(Activation("softmax"))
+        #previously: sgd = SGD(lr=0.01)
+        adagrad = Adagrad()
+        if not tuning:
+            print model.summary()
+        model.compile(loss="binary_crossentropy", optimizer=adagrad, metrics=["accuracy"])
+        return model
 
-timestamp = time.strftime("%d/%m %H:%M:%S")
-orig_stdout = sys.stdout
-f = open('logger.txt', 'a', buffering=0)
-sys.stdout = f
-print '\n'*2 + '----\n' + timestamp
+    start=time.time()
+    
+    
+    if tuning:
+        model = KerasClassifier(build_fn=create_model, epochs = epochs, batch_size = batch_size, verbose = verbose)
+        print model.build_fn().summary()
+        print "tuning with: ", params
+        if randomtune: # tune the hyperparameters via a randomized search
+            print "tuning randomly with RandomSearchCV"
+            grid = RandomizedSearchCV(model, param_grid, n_iter=n_iter, verbose=1)
+            grid_result = grid.fit(trainData, trainLabels)
+        else:
+            grid = GridSearchCV(estimator=model, param_grid=params, n_jobs=1)
+            grid_result = grid.fit(trainData, trainLabels)
+            # evaluate the best randomized searched model on the testing data
+            print("[INFO] randomized search took {:.2f} seconds".format(time.time() - start))
+    
+    # summarize results
+        print("Best: %f using %s" % (grid_result.best_score_, grid_result.best_params_))
+        means = grid_result.cv_results_['mean_test_score']
+        stds = grid_result.cv_results_['std_test_score']
+        params = grid_result.cv_results_['params']
+        for mean, stdev, param in zip(means, stds, params):
+            print("%f (%f) with: %r" % (mean, stdev, param))
+   
+    else:
+        #train
+        print "fitting..."
+        #model = create_model()
+        model = KerasClassifier(build_fn=create_model)
+        model.fit(trainData, trainLabels, epochs = epochs, batch_size = batch_size, verbose=1, validation_data=(testData, testLabels))
+        # show the accuracy on the testing set
+        print("[INFO] evaluating on testing set...")
+        (loss, accuracy) = model.evaluate(testData, testLabels,
+            batch_size=128, verbose=1)
+        print("[INFO] loss={:.4f}, accuracy: {:.4f}%".format(loss,
+            accuracy * 100))
+        #save model to file
+        #if savefile:
+            
+        
+    print "time to fit: {d}min {:.2f}sec".format(*(lambda t: (int(t/60),t%60))(time.time()-start))
+    
+    
+    if logfile:
+        #close file
+        sys.stdout = orig_stdout
+        f.close()
+        
+#def train_model(data, labels, tuning=False, randomtune=True, n_iter=20, params=None, test_size = 0.25, logfile = None, verbose = 0):    
+        
+#train_model(data, labels, epochs = 20)
 
-model = KerasClassifier(build_fn=create_model, epochs = 20, batch_size = 128, verbose = 0)
-print model.build_fn().summary()
+init = ['uniform', 'normal']
+param_grid = dict(inits = list(itertools.product(init,init)))
+
+train_model(data, labels, tuning = True, randomtune=False, params=param_grid, logfile = None)
+    
+
 """
 previously I just fitted with guessed params. now i do some fine tuning with gridsearch or randomizedsearch
 history = model.fit(trainData, trainLabels, epochs=20, batch_size=128, verbose=1)
@@ -86,7 +145,12 @@ param_grid = dict(neurons1=firstlayersize,neurons2=secondlayersize)
 grid = RandomizedSearchCV(model, param_grid, n_iter=20, verbose=1)
 
 --- tuning activation function
+act_fs = ['softmax', 'softplus', 'softsign', 'relu', 'tanh', 'sigmoid', 'hard_sigmoid', 'linear']
+l1 = list(itertools.product(['relu'], act_fs))
+l2 = list(itertools.product(act_fs, ['relu']))
+param_grid = dict(activations = l1 + l2)
 
+train_model(data, labels, tuning = True, params=param_grid, logfile = logfile)
 
 
 --- with gridsearch: 
@@ -104,41 +168,7 @@ grid_result = grid.fit(trainData, trainLabels)
 print("Best: %f using %s" % (grid_result.best_score_, grid_result.best_params_))
 """
 
-act_fs = ['softmax', 'softplus', 'softsign', 'relu', 'tanh', 'sigmoid', 'hard_sigmoid', 'linear']
-l1 = list(itertools.product(['relu'], act_fs))
-l2 = list(itertools.product(act_fs, ['relu']))
-param_grid = dict(activations = l1 + l2)
-print "tuning with: ", param_grid
-grid = GridSearchCV(estimator=model, param_grid=param_grid, n_jobs=1)
 
-# tune the hyperparameters via a randomized search
-
-start = time.time()
-grid_result = grid.fit(trainData, trainLabels)
-# evaluate the best randomized searched model on the testing data
-print("[INFO] randomized search took {:.2f} seconds".format(time.time() - start))
-
-# summarize results
-print("Best: %f using %s" % (grid_result.best_score_, grid_result.best_params_))
-means = grid_result.cv_results_['mean_test_score']
-stds = grid_result.cv_results_['std_test_score']
-params = grid_result.cv_results_['params']
-for mean, stdev, param in zip(means, stds, params):
-    print("%f (%f) with: %r" % (mean, stdev, param))
-    
-print "time to fit:",time.time()-start
-
-
-# show the accuracy on the testing set
-"""print("[INFO] evaluating on testing set...")
-(loss, accuracy) = model.evaluate(testData, testLabels,
-	batch_size=128, verbose=1)
-print("[INFO] loss={:.4f}, accuracy: {:.4f}%".format(loss,
-	accuracy * 100))"""
-
-#close file
-sys.stdout = orig_stdout
-f.close()
 
 
 # # results #

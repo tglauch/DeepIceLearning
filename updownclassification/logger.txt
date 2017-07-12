@@ -71,3 +71,31 @@ Best: 0.679841 using {'activations': ('relu', 'softplus')}
 0.563120 (0.007344) with: {'activations': ('hard_sigmoid', 'relu')}
 0.624983 (0.009596) with: {'activations': ('linear', 'relu')}
 time to fit: 11199.551615
+
+
+----
+12/07 09:17:25
+with GridSearchCV
+tuning with:  {'inits': [('uniform', 'uniform'), ('uniform', 'normal'), ('normal', 'uniform'), ('normal', 'normal')]}
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #   
+=================================================================
+dense_1 (Dense)              (None, 1824)              9413664   
+_________________________________________________________________
+dense_2 (Dense)              (None, 612)               1116900   
+_________________________________________________________________
+dense_3 (Dense)              (None, 2)                 1226      
+_________________________________________________________________
+activation_1 (Activation)    (None, 2)                 0         
+=================================================================
+Total params: 10,531,790
+Trainable params: 10,531,790
+Non-trainable params: 0
+_________________________________________________________________
+None
+[INFO] randomized search took 5621.95 seconds
+Best: 0.683278 using {'inits': ('uniform', 'uniform')}
+0.683278 (0.005897) with: {'inits': ('uniform', 'uniform')}
+0.681295 (0.005123) with: {'inits': ('uniform', 'normal')}
+0.671778 (0.009574) with: {'inits': ('normal', 'uniform')}
+0.656312 (0.006078) with: {'inits': ('normal', 'normal')}
