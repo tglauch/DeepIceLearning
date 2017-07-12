@@ -150,8 +150,7 @@ if __name__ == "__main__":
                             for pulse in pulses[omkey]:
                                 temp_time.append(pulse.time)
                                 temp_charge.append(pulse.charge)
-                            final_dict_time = np.min(temp_time)
-                            final_dict[(omkey.string, omkey.om)] = (np.sum(temp_charge), final_dict_time)
+                            final_dict[(omkey.string, omkey.om)] = (np.sum(temp_charge), np.min(temp_time))
                     for dom in DOM_list:
                         grid_pos = grid[dom]
                         if dom in final_dict:
