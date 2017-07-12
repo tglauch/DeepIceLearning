@@ -1,0 +1,73 @@
+# # results #
+# feedforward neural net 5160-1024-512-2, relu activations. trained on 75% of 10501 datasets. tested on 25%.
+# 
+# Epoch 50/50
+# 7875/7875 [==============================] - 3s - loss: 0.6672 - acc: 0.6000 
+# 
+# [INFO] evaluating on testing set...
+# 2432/2626 [==========================>...] - ETA: 0s[INFO] loss=0.6787, accuracy: 56.5499%
+
+# RESULTS GridSearch
+"""
+Best: 0.626794 using {'optimizer': 'Adagrad'}
+0.549841 (0.011489) with: {'optimizer': 'SGD'}
+0.575873 (0.012758) with: {'optimizer': 'RMSprop'}
+0.626794 (0.008722) with: {'optimizer': 'Adagrad'}
+0.568762 (0.015531) with: {'optimizer': 'Adadelta'}
+0.597333 (0.008159) with: {'optimizer': 'Adam'}
+0.599746 (0.001823) with: {'optimizer': 'Adamax'}
+0.586413 (0.028847) with: {'optimizer': 'Nadam'}
+"""
+#bis jetzt mit vollem 000000-000999 first50 datensatz. jetzt mit gefiltert: |theta-90|>15
+#parallel search anzahl neutrons tunen
+"""
+[Parallel(n_jobs=1)]: Done  60 out of  60 | elapsed: 139.3min finished
+[Parallel(n_jobs=1)]: Done  60 out of  60 | elapsed: 169.1min finished
+Fitting 3 folds for each of 20 candidates, totalling 60 fits
+[INFO] randomized search took 8472.78 seconds
+Fitting 3 folds for each of 20 candidates, totalling 60 fits
+Best: 0.657148 using {'neurons1': 1824, 'neurons2': 612}
+"""
+
+
+
+
+
+----
+11/07 09:29:57
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #   
+=================================================================
+dense_1 (Dense)              (None, 1024)              5284864   
+_________________________________________________________________
+dense_2 (Dense)              (None, 512)               524800    
+_________________________________________________________________
+dense_3 (Dense)              (None, 2)                 1026      
+_________________________________________________________________
+activation_1 (Activation)    (None, 2)                 0         
+=================================================================
+Total params: 5,810,690
+Trainable params: 5,810,690
+Non-trainable params: 0
+_________________________________________________________________
+None
+tuning with:  {'activations': [('relu', 'softmax'), ('relu', 'softplus'), ('relu', 'softsign'), ('relu', 'relu'), ('relu', 'tanh'), ('relu', 'sigmoid'), ('relu', 'hard_sigmoid'), ('relu', 'linear'), ('softmax', 'relu'), ('softplus', 'relu'), ('softsign', 'relu'), ('relu', 'relu'), ('tanh', 'relu'), ('sigmoid', 'relu'), ('hard_sigmoid', 'relu'), ('linear', 'relu')]}
+[INFO] randomized search took 11199.55 seconds
+Best: 0.679841 using {'activations': ('relu', 'softplus')}
+0.662393 (0.012443) with: {'activations': ('relu', 'softmax')}
+0.679841 (0.013616) with: {'activations': ('relu', 'softplus')}
+0.668738 (0.010981) with: {'activations': ('relu', 'softsign')}
+0.670324 (0.004056) with: {'activations': ('relu', 'relu')}
+0.668209 (0.006067) with: {'activations': ('relu', 'tanh')}
+0.675347 (0.003455) with: {'activations': ('relu', 'sigmoid')}
+0.676272 (0.003189) with: {'activations': ('relu', 'hard_sigmoid')}
+0.664243 (0.006773) with: {'activations': ('relu', 'linear')}
+0.606081 (0.012470) with: {'activations': ('softmax', 'relu')}
+0.527958 (0.057065) with: {'activations': ('softplus', 'relu')}
+0.631064 (0.007903) with: {'activations': ('softsign', 'relu')}
+0.669663 (0.011315) with: {'activations': ('relu', 'relu')}
+0.639128 (0.006809) with: {'activations': ('tanh', 'relu')}
+0.436880 (0.007344) with: {'activations': ('sigmoid', 'relu')}
+0.563120 (0.007344) with: {'activations': ('hard_sigmoid', 'relu')}
+0.624983 (0.009596) with: {'activations': ('linear', 'relu')}
+time to fit: 11199.551615
