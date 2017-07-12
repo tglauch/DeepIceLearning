@@ -10,7 +10,7 @@ import theano
 # theano.config.device = 'gpu'
 # theano.config.floatX = 'float32'
 import keras
-from keras.models import Sequential
+from keras.models import Sequential, load_model
 from keras.layers import Dense, Dropout, Activation, Flatten, Convolution2D, BatchNormalization, MaxPooling2D,Convolution3D,MaxPooling3D
 from keras.wrappers.scikit_learn import KerasRegressor
 from sklearn.model_selection import cross_val_score
@@ -24,17 +24,56 @@ import datetime
 import gc
 from configparser import ConfigParser
 import argparse
+import tables
 
 
 def parseArguments():
   parser = argparse.ArgumentParser()
-  parser.add_argument("--Project", help="The name for the Project", type=str ,default='some_NN')
-  parser.add_argument("--input", help="Name of the input file", type=str ,default='numu_complete.h5')
+  parser.add_argument("--project", help="The name for the Project", type=str ,default='some_NN')
+  parser.add_argument("--input", help="Name of the input files seperated by :", type=str ,default='all')
+  parser.add_argument("--virtual_len", help="Use an artifical array length (for debugging only!)", type=int , default=-1)
   parser.add_argument("--version", action="version", version='%(prog)s - Version 1.0')
     # Parse arguments
   args = parser.parse_args()
-
   return args
+
+
+def base_model():
+  model = Sequential()
+
+  model.add(Convolution3D(32, (5,5,5) , padding="same", kernel_initializer="he_normal", input_shape=(1,21, 21,51)))
+  # model.add(BatchNormalization())
+  model.add(Activation('relu'))
+  model.add(Dropout(0.4))
+
+  model.add(Convolution3D(64, (5,5,5), padding="same", kernel_initializer="he_normal"))
+  # model.add(BatchNormalization())
+  model.add(Activation('relu'))
+  # model.add(MaxPooling3D((3, 3, 3), padding='same'))
+
+  # model.add(Convolution3D(8, (3,3,3), padding="same", kernel_initializer="he_normal"))
+  # # model.add(BatchNormalization())
+  # model.add(Activation('relu'))
+  # model.add(MaxPooling3D((3, 3, 3), padding='same'))
+
+  model.add(Flatten()) 
+  model.add(Dropout(0.4))
+  # model.add(BatchNormalization())
+  model.add(Dense(128,kernel_initializer='normal', activation='relu'))
+  model.add(Dense(1, kernel_initializer='normal'))
+
+  # model.add(Flatten(input_shape=(1, 21, 21,51))) 
+  # model.add(BatchNormalization())
+  # model.add(Dense(128,kernel_initializer='he_normal', activation='relu',kernel_regularizer=regularizers.l2(0.01)))
+  # model.add(Dropout(0.4))
+  # model.add(Dense(64,kernel_initializer='he_normal', activation='relu',kernel_regularizer=regularizers.l2(0.01)))
+  # model.add(BatchNormalization())
+  # model.add(Dense(16,kernel_initializer='he_normal', activation='relu',kernel_regularizer=regularizers.l2(0.01)))
+  # model.add(Dense(1, kernel_initializer='he_normal'))
+  print(model.summary())
+  adam = keras.optimizers.Adam(lr=0.001)
+  model.compile(loss='mean_squared_error', optimizer=adam ,metrics=['accuracy'])
+  return model
 
 
 
@@ -54,104 +93,80 @@ if __name__ == "__main__":
       print(str(a) + ": " + str(args.__dict__[a]))
   print"############################################\n "
 
-  project_name = args.__dict__['Project']
+  project_name = args.__dict__['project']
 
   print('Loading Data...')
+  if args.__dict__['input'] =='all':
+    input_files = os.listdir(os.path.join(file_location, 'training_data/'))
+  else:
+    input_files = (args.__dict__['input']).split(':')
 
-  data_file = os.path.join(file_location, 'training_data/{}'.format(args.__dict__['input']))
-
+  
+  ### Training, Validation, Test Ratios    
   tvt_ratio=[float(parser.get('Training_Parameters', 'training_fraction')),
   float(parser.get('Training_Parameters', 'validation_fraction')),
   float(parser.get('Training_Parameters', 'test_fraction'))] 
 
-   ##ratio of test validation and test dataset
-  data_len = len(h5py.File(data_file)['charge'])
-  test_end = int(float(tvt_ratio[0])/np.sum(tvt_ratio)*data_len)
-  valid_end = int(float(tvt_ratio[1])/np.sum(tvt_ratio)*data_len)+test_end
-  print('Range of training dataset {}:{}'.format(0,test_end))
-  print('Range of validation dataset {}:{}'.format(test_end+1,valid_end))
-  print('Range of test dataset {}:{}'.format(valid_end+1,data_len))
-
-  # # split train, validation and test samples
+  ## Create Folders
   folders=['train_hist/', 'train_hist/{}'.format(datetime.date.today())]
   for folder in folders:
       if not os.path.exists('{}'.format(os.path.join(file_location,folder))):
           os.makedirs('{}'.format(os.path.join(file_location,folder)))
 
-  print('Prepare Training Data Input')
+  estimator = KerasRegressor(build_fn=base_model, verbose=int(parser.get('Training_Parameters', 'verbose')))
+  CSV_log = keras.callbacks.CSVLogger(os.path.join(file_location,'./train_hist/{}/{}.csv'.format(datetime.date.today(), project_name)), append=True)
+  early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=1, verbose=int(parser.get('Training_Parameters', 'verbose')), mode='auto')
+######################## Train the Network for each Input File seperately######################
+  for run, input_file in enumerate(input_files):
+    print('Train on {}'.format(input_file))
+    data_file = os.path.join(file_location, 'training_data/{}'.format(input_file))
 
-  train = HDF5Matrix(data_file, 'charge', start=0, end=test_end)
-  valid = HDF5Matrix(data_file, 'charge', start=test_end+1, end=valid_end)
-  test  = HDF5Matrix(data_file, 'charge', start=valid_end+1, end=data_len-1)
+     ##ratio of test validation and test dataset
+    if args.__dict__['virtual_len'] == -1:
+      data_len = len(h5py.File(data_file)['charge'])
+    else:
+      data_len = args.__dict__['virtual_len']
+      print('Only use the first {} Monte Carlo Events'.format(data_len))
+    test_end = int(float(tvt_ratio[0])/np.sum(tvt_ratio)*data_len)
+    valid_end = int(float(tvt_ratio[1])/np.sum(tvt_ratio)*data_len)+test_end
 
-  ######### Use log10(Energy) in order to avoid output values to go over several orders of magnitude ##############
-  reco_vals = HDF5Matrix(data_file, 'reco_vals')
-  print('Prepare Training Data Output')
+    print('Range of training dataset {}:{}'.format(0,test_end))
+    print('Range of validation dataset {}:{}'.format(test_end+1,valid_end))
+    print('Range of test dataset {}:{}'.format(valid_end+1,data_len))
+    print('Prepare Training Data Input')
 
-  # train_out = HDF5Matrix(data_file, 'reco_vals', start=0, end=test_end)
-  # valid_out = HDF5Matrix(data_file, 'reco_vals', start=test_end+1, end=valid_end)
-  # test_out  = HDF5Matrix(data_file, 'reco_vals', start=valid_end+1, end=data_len-1)
-
-  train_out = np.log10(reco_vals.data[0:test_end,0:1])
-  valid_out = np.log10(reco_vals.data[test_end+1:valid_end,0:1])
-  test_out = np.log10(reco_vals.data[valid_end+1:data_len-1,0:1])
-
-  def base_model():
-    model = Sequential()
-
-    # model.add(Convolution3D(8, (3,3,3) , padding="same", kernel_initializer="he_normal",input_shape=(1,21, 21,51)))
-    # model.add(BatchNormalization())
-    # model.add(Activation('relu'))
-    # model.add(Dropout(0.3))
-
-    # model.add(Convolution3D(8, (3,3,3), padding="same", kernel_initializer="he_normal"))
-    # model.add(BatchNormalization())
-    # model.add(Activation('relu'))
-    # model.add(MaxPooling3D((3, 3, 3), padding='same'))
-
-    # model.add(Convolution3D(8, (3,3,3), padding="same", kernel_initializer="he_normal"))
-    # model.add(BatchNormalization())
-    # model.add(Activation('relu'))
-    # model.add(MaxPooling3D((3, 3, 3), padding='same'))
-
-    # model.add(Flatten()) 
-    # model.add(Dropout(0.4))
-    # model.add(BatchNormalization())
-    # model.add(Dense(32,kernel_in  itializer='normal', activation='relu'))
-    # model.add(Dense(1, kernel_initializer='normal'))
-
-    model.add(Flatten(input_shape=(1, 21, 21,51))) 
-    model.add(BatchNormalization())
-    model.add(Dense(128,kernel_initializer='normal', activation='relu',kernel_regularizer=regularizers.l2(0.01)))
-    model.add(Dropout(0.4))
-    model.add(Dense(64,kernel_initializer='normal', activation='relu',kernel_regularizer=regularizers.l2(0.01)))
-    model.add(BatchNormalization())
-    model.add(Dense(16,kernel_initializer='normal', activation='relu',kernel_regularizer=regularizers.l2(0.01)))
-    model.add(Dense(1, kernel_initializer='normal'))
-    print(model.summary())
-
-    model.compile(loss='mean_squared_error', optimizer='adam',metrics=['accuracy'])
-    return model
+    train = HDF5Matrix(data_file, 'charge', start=0, end=test_end)
+    valid = HDF5Matrix(data_file, 'charge', start=test_end+1, end=valid_end)
 
 
-  # # ----------------------------------------------------------
-  # # Training
-  # # ----------------------------------------------------------
+    ######### Use log10(Energy) in order to avoid output values to go over several orders of magnitude ##############
+    reco_vals = HDF5Matrix(data_file, 'reco_vals')
+    print('Prepare Training Data Output')
+    train_out = np.log10(reco_vals.data[0:test_end,0:1])
+    valid_out = np.log10(reco_vals.data[test_end+1:valid_end,0:1])
 
-  estimator = KerasRegressor(build_fn=base_model, verbose=1)
+    estimator.fit(train,train_out, 
+                  validation_data = (valid , valid_out),
+                  callbacks = [CSV_log, early_stop], 
+                  epochs = int(parser.get('Training_Parameters', 'epochs')), 
+                  batch_size = int(parser.get('Training_Parameters', 'batch_size')), 
+                  verbose = int(parser.get('Training_Parameters', 'verbose')), 
+                  shuffle = 'batch')
+   # print('Current (min,max) weights: ({},{})'.format(np.min(cur_weights.ravel()), np.max(cur_weights.ravel())))
 
-  CSV_log = keras.callbacks.CSVLogger(os.path.join(file_location,'train_hist/{}/{}.csv'.format(datetime.date.today(), project_name)))
-  early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=0, verbose=0, mode='auto')
-  estimator.fit(train,train_out, 
-                validation_data = (valid , valid_out),
-                callbacks = [CSV_log, early_stop], 
-                epochs = int(parser.get('Training_Parameters', 'epochs')), 
-                batch_size = int(parser.get('Training_Parameters', 'batch_size')), 
-                verbose = int(parser.get('Training_Parameters', 'verbose')), 
-                shuffle = 'batch') #np.expand_dims(train, axis=4)
   print('Save the model')
   estimator.model.save(os.path.join(file_location,'train_hist/{}/{}.h5'.format(datetime.date.today(),project_name)))  # save trained network
   print('calculate results...')
-  res= estimator.predict(test, verbose=1)
+  res = []
+  test_out = []
+  for input_file in input_files:
+    print('Predict Values for {}'.format(input_file))
+    data_file = os.path.join(file_location, 'training_data/{}'.format(input_file))
+    test  = HDF5Matrix(data_file, 'charge', start=valid_end+1, end=data_len-1)
+    test_out_chunk = np.log10(reco_vals.data[valid_end+1:data_len-1,0:1])
+    res_chunk= estimator.predict(test, verbose=1)
+    res.extend(list(res_chunk))
+    test_out.extend(list(test_out_chunk))
+
 
   np.save(os.path.join(file_location,'train_hist/{}/{}.npy'.format(datetime.date.today(), project_name)), [res, np.squeeze(test_out)])

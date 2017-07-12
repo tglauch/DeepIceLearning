@@ -77,7 +77,7 @@ if __name__ == "__main__":
 
     geometry = dataio.I3File(geometry_file)
     geo = geometry.pop_frame()['I3Geometry'].omgeo
-
+    grid, DOM_list = make_grid_dict(input_shape,geo)
     ######### Create HDF5 File ##########
     OUTFILE = os.path.join(file_location, 'training_data/{}.h5'.format(project_name))
     if os.path.exists(OUTFILE):
@@ -94,11 +94,10 @@ if __name__ == "__main__":
             title = "Timestamp Distribution")
         reco_vals = h5file.create_earray(h5file.root, 'reco_vals', tables.Float64Atom(), 
             (0,4),title = "Energy,Azimuth,Zenith,MuEx")
-
+    
         print('Created a new HDF File with the Settings:')
         print(h5file)
 
-        grid, DOM_list = make_grid_dict(input_shape,geo)
         #np.save('grid.npy', grid)
         j=0
         folders = args.__dict__['folder'].split(':')
@@ -108,7 +107,7 @@ if __name__ == "__main__":
             for counter, in_file in enumerate(filelist):
                 if counter > int(args.__dict__['num_files']) and not int(args.__dict__['num_files'])==-1:
                     continue
-                if j%10 == 0 :
+                if counter%10 == 0 :
                     print('Processing File {}/{}'.format(counter, len(filelist)))
                 event_file = dataio.I3File(os.path.join(basepath, folder, in_file))
                 while event_file.more():
