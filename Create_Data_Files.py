@@ -16,7 +16,7 @@ geometry_file = '/data/sim/sim-new/downloads/GCD/GeoCalibDetectorStatus_2012.560
 file_location = '/data/user/tglauch/ML_Reco/'
 
 
-input_shape = [20,20,50]  ### hardcoded at the moment
+input_shape = [21,21,51]  ### hardcoded at the moment
 
 
 def parseArguments():
@@ -38,13 +38,17 @@ def make_grid_dict(input_shape, geometry):
     Arguments:
     input_shape : The shape of the grid (x,y,z)
     geometry : Geometry file containing the positions of the DOMs in the Detector
+    
+    Returns:
+    grid: a dictionary mapping (string, om) => (grid_x, grid_y, grid_z), i.e. dom id to its index position in the cubic grid
+    dom_list_ret: list of all (string, om), i.e. list of all dom ids in the geofile 
     """
     
     grid = dict()
-    DOM_List = [i for i in geometry.keys() if i.om<61]
-    xpos=[geo[i].position.x for i in DOM_List]
-    ypos=[geo[i].position.y for i in DOM_List]
-    zpos=[geo[i].position.z for i in DOM_List]
+    DOM_List = [i for i in geometry.keys() if i.om<61] # om > 60 are icetops
+    xpos=[geometry[i].position.x for i in DOM_List]
+    ypos=[geometry[i].position.y for i in DOM_List]
+    zpos=[geometry[i].position.z for i in DOM_List]
     xmin, xmax = np.min(xpos), np.max(xpos)
     delta_x = (xmax - xmin)/input_shape[0]
     ymin, ymax = np.min(ypos), np.max(ypos)
@@ -54,10 +58,18 @@ def make_grid_dict(input_shape, geometry):
     dom_list_ret = []
     for i, odom in enumerate(DOM_List):
         dom_list_ret.append((odom.string, odom.om))
-        grid[(odom.string, odom.om)] = (int(math.floor((xpos[i]-xmin)/delta_x)),
-                      int(math.floor((ypos[i]-ymin)/delta_y)),
-                      int(math.floor((zpos[i]-zmin)/delta_z))
-                      )
+        # for all x,y,z-positions the according grid position is calculated and stored.
+        # the last items (i.e. xmax, ymax, zmax) are put in the last bin. i.e. grid["om with x=xmax"]=(input_shape[0]-1,...)
+        grid[(odom.string, odom.om)] = (min(int(math.floor((xpos[i]-xmin)/delta_x)),
+                                            input_shape[0]-1
+                                           ),
+                                        min(int(math.floor((ypos[i]-ymin)/delta_y)),
+                                            input_shape[1]-1
+                                           ),
+                                        min(int(math.floor((zpos[i]-zmin)/delta_z)),
+                                            input_shape[2]-1
+                                           )
+                                       )
     return grid, dom_list_ret
 
 if __name__ == "__main__":
@@ -124,8 +136,10 @@ if __name__ == "__main__":
                     muex = physics_event['SplineMPEMuEXDifferential'].energy
 
                     ######### The +1 is not optimal....probably reconsider 
-                    charge_arr = np.zeros((1, 1,input_shape[0]+1,input_shape[1]+1,input_shape[2]+1))
-                    time_arr = np.full((1, 1,input_shape[0]+1,input_shape[1]+1,input_shape[2]+1), np.inf)
+                    ######## now reconsidered: last dom is put into the last bin (so no new bin just for the border-dom)
+                    ######## for consistency we increased total number of bins: 21x21x51 
+                    charge_arr = np.zeros((1, 1,input_shape[0],input_shape[1],input_shape[2]))
+                    time_arr = np.full((1, 1,input_shape[0],input_shape[1],input_shape[2]), np.inf)
 
                     ###############################################
                     pulses = physics_event['InIceDSTPulses'].apply(physics_event)
@@ -133,21 +147,24 @@ if __name__ == "__main__":
                     for omkey in pulses.keys():
                             temp_time = []
                             temp_charge = []
-                            t_zero = np.inf
                             for pulse in pulses[omkey]:
                                 temp_time.append(pulse.time)
                                 temp_charge.append(pulse.charge)
-                            final_dict[(omkey.string, omkey.om)] = (np.sum(temp_charge), np.mean(temp_time))
-                            if np.mean(temp_time)<t_zero:
-                                t_zero = np.mean(temp_time)
+                            final_dict_time = np.min(temp_time)
+                            final_dict[(omkey.string, omkey.om)] = (np.sum(temp_charge), final_dict_time)
                     for dom in DOM_list:
                         grid_pos = grid[dom]
-                        if  dom in final_dict:
+                        if dom in final_dict:
                             charge_arr[0][0][grid_pos[0]][grid_pos[1]][grid_pos[2]] += final_dict[dom][0]
-                            time_arr[0][0][grid_pos[0]][grid_pos[1]][grid_pos[2]] += final_dict[dom][1]
+                            time_arr[0][0][grid_pos[0]][grid_pos[1]][grid_pos[2]] = \
+                                np.min(time_arr[0][0][grid_pos[0]][grid_pos[1]][grid_pos[2]], final_dict[dom][1])
 
                     charge.append(np.array(charge_arr))
-                    time.append(np.array(time_arr))
+                    # normalize time on [0,1]. not hit bins will still carry np.inf as time value
+                    time_np_arr = np.array(time_arr)
+                    time_np_arr_max = np.max(time_np_arr[time_np_arr != np.inf])
+                    time_np_arr_min = np.min(time_np_arr)
+                    time.append((time_np_arr - time_np_arr_min) / (time_np_arr_max - time_np_arr_min))
                     reco_vals.append(np.array([energy,azmiuth, zenith, muex])[np.newaxis])
                     j+=1
             charge.flush()
