@@ -18,6 +18,8 @@ from keras.optimizers import SGD
 from keras.optimizers import Adagrad
 from keras.layers import Dense
 from keras.utils import np_utils
+from keras.layers import Dropout
+from keras.constraints import maxnorm
 from sklearn.preprocessing import LabelEncoder
 from sklearn.cross_validation import train_test_split
 from keras.wrappers.scikit_learn import KerasClassifier
@@ -56,11 +58,16 @@ def train_model(data, labels, tuning=False, randomtune=True, n_iter=20, params=N
         (trainData, testData, trainLabels, testLabels) = train_test_split(data, labels, test_size=test_size, random_state=42)
 
 
-    def create_model(neurons=(1824, 612), activations = ("relu", "softplus"), inits=("uniform","uniform")):
+    def create_model(neurons=(1824, 612), activations = ("relu", "softplus"), inits=("uniform","uniform"),\
+                    dropout_rates=(0.0,0.0), weight_constraints=(0,0)):
         model = Sequential()
         model.add(Dense(neurons[0], input_dim=5160, kernel_initializer=inits[0],
-            activation=activations[0]))
-        model.add(Dense(neurons[1], kernel_initializer=inits[1], activation=activations[1]))
+                        activation=activations[0], 
+                        kernel_constraint=None if dropout_rates[0] == 0.0 else maxnorm(weight_constraints[0])))
+        model.add(Dropout(dropout_rates[0]))
+        model.add(Dense(neurons[1], kernel_initializer=inits[1], activation=activations[1], 
+                        kernel_constraint=None if dropout_rates[1] == 0.0 else maxnorm(weight_constraints[1])))
+        model.add(Dropout(dropout_rates[1]))
         model.add(Dense(2))
         model.add(Activation("softmax"))
         #previously: sgd = SGD(lr=0.01)
@@ -123,10 +130,11 @@ def train_model(data, labels, tuning=False, randomtune=True, n_iter=20, params=N
         
 #train_model(data, labels, epochs = 20)
 
-init = ['uniform', 'normal']
-param_grid = dict(inits = list(itertools.product(init,init)))
-
-train_model(data, labels, tuning = True, randomtune=False, params=param_grid, logfile = None)
+#add a dropout between the two hidden layers and between the second hidden and the output layer
+weight_constraint = [1, 2, 3, 4, 5]
+dropout_rate = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+param_grid = dict(dropout_rates=zip(dropout_rate,dropout_rate), weight_constraints=zip(weight_constraint,weight_constraint))
+train_model(data, labels, tuning = True, randomtune=True, params=param_grid, logfile = logfile,n_iter=30)
     
 
 """
@@ -151,6 +159,19 @@ l2 = list(itertools.product(act_fs, ['relu']))
 param_grid = dict(activations = l1 + l2)
 
 train_model(data, labels, tuning = True, params=param_grid, logfile = logfile)
+
+
+---- tuning initializer:
+init = ['uniform', 'normal']
+param_grid = dict(inits = list(itertools.product(init,init)))
+
+train_model(data, labels, tuning = True, randomtune=False, params=param_grid, logfile = None)
+- Results: unifrom, uniform
+
+
+--- tuning dropout rate
+- training the network it could be seen that it overfits quickly. try to adda dropout layer
+
 
 
 --- with gridsearch: 

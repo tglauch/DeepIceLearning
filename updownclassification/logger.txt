@@ -99,3 +99,6 @@ Best: 0.683278 using {'inits': ('uniform', 'uniform')}
 0.681295 (0.005123) with: {'inits': ('uniform', 'normal')}
 0.671778 (0.009574) with: {'inits': ('normal', 'uniform')}
 0.656312 (0.006078) with: {'inits': ('normal', 'normal')}
+
+
+
