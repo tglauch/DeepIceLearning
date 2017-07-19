@@ -30,54 +30,61 @@ import resource
 ################# Function Definitions ####################################################################
 
 def parseArguments():
+  
   parser = argparse.ArgumentParser()
   parser.add_argument("--project", help="The name for the Project", type=str ,default='some_NN')
   parser.add_argument("--input", help="Name of the input files seperated by :", type=str ,default='all')
+  parser.add_argument("--model", help="Name of the File containing the model", type=str, default='simple_CNN.cfg' )
   parser.add_argument("--virtual_len", help="Use an artifical array length (for debugging only!)", type=int , default=-1)
   parser.add_argument("--version", action="version", version='%(prog)s - Version 1.0')
     # Parse arguments
   args = parser.parse_args()
   return args
 
+def add_layer(model, layer, args, kwargs):
+    eval('model.add({}(*args,**kwargs))'.format(layer))
+    return
 
-def base_model():
+def base_model(model_def):
   model = Sequential()
+  with open('./simple_CNN.cfg') as f:
+      args = []
+      kwargs = dict()
+      layer = ''
+      mode = 'args'
+      for line in f:
+          cur_line = line.strip()
+          if cur_line == '' and layer != '':
+              add_layer(model, layer, args,kwargs)
+              args = []
+              kwargs = dict()
+              layer = ''
+          elif cur_line[0] == '#':
+              continue
+          elif cur_line == '[kwargs]':
+              mode = 'kwargs'
+          elif layer == '':
+              layer = cur_line[1:-1]
+          elif mode == 'args':
+              try:
+                  args.append(eval(cur_line.split('=')[1]))
+              except:
+                  args.append(cur_line.split('=')[1])
+          elif mode == 'kwargs':
+              split_line = cur_line.split('=')
+              try:
+                  kwargs[split_line[0].strip()] = eval(split_line[1].strip())
+              except:
+                  kwargs[split_line[0].strip()] = split_line[1].strip()
+      if layer != '':
+          add_layer(model, layer, args,kwargs)
+    print(model.summary())
 
-  model.add(Convolution3D(32, (5,5,5) , padding="same", kernel_initializer="he_normal", input_shape=(1,21, 21,51)))
-  # model.add(BatchNormalization())
-  model.add(Activation('relu'))
-  model.add(Dropout(0.4))
-
-  model.add(Convolution3D(64, (5,5,5), padding="same", kernel_initializer="he_normal"))
-  # model.add(BatchNormalization())
-  model.add(Activation('relu'))
-  # model.add(MaxPooling3D((3, 3, 3), padding='same'))
-
-  # model.add(Convolution3D(8, (3,3,3), padding="same", kernel_initializer="he_normal"))
-  # # model.add(BatchNormalization())
-  # model.add(Activation('relu'))
-  # model.add(MaxPooling3D((3, 3, 3), padding='same'))
-
-  model.add(Flatten()) 
-  model.add(Dropout(0.4))
-  # model.add(BatchNormalization())
-  model.add(Dense(128,kernel_initializer='normal', activation='relu'))
-  model.add(Dense(1, kernel_initializer='normal', activation='linear'))
-
-  # model.add(Flatten(input_shape=(1, 21, 21,51))) 
-  # model.add(BatchNormalization())
-  # model.add(Dense(128,kernel_initializer='he_normal', activation='relu',kernel_regularizer=regularizers.l2(0.01)))
-  # model.add(Dropout(0.4))
-  # model.add(Dense(64,kernel_initializer='he_normal', activation='relu',kernel_regularizer=regularizers.l2(0.01)))
-  # model.add(BatchNormalization())
-  # model.add(Dense(16,kernel_initializer='he_normal', activation='relu',kernel_regularizer=regularizers.l2(0.01)))
-  # model.add(Dense(1, kernel_initializer='he_normal'))
-  print(model.summary())
   adam = keras.optimizers.Adam(lr=0.001)
   model.compile(loss='mean_squared_error', optimizer=adam, metrics=['accuracy'])
   return model
 
-class MemoryCallback(Callback):
+class MemoryCallback(keras.callbacks.Callback):
     def on_epoch_end(self, epoch, log={}):
         print('RAM Usage'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss))
 
@@ -112,7 +119,7 @@ def generator(batch_size, input_data, out_data, inds):
         else:
           cur_event_id = inds[cur_file][0]
           up_to = inds[cur_file][1]
-    print('{} | {}'.format(len(temp_in, temp_out)))
+    print('{} | {}'.format(len(temp_in), len(temp_out)))
     for i in range(len(temp_in)):
       batch_input[i] = temp_in[i]
       batch_out[i] = np.log10(temp_out[i][0])
@@ -122,7 +129,7 @@ def generator(batch_size, input_data, out_data, inds):
 
 if __name__ == "__main__":
 
-#################### Parse and Print Command Line Arguments ######################################
+#################### Process Command Line Arguments ######################################
 
   parser = ConfigParser()
   parser.read('config.cfg')
@@ -137,14 +144,14 @@ if __name__ == "__main__":
 
   project_name = args.__dict__['project']
 
-  print('Loading Data...')
   if args.__dict__['input'] =='all':
     input_files = os.listdir(os.path.join(file_location, 'training_data/'))
   else:
     input_files = (args.__dict__['input']).split(':')
 
   
-  ### Training, Validation, Test Ratios    
+#################### Load and Split the Datasets ######################################  
+
   tvt_ratio=[float(parser.get('Training_Parameters', 'training_fraction')),
   float(parser.get('Training_Parameters', 'validation_fraction')),
   float(parser.get('Training_Parameters', 'test_fraction'))] 
@@ -154,8 +161,6 @@ if __name__ == "__main__":
   for folder in folders:
       if not os.path.exists('{}'.format(os.path.join(file_location,folder))):
           os.makedirs('{}'.format(os.path.join(file_location,folder)))
-
-  # estimator = KerasRegressor(build_fn=base_model, 
 
   input_data = []
   out_data = []
@@ -190,11 +195,12 @@ if __name__ == "__main__":
     os.path.join(file_location,'./train_hist/{}/{}.csv'.format(datetime.date.today(), project_name)), 
     append=True)
 
-  early_stop = keras.callbacks.EarlyStopping(monitor='val_loss',
-   min_delta = int(parser.get('Training_Parameters', 'delta')), 
-   patience = int(parser.get('Training_Parameters', 'patience')), 
-   verbose = int(parser.get('Training_Parameters', 'verbose')), 
-   mode = 'auto')
+  early_stop = keras.callbacks.EarlyStopping(\
+    monitor='val_loss',
+    min_delta = int(parser.get('Training_Parameters', 'delta')), 
+    patience = int(parser.get('Training_Parameters', 'patience')), 
+    verbose = int(parser.get('Training_Parameters', 'verbose')), 
+    mode = 'auto')
 
   best_model = keras.callbacks.ModelCheckpoint(\
     os.path.join(file_location,'train_hist/{}/{}_best_val_loss.npy'.format(datetime.date.today(), project_name)), 
@@ -204,7 +210,7 @@ if __name__ == "__main__":
     mode='auto', 
     period=1)
 
-  model = base_model()
+  model = base_model(args.__dict__['model'])
   batch_size = int(parser.get('Training_Parameters', 'batch_size'))
   model.fit_generator(generator(batch_size, input_data, out_data, train_inds), 
                 steps_per_epoch = math.ceil(np.sum([k[1]-k[0] for k in train_inds])/batch_size),
@@ -219,12 +225,14 @@ if __name__ == "__main__":
 
 #################### Saving and Calculation of Result for Test Dataset ######################
 
-  print('Save the model')
+  print('\n Save the Model \n')
   model.save(os.path.join(\
   file_location,'train_hist/{}/{}.h5'.format(datetime.date.today(),project_name)))  # save trained network
-  print('calculate results...')
+
+  print('\n Calculate Results... \n')
   res = []
   test_out = []
+
   for i in range(len(input_data)):
     print('Predict Values for {}'.format(input_file))
     test  = input_data[i][test_inds[i][0]:test_inds[i][1]]
@@ -236,3 +244,5 @@ if __name__ == "__main__":
 
   np.save(os.path.join(file_location,'train_hist/{}/{}.npy'.format(datetime.date.today(), project_name)), 
     [res, np.squeeze(test_out)])
+
+  print(' \n Finished .... ')
