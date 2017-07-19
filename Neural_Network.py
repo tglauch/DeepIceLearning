@@ -2,21 +2,18 @@
 # coding: utf-8
 
 import os
+os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=gpu,floatX=float32" 
+os.environ["PATH"] += os.pathsep + '/usr/local/cuda/bin/'
 import sys
 import numpy as np
-os.environ['THEANO_FLAGS'] = "device=gpu, floatX = float32"  
-os.environ["PATH"] += os.pathsep + '/usr/local/cuda/bin/'
 import theano
 # theano.config.device = 'gpu'
 # theano.config.floatX = 'float32'
 import keras
 from keras.models import Sequential, load_model
-from keras.layers import Dense, Dropout, Activation, Flatten, Convolution2D, BatchNormalization, MaxPooling2D,Convolution3D,MaxPooling3D
+from keras.layers import Dense, Dropout, Activation, Flatten, Convolution2D,\
+ BatchNormalization, MaxPooling2D,Convolution3D,MaxPooling3D
 from keras.wrappers.scikit_learn import KerasRegressor
-from sklearn.model_selection import cross_val_score
-from sklearn.model_selection import KFold
-from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import Pipeline
 from keras.utils.io_utils import HDF5Matrix
 from keras import regularizers
 import h5py
@@ -25,7 +22,11 @@ import gc
 from configparser import ConfigParser
 import argparse
 import tables
+import psutil
+import math
+import time
 
+################# Function Definitions ####################################################################
 
 def parseArguments():
   parser = argparse.ArgumentParser()
@@ -60,7 +61,7 @@ def base_model():
   model.add(Dropout(0.4))
   # model.add(BatchNormalization())
   model.add(Dense(128,kernel_initializer='normal', activation='relu'))
-  model.add(Dense(1, kernel_initializer='normal'))
+  model.add(Dense(1, kernel_initializer='normal', activation='linear'))
 
   # model.add(Flatten(input_shape=(1, 21, 21,51))) 
   # model.add(BatchNormalization())
@@ -72,20 +73,63 @@ def base_model():
   # model.add(Dense(1, kernel_initializer='he_normal'))
   print(model.summary())
   adam = keras.optimizers.Adam(lr=0.001)
-  model.compile(loss='mean_squared_error', optimizer=adam ,metrics=['accuracy'])
+  model.compile(loss='mean_squared_error', optimizer=adam, metrics=['accuracy'])
   return model
 
+def memory_usage_psutil():    
+# return the memory usage in MB  ## inspired from
+# http://fa.bianp.net/blog/2013/different-ways-to-get-memory-consumption-or-lessons-learned-from-memory_profiler/
+  process = psutil.Process(os.getpid())
+  mem = process.memory_info()[0] / float(2 ** 20)
+  return mem
+
+def generator(batch_size, input_data, out_data, inds):
+  batch_input = np.zeros((batch_size, 1, 21, 21, 51))
+  batch_out = np.zeros((batch_size,1))
+  cur_file = 0
+  cur_event_id = inds[cur_file][0]
+  cur_len = 0
+  up_to = inds[cur_file][1]
+  while True:
+    temp_in = []
+    temp_out = []
+    while cur_len<batch_size:
+      fill_batch = batch_size-cur_len
+      if fill_batch < (up_to-cur_event_id):
+        temp_in.extend(input_data[cur_file][cur_event_id:cur_event_id+fill_batch])
+        temp_out.extend(out_data[cur_file][cur_event_id:cur_event_id+fill_batch])
+        cur_len += fill_batch
+        cur_event_id += fill_batch
+      else:
+        temp_in.extend(input_data[cur_file][cur_event_id:up_to])
+        temp_out.extend(out_data[cur_file][cur_event_id:up_to])
+        cur_len += up_to-cur_event_id
+        cur_file+=1
+        if cur_file == len(inds):
+          cur_file = 0
+          cur_event_id = inds[cur_file][0]
+          cur_len = 0
+          up_to = inds[cur_file][1]
+          break
+        else:
+          cur_event_id = inds[cur_file][0]
+          up_to = inds[cur_file][1]
+    print('{} | {}'.format(len(temp_in, temp_out)))
+    for i in range(len(temp_in)):
+      batch_input[i] = temp_in[i]
+      batch_out[i] = np.log10(temp_out[i][0])
+    cur_len = 0 
+    yield (batch_input, batch_out)
 
 
 if __name__ == "__main__":
 
-  # Parse the arguments
+#################### Parse and Print Command Line Arguments ######################################
 
   parser = ConfigParser()
   parser.read('config.cfg')
   file_location = parser.get('Basics', 'thisfolder')
 
-  # Raw print arguments
   args = parseArguments()
   print"\n ############################################"
   print("You are running the script with arguments: ")
@@ -113,60 +157,89 @@ if __name__ == "__main__":
       if not os.path.exists('{}'.format(os.path.join(file_location,folder))):
           os.makedirs('{}'.format(os.path.join(file_location,folder)))
 
-  estimator = KerasRegressor(build_fn=base_model, verbose=int(parser.get('Training_Parameters', 'verbose')))
-  CSV_log = keras.callbacks.CSVLogger(os.path.join(file_location,'./train_hist/{}/{}.csv'.format(datetime.date.today(), project_name)), append=True)
-  early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=1, verbose=int(parser.get('Training_Parameters', 'verbose')), mode='auto')
-######################## Train the Network for each Input File seperately######################
+  # estimator = KerasRegressor(build_fn=base_model, 
+
+  input_data = []
+  out_data = []
+  file_len = []
+
   for run, input_file in enumerate(input_files):
-    print('Train on {}'.format(input_file))
     data_file = os.path.join(file_location, 'training_data/{}'.format(input_file))
 
-     ##ratio of test validation and test dataset
     if args.__dict__['virtual_len'] == -1:
       data_len = len(h5py.File(data_file)['charge'])
     else:
       data_len = args.__dict__['virtual_len']
       print('Only use the first {} Monte Carlo Events'.format(data_len))
-    test_end = int(float(tvt_ratio[0])/np.sum(tvt_ratio)*data_len)
-    valid_end = int(float(tvt_ratio[1])/np.sum(tvt_ratio)*data_len)+test_end
 
-    print('Range of training dataset {}:{}'.format(0,test_end))
-    print('Range of validation dataset {}:{}'.format(test_end+1,valid_end))
-    print('Range of test dataset {}:{}'.format(valid_end+1,data_len))
-    print('Prepare Training Data Input')
+    input_data.append(h5py.File(data_file, 'r')['charge'])
+    out_data.append(h5py.File(data_file, 'r')['reco_vals'])
+    file_len.append(data_len)
 
-    train = HDF5Matrix(data_file, 'charge', start=0, end=test_end)
-    valid = HDF5Matrix(data_file, 'charge', start=test_end+1, end=valid_end)
+  train_frac  = float(tvt_ratio[0])/np.sum(tvt_ratio)
+  valid_frac = float(tvt_ratio[1])/np.sum(tvt_ratio)
+  train_inds = [(0, int(tot_len*train_frac)) for tot_len in file_len] 
+  valid_inds = [(int(tot_len*train_frac), int(tot_len*(train_frac+valid_frac))) for tot_len in file_len] 
+  test_inds = [(int(tot_len*(train_frac+valid_frac)), tot_len-1) for tot_len in file_len] 
+
+  print(train_inds)
+  print(valid_inds)
+  print(test_inds)
+
+  print("------------------Current RAM Usage-----------------------------")
+  print(" {} MB".format(memory_usage_psutil()))
+  print("----------------------------------------------------------------")
 
 
-    ######### Use log10(Energy) in order to avoid output values to go over several orders of magnitude ##############
-    reco_vals = HDF5Matrix(data_file, 'reco_vals')
-    print('Prepare Training Data Output')
-    train_out = np.log10(reco_vals.data[0:test_end,0:1])
-    valid_out = np.log10(reco_vals.data[test_end+1:valid_end,0:1])
+#################### Train the Model #########################################################
 
-    estimator.fit(train,train_out, 
-                  validation_data = (valid , valid_out),
-                  callbacks = [CSV_log, early_stop], 
-                  epochs = int(parser.get('Training_Parameters', 'epochs')), 
-                  batch_size = int(parser.get('Training_Parameters', 'batch_size')), 
-                  verbose = int(parser.get('Training_Parameters', 'verbose')), 
-                  shuffle = 'batch')
-   # print('Current (min,max) weights: ({},{})'.format(np.min(cur_weights.ravel()), np.max(cur_weights.ravel())))
+  CSV_log = keras.callbacks.CSVLogger( \
+    os.path.join(file_location,'./train_hist/{}/{}.csv'.format(datetime.date.today(), project_name)), 
+    append=True)
+
+  early_stop = keras.callbacks.EarlyStopping(monitor='val_loss',
+   min_delta = int(parser.get('Training_Parameters', 'delta')), 
+   patience = int(parser.get('Training_Parameters', 'patience')), 
+   verbose = int(parser.get('Training_Parameters', 'verbose')), 
+   mode = 'auto')
+
+  best_model = keras.callbacks.ModelCheckpoint(\
+    os.path.join(file_location,'train_hist/{}/{}_best_val_loss.npy'.format(datetime.date.today(), project_name)), 
+    monitor = 'val_loss', 
+    verbose = int(parser.get('Training_Parameters', 'verbose')), 
+    save_best_only = True, 
+    mode='auto', 
+    period=1)
+
+  model = base_model()
+  batch_size = int(parser.get('Training_Parameters', 'batch_size'))
+  model.fit_generator(generator(batch_size, input_data, out_data, train_inds), 
+                steps_per_epoch = math.ceil(np.sum([k[1]-k[0] for k in train_inds])/batch_size),
+                validation_data = generator(batch_size, input_data, out_data, valid_inds),
+                validation_steps = math.ceil(np.sum([k[1]-k[0] for k in valid_inds])/batch_size),
+                callbacks = [CSV_log, early_stop, best_model], 
+                epochs = int(parser.get('Training_Parameters', 'epochs')), 
+                verbose = int(parser.get('Training_Parameters', 'verbose')),
+                max_q_size=int(parser.get('Training_Parameters', 'max_queue_size'))
+                )
+
+
+#################### Saving and Calculation of Result for Test Dataset ######################
 
   print('Save the model')
-  estimator.model.save(os.path.join(file_location,'train_hist/{}/{}.h5'.format(datetime.date.today(),project_name)))  # save trained network
+  model.save(os.path.join(\
+  file_location,'train_hist/{}/{}.h5'.format(datetime.date.today(),project_name)))  # save trained network
   print('calculate results...')
   res = []
   test_out = []
-  for input_file in input_files:
+  for i in range(len(input_data)):
     print('Predict Values for {}'.format(input_file))
-    data_file = os.path.join(file_location, 'training_data/{}'.format(input_file))
-    test  = HDF5Matrix(data_file, 'charge', start=valid_end+1, end=data_len-1)
-    test_out_chunk = np.log10(reco_vals.data[valid_end+1:data_len-1,0:1])
-    res_chunk= estimator.predict(test, verbose=1)
+    test  = input_data[i][test_inds[i][0]:test_inds[i][1]]
+    test_out_chunk = np.log10(out_data[i][test_inds[i][0]:test_inds[i][1],0:1])
+    res_chunk= model.predict(test, verbose=int(parser.get('Training_Parameters', 'verbose')))
     res.extend(list(res_chunk))
     test_out.extend(list(test_out_chunk))
 
 
-  np.save(os.path.join(file_location,'train_hist/{}/{}.npy'.format(datetime.date.today(), project_name)), [res, np.squeeze(test_out)])
+  np.save(os.path.join(file_location,'train_hist/{}/{}.npy'.format(datetime.date.today(), project_name)), 
+    [res, np.squeeze(test_out)])
