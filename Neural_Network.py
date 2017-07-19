@@ -25,6 +25,7 @@ import tables
 import psutil
 import math
 import time
+import resource
 
 ################# Function Definitions ####################################################################
 
@@ -76,12 +77,9 @@ def base_model():
   model.compile(loss='mean_squared_error', optimizer=adam, metrics=['accuracy'])
   return model
 
-def memory_usage_psutil():    
-# return the memory usage in MB  ## inspired from
-# http://fa.bianp.net/blog/2013/different-ways-to-get-memory-consumption-or-lessons-learned-from-memory_profiler/
-  process = psutil.Process(os.getpid())
-  mem = process.memory_info()[0] / float(2 ** 20)
-  return mem
+class MemoryCallback(Callback):
+    def on_epoch_end(self, epoch, log={}):
+        print('RAM Usage'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss))
 
 def generator(batch_size, input_data, out_data, inds):
   batch_input = np.zeros((batch_size, 1, 21, 21, 51))
@@ -186,11 +184,6 @@ if __name__ == "__main__":
   print(valid_inds)
   print(test_inds)
 
-  print("------------------Current RAM Usage-----------------------------")
-  print(" {} MB".format(memory_usage_psutil()))
-  print("----------------------------------------------------------------")
-
-
 #################### Train the Model #########################################################
 
   CSV_log = keras.callbacks.CSVLogger( \
@@ -217,7 +210,7 @@ if __name__ == "__main__":
                 steps_per_epoch = math.ceil(np.sum([k[1]-k[0] for k in train_inds])/batch_size),
                 validation_data = generator(batch_size, input_data, out_data, valid_inds),
                 validation_steps = math.ceil(np.sum([k[1]-k[0] for k in valid_inds])/batch_size),
-                callbacks = [CSV_log, early_stop, best_model], 
+                callbacks = [CSV_log, early_stop, best_model, MemoryCallback()], 
                 epochs = int(parser.get('Training_Parameters', 'epochs')), 
                 verbose = int(parser.get('Training_Parameters', 'verbose')),
                 max_q_size=int(parser.get('Training_Parameters', 'max_queue_size'))
