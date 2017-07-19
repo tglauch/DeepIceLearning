@@ -30,11 +30,11 @@ import resource
 ################# Function Definitions ####################################################################
 
 def parseArguments():
-  
+
   parser = argparse.ArgumentParser()
   parser.add_argument("--project", help="The name for the Project", type=str ,default='some_NN')
   parser.add_argument("--input", help="Name of the input files seperated by :", type=str ,default='all')
-  parser.add_argument("--model", help="Name of the File containing the model", type=str, default='simple_CNN.cfg' )
+  parser.add_argument("--model", help="Name of the File containing the model", type=str, default='simple_CNN.cfg')
   parser.add_argument("--virtual_len", help="Use an artifical array length (for debugging only!)", type=int , default=-1)
   parser.add_argument("--version", action="version", version='%(prog)s - Version 1.0')
     # Parse arguments
@@ -78,8 +78,8 @@ def base_model(model_def):
                   kwargs[split_line[0].strip()] = split_line[1].strip()
       if layer != '':
           add_layer(model, layer, args,kwargs)
-    print(model.summary())
-
+  
+  print(model.summary())
   adam = keras.optimizers.Adam(lr=0.001)
   model.compile(loss='mean_squared_error', optimizer=adam, metrics=['accuracy'])
   return model
