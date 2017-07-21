@@ -124,7 +124,7 @@ def generator(batch_size, input_data, out_data, inds):
                 cur_len += fill_batch
                 cur_event_id += fill_batch
             else:
-                temp_in.extend(map(np.ndarray.flatten, input_data[cur_file][cur_event_id:up_to])
+                temp_in.extend(map(np.ndarray.flatten, input_data[cur_file][cur_event_id:up_to]))
                 temp_out.extend(out_data[cur_file][cur_event_id:up_to])
                 cur_len += up_to-cur_event_id
                 cur_file+=1
