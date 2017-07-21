@@ -55,16 +55,18 @@ def train_model(data, labels, tuning=False, randomtune=True, n_iter=20, params=N
         print "Training model"
         #trying with onedimensional output layer
         #labels = np.array([0,1])[labels.argmax(1)]
-        (trainData, testData, trainLabels, testLabels) = train_test_split(data, labels, test_size=test_size, random_state=42)
+        (trainData, testData, trainLabels, testLabels) = train_test_split(data, labels, test_size=test_size, random_state=16)
 
 
     def create_model(neurons=(1824, 612), activations = ("relu", "softplus"), inits=("uniform","uniform"),\
                     dropout_rates=(0.0,0.0), weight_constraints=(0,0)):
+        print dropout_rates, weight_constraints
         model = Sequential()
         model.add(Dense(neurons[0], input_dim=5160, kernel_initializer=inits[0],
                         activation=activations[0], 
                         kernel_constraint=None if dropout_rates[0] == 0.0 else maxnorm(weight_constraints[0])))
-        model.add(Dropout(dropout_rates[0]))
+        if dropout_rates[0] > 0: 
+            model.add(Dropout(dropout_rates[0]))
         model.add(Dense(neurons[1], kernel_initializer=inits[1], activation=activations[1], 
                         kernel_constraint=None if dropout_rates[1] == 0.0 else maxnorm(weight_constraints[1])))
         model.add(Dropout(dropout_rates[1]))
@@ -105,20 +107,35 @@ def train_model(data, labels, tuning=False, randomtune=True, n_iter=20, params=N
     else:
         #train
         print "fitting..."
+        print "with params", params
         #model = create_model()
-        model = KerasClassifier(build_fn=create_model)
+        model=None
+        if params:
+            try:
+                model = KerasClassifier(build_fn=create_model, **params)
+            except ValueError as e:
+                m=e.message
+                m = m[m.find("'")+1:]
+                m = m[:m.find("'")]
+                params.pop(m, None)
+            except Exception as e:
+                print e
+        else:
+            model = KerasClassifier(build_fn=create_model)
         model.fit(trainData, trainLabels, epochs = epochs, batch_size = batch_size, verbose=1, validation_data=(testData, testLabels))
-        # show the accuracy on the testing set
-        print("[INFO] evaluating on testing set...")
-        (loss, accuracy) = model.evaluate(testData, testLabels,
-            batch_size=128, verbose=1)
-        print("[INFO] loss={:.4f}, accuracy: {:.4f}%".format(loss,
-            accuracy * 100))
+        # testing the model on testData and testLabels is not needed anymore because validation_data was used.
+            """# show the accuracy on the testing set
+            print("[INFO] evaluating on testing set...")
+            (loss, accuracy) = model.evaluate(testData, testLabels,
+                batch_size=128, verbose=1)
+            print("[INFO] loss={:.4f}, accuracy: {:.4f}%".format(loss,
+                accuracy * 100))
+            """
         #save model to file
         #if savefile:
-            
+            #this will be much more important for the following tests on more input datasets
         
-    print "time to fit: {d}min {:.2f}sec".format(*(lambda t: (int(t/60),t%60))(time.time()-start))
+    print "time to fit: {:d}min {:.2f}sec".format(*(lambda t: (int(t/60),t%60))(time.time()-start))
     
     
     if logfile:
@@ -128,13 +145,9 @@ def train_model(data, labels, tuning=False, randomtune=True, n_iter=20, params=N
         
 #def train_model(data, labels, tuning=False, randomtune=True, n_iter=20, params=None, test_size = 0.25, logfile = None, verbose = 0):    
         
-#train_model(data, labels, epochs = 20)
 
-#add a dropout between the two hidden layers and between the second hidden and the output layer
-weight_constraint = [1, 2, 3, 4, 5]
-dropout_rate = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-param_grid = dict(dropout_rates=zip(dropout_rate,dropout_rate), weight_constraints=zip(weight_constraint,weight_constraint))
-train_model(data, labels, tuning = True, randomtune=True, params=param_grid, logfile = logfile,n_iter=30)
+
+train_model(data,labels,params={'dropout_rates':(0.6,0.6),'weight_constraints':(3,3)})
     
 
 """
@@ -171,7 +184,13 @@ train_model(data, labels, tuning = True, randomtune=False, params=param_grid, lo
 
 --- tuning dropout rate
 - training the network it could be seen that it overfits quickly. try to adda dropout layer
-
+#add a dropout between the two hidden layers and between the second hidden and the output layer
+weight_constraint = [1, 2, 3, 4, 5]
+dropout_rate = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+param_grid = dict(dropout_rates=zip(dropout_rate,dropout_rate), weight_constraints=zip(weight_constraint,weight_constraint))
+train_model(data, labels, tuning = True, randomtune=True, params=param_grid, logfile = logfile,n_iter=30)
+result: 69% with weight contraint 3,3 and dropout 0.4,0.4
+- this does still result in overfitting :(( with params={'dropout_rates':(0.6,0.6),'weight_constraints':(3,3)})
 
 
 --- with gridsearch: 

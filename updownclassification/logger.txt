@@ -102,3 +102,128 @@ Best: 0.683278 using {'inits': ('uniform', 'uniform')}
 
 
 
+
+
+----
+13/07 10:20:00
+tuning modelwith RandomSearchCV
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #   
+=================================================================
+dense_1 (Dense)              (None, 1824)              9413664   
+_________________________________________________________________
+dropout_1 (Dropout)          (None, 1824)              0         
+_________________________________________________________________
+dense_2 (Dense)              (None, 612)               1116900   
+_________________________________________________________________
+dropout_2 (Dropout)          (None, 612)               0         
+_________________________________________________________________
+dense_3 (Dense)              (None, 2)                 1226      
+_________________________________________________________________
+activation_1 (Activation)    (None, 2)                 0         
+=================================================================
+Total params: 10,531,790
+Trainable params: 10,531,790
+Non-trainable params: 0
+_________________________________________________________________
+None
+tuning with:  {'weight_constraints': [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5)], 'dropout_rates': [(0.0, 0.0), (0.1, 0.1), (0.2, 0.2), (0.3, 0.3), (0.4, 0.4), (0.5, 0.5), (0.6, 0.6), (0.7, 0.7), (0.8, 0.8), (0.9, 0.9)]}
+tuning randomly with RandomSearchCV
+Fitting 3 folds for each of 30 candidates, totalling 90 fits
+Best: 0.690681 using {'weight_constraints': (3, 3), 'dropout_rates': (0.4, 0.4)}
+0.686980 (0.007095) with: {'weight_constraints': (4, 4), 'dropout_rates': (0.3, 0.3)}
+0.681956 (0.006644) with: {'weight_constraints': (5, 5), 'dropout_rates': (0.3, 0.3)}
+0.683146 (0.002815) with: {'weight_constraints': (1, 1), 'dropout_rates': (0.2, 0.2)}
+0.678387 (0.010751) with: {'weight_constraints': (4, 4), 'dropout_rates': (0.9, 0.9)}
+0.682617 (0.014319) with: {'weight_constraints': (5, 5), 'dropout_rates': (0.2, 0.2)}
+0.686186 (0.007176) with: {'weight_constraints': (1, 1), 'dropout_rates': (0.4, 0.4)}
+0.686715 (0.002858) with: {'weight_constraints': (2, 2), 'dropout_rates': (0.6, 0.6)}
+0.676537 (0.015056) with: {'weight_constraints': (3, 3), 'dropout_rates': (0.1, 0.1)}
+0.684468 (0.006059) with: {'weight_constraints': (2, 2), 'dropout_rates': (0.5, 0.5)}
+0.683675 (0.007240) with: {'weight_constraints': (4, 4), 'dropout_rates': (0.5, 0.5)}
+0.683807 (0.013392) with: {'weight_constraints': (4, 4), 'dropout_rates': (0.7, 0.7)}
+0.680635 (0.007693) with: {'weight_constraints': (3, 3), 'dropout_rates': (0.8, 0.8)}
+0.684204 (0.005690) with: {'weight_constraints': (1, 1), 'dropout_rates': (0.5, 0.5)}
+0.685790 (0.006633) with: {'weight_constraints': (4, 4), 'dropout_rates': (0.0, 0.0)}
+0.686186 (0.009432) with: {'weight_constraints': (2, 2), 'dropout_rates': (0.7, 0.7)}
+0.690681 (0.005399) with: {'weight_constraints': (3, 3), 'dropout_rates': (0.4, 0.4)}
+0.688169 (0.004819) with: {'weight_constraints': (1, 1), 'dropout_rates': (0.6, 0.6)}
+0.683543 (0.006199) with: {'weight_constraints': (4, 4), 'dropout_rates': (0.4, 0.4)}
+0.684732 (0.006733) with: {'weight_constraints': (3, 3), 'dropout_rates': (0.3, 0.3)}
+0.678784 (0.014624) with: {'weight_constraints': (1, 1), 'dropout_rates': (0.3, 0.3)}
+0.674686 (0.011038) with: {'weight_constraints': (3, 3), 'dropout_rates': (0.2, 0.2)}
+0.683675 (0.006106) with: {'weight_constraints': (5, 5), 'dropout_rates': (0.6, 0.6)}
+0.685525 (0.003714) with: {'weight_constraints': (3, 3), 'dropout_rates': (0.0, 0.0)}
+0.687640 (0.005111) with: {'weight_constraints': (5, 5), 'dropout_rates': (0.4, 0.4)}
+0.683939 (0.004237) with: {'weight_constraints': (4, 4), 'dropout_rates': (0.6, 0.6)}
+0.673496 (0.018359) with: {'weight_constraints': (5, 5), 'dropout_rates': (0.9, 0.9)}
+0.687244 (0.009235) with: {'weight_constraints': (2, 2), 'dropout_rates': (0.1, 0.1)}
+0.686715 (0.008740) with: {'weight_constraints': (4, 4), 'dropout_rates': (0.1, 0.1)}
+0.679048 (0.002099) with: {'weight_constraints': (4, 4), 'dropout_rates': (0.2, 0.2)}
+0.688169 (0.008902) with: {'weight_constraints': (5, 5), 'dropout_rates': (0.1, 0.1)}
+
+Training model
+fitting...
+with params {'weight_constraints': (3, 3), 'dropout_rates': (0.6, 0.6)}
+(0.6, 0.6) (3, 3)
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #
+=================================================================
+dense_1 (Dense)              (None, 1824)              9413664
+_________________________________________________________________
+dropout_1 (Dropout)          (None, 1824)              0
+_________________________________________________________________
+dense_2 (Dense)              (None, 612)               1116900
+_________________________________________________________________
+dropout_2 (Dropout)          (None, 612)               0
+_________________________________________________________________
+dense_3 (Dense)              (None, 2)                 1226
+_________________________________________________________________
+activation_1 (Activation)    (None, 2)                 0
+=================================================================
+Total params: 10,531,790
+Trainable params: 10,531,790
+Non-trainable params: 0
+_________________________________________________________________
+None
+Train on 5673 samples, validate on 1892 samples
+Epoch 1/20
+5673/5673 [==============================] - 31s - loss: 1.0831 - acc: 0.5745 - val_loss: 0.6051 - val_acc: 0.6845
+Epoch 2/20
+5673/5673 [==============================] - 31s - loss: 0.6130 - acc: 0.7003 - val_loss: 0.6653 - val_acc: 0.6660
+Epoch 3/20
+5673/5673 [==============================] - 31s - loss: 0.4498 - acc: 0.7973 - val_loss: 0.6226 - val_acc: 0.7098
+Epoch 4/20
+5673/5673 [==============================] - 31s - loss: 0.3462 - acc: 0.8549 - val_loss: 0.6572 - val_acc: 0.7135
+Epoch 5/20
+5673/5673 [==============================] - 31s - loss: 0.2688 - acc: 0.8897 - val_loss: 0.7009 - val_acc: 0.7040
+Epoch 6/20
+5673/5673 [==============================] - 31s - loss: 0.2087 - acc: 0.9163 - val_loss: 0.7499 - val_acc: 0.7051
+Epoch 7/20
+5673/5673 [==============================] - 31s - loss: 0.1538 - acc: 0.9409 - val_loss: 0.8272 - val_acc: 0.6850
+Epoch 8/20
+5673/5673 [==============================] - 31s - loss: 0.1183 - acc: 0.9540 - val_loss: 0.8618 - val_acc: 0.7014
+Epoch 9/20
+5673/5673 [==============================] - 30s - loss: 0.0951 - acc: 0.9665 - val_loss: 0.9096 - val_acc: 0.7040
+Epoch 10/20
+5673/5673 [==============================] - 31s - loss: 0.0797 - acc: 0.9695 - val_loss: 0.9606 - val_acc: 0.6987
+Epoch 11/20
+5673/5673 [==============================] - 31s - loss: 0.0619 - acc: 0.9796 - val_loss: 1.0095 - val_acc: 0.7014
+Epoch 12/20
+5673/5673 [==============================] - 31s - loss: 0.0540 - acc: 0.9818 - val_loss: 1.0489 - val_acc: 0.6987
+Epoch 13/20
+5673/5673 [==============================] - 31s - loss: 0.0429 - acc: 0.9868 - val_loss: 1.0882 - val_acc: 0.6993
+Epoch 14/20
+5673/5673 [==============================] - 31s - loss: 0.0369 - acc: 0.9878 - val_loss: 1.1198 - val_acc: 0.6993
+Epoch 15/20
+5673/5673 [==============================] - 31s - loss: 0.0356 - acc: 0.9885 - val_loss: 1.1571 - val_acc: 0.6971
+Epoch 16/20
+5673/5673 [==============================] - 31s - loss: 0.0286 - acc: 0.9919 - val_loss: 1.1947 - val_acc: 0.7014
+Epoch 17/20
+5673/5673 [==============================] - 31s - loss: 0.0280 - acc: 0.9908 - val_loss: 1.2200 - val_acc: 0.6977
+Epoch 18/20
+5673/5673 [==============================] - 31s - loss: 0.0289 - acc: 0.9921 - val_loss: 1.2478 - val_acc: 0.6966
+Epoch 19/20
+5673/5673 [==============================] - 30s - loss: 0.0242 - acc: 0.9922 - val_loss: 1.2678 - val_acc: 0.6903
+Epoch 20/20
+5673/5673 [==============================] - 31s - loss: 0.0219 - acc: 0.9931 - val_loss: 1.2958 - val_acc: 0.6855
