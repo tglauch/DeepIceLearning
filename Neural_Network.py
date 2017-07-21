@@ -26,6 +26,7 @@ import psutil
 import math
 import time
 import resource
+import shelve
 
 ################# Function Definitions ####################################################################
 
@@ -80,13 +81,13 @@ def base_model(model_def):
           add_layer(model, layer, args,kwargs)
   
   print(model.summary())
-  adam = keras.optimizers.Adam(lr=0.001)
+  adam = keras.optimizers.Adam(lr=float(parser.get('Training_Parameters', 'learning_rate')))
   model.compile(loss='mean_squared_error', optimizer=adam, metrics=['accuracy'])
   return model
 
 class MemoryCallback(keras.callbacks.Callback):
     def on_epoch_end(self, epoch, log={}):
-        print('RAM Usage'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss))
+        print('RAM Usage {:.2f} GB'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
 
 def generator(batch_size, input_data, out_data, inds):
   batch_input = np.zeros((batch_size, 1, 21, 21, 51))
@@ -119,7 +120,6 @@ def generator(batch_size, input_data, out_data, inds):
         else:
           cur_event_id = inds[cur_file][0]
           up_to = inds[cur_file][1]
-    print('{} | {}'.format(len(temp_in), len(temp_out)))
     for i in range(len(temp_in)):
       batch_input[i] = temp_in[i]
       batch_out[i] = np.log10(temp_out[i][0])
@@ -157,7 +157,9 @@ if __name__ == "__main__":
   float(parser.get('Training_Parameters', 'test_fraction'))] 
 
   ## Create Folders
-  folders=['train_hist/', 'train_hist/{}'.format(datetime.date.today())]
+  folders=['train_hist/',
+   'train_hist/{}'.format(datetime.date.today()),
+   'train_hist/{}/{}'.format(datetime.date.today(), project_name)]
   for folder in folders:
       if not os.path.exists('{}'.format(os.path.join(file_location,folder))):
           os.makedirs('{}'.format(os.path.join(file_location,folder)))
@@ -189,10 +191,20 @@ if __name__ == "__main__":
   print(valid_inds)
   print(test_inds)
 
+#################### Save Run-Information #################################################
+
+  shelf = shelve.open(os.path.join(file_location,'./train_hist/{}/{}/run_info.shlf'.format(datetime.date.today(), project_name)))
+  shelf['Project'] = project_name
+  shelf['Files'] = args.__dict__['input']
+  shelf['Train_Inds'] = train_inds
+  shelf['Valid_Inds'] = valid_inds
+  shelf['Test_Inds'] = test_inds
+  shelf.close()
+
 #################### Train the Model #########################################################
 
   CSV_log = keras.callbacks.CSVLogger( \
-    os.path.join(file_location,'./train_hist/{}/{}.csv'.format(datetime.date.today(), project_name)), 
+    os.path.join(file_location,'./train_hist/{}/{}/loss_logger.csv'.format(datetime.date.today(), project_name)), 
     append=True)
 
   early_stop = keras.callbacks.EarlyStopping(\
@@ -203,7 +215,7 @@ if __name__ == "__main__":
     mode = 'auto')
 
   best_model = keras.callbacks.ModelCheckpoint(\
-    os.path.join(file_location,'train_hist/{}/{}_best_val_loss.npy'.format(datetime.date.today(), project_name)), 
+    os.path.join(file_location,'train_hist/{}/{}/best_val_loss.npy'.format(datetime.date.today(), project_name)), 
     monitor = 'val_loss', 
     verbose = int(parser.get('Training_Parameters', 'verbose')), 
     save_best_only = True, 
@@ -227,7 +239,7 @@ if __name__ == "__main__":
 
   print('\n Save the Model \n')
   model.save(os.path.join(\
-  file_location,'train_hist/{}/{}.h5'.format(datetime.date.today(),project_name)))  # save trained network
+  file_location,'train_hist/{}/{}/final_network.h5'.format(datetime.date.today(),project_name)))  # save trained network
 
   print('\n Calculate Results... \n')
   res = []
@@ -242,7 +254,7 @@ if __name__ == "__main__":
     test_out.extend(list(test_out_chunk))
 
 
-  np.save(os.path.join(file_location,'train_hist/{}/{}.npy'.format(datetime.date.today(), project_name)), 
+  np.save(os.path.join(file_location,'train_hist/{}/{}/test_results.npy'.format(datetime.date.today(), project_name)), 
     [res, np.squeeze(test_out)])
 
   print(' \n Finished .... ')
