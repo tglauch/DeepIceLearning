@@ -20,6 +20,7 @@ import math
 import time
 import resource
 import shelve
+import shutil
 
 ################# Function Definitions ####################################################################
 
@@ -28,9 +29,10 @@ def parseArguments():
   parser = argparse.ArgumentParser()
   parser.add_argument("--project", help="The name for the Project", type=str ,default='some_NN')
   parser.add_argument("--input", help="Name of the input files seperated by :", type=str ,default='all')
-  parser.add_argument("--model", help="Name of the File containing the model", type=str, default='simple_CNN.cfg')
+  parser.add_argument("--model", help="Name of the File containing th qe model", type=str, default='simple_CNN.cfg')
   parser.add_argument("--virtual_len", help="Use an artifical array length (for debugging only!)", type=int , default=-1)
-  parser.add_argument("--continue", help="Give a folder to continue the training of the network", type=str)
+  parser.add_argument("--continue", help="Give a folder to continue the training of the network", type=str, default = 'None')
+  parser.add_argument("--date", help="Give current date to identify safe folder", type=str, default = 'None')
   parser.add_argument("--version", action="version", version='%(prog)s - Version 1.0')
   args = parser.parse_args()
   return args
@@ -75,6 +77,7 @@ def base_model(model_def):
               add_layer(model, layer, args,kwargs)
               args = []
               kwargs = dict()
+              mode = 'args'
               layer = ''
           elif cur_line[0] == '#':
               continue
@@ -160,7 +163,7 @@ if __name__ == "__main__":
 
 ######################## Setup the training variables ########################################################
 
-  if not args.__dict__['continue'] == None:
+  if args.__dict__['continue'] != 'None':
     shelf = shelve.open(os.path.join(file_location, 
       args.__dict__['continue'], 
       'run_info.shlf'))
@@ -190,13 +193,13 @@ if __name__ == "__main__":
     float(parser.get('Training_Parameters', 'test_fraction'))] 
 
     ## Create Folders
-    today =datetime.date.today()
-    folders=['train_hist/',
-     'train_hist/{}'.format(today),
-     'train_hist/{}/{}'.format(today, project_name)]
-    for folder in folders:
-        if not os.path.exists('{}'.format(os.path.join(file_location,folder))):
-            os.makedirs('{}'.format(os.path.join(file_location,folder)))
+    if args.__dict__['date'] != 'None':
+      today = args.__dict__['date']
+    else:
+      today = datetime.date.today()
+      folders=['train_hist/',
+       'train_hist/{}'.format(today),
+       'train_hist/{}/{}'.format(today, project_name)]
 
     input_data, out_data, file_len = read_files(input_files,
      virtual_len = args.__dict__['virtual_len'])
@@ -215,7 +218,7 @@ if __name__ == "__main__":
     model = base_model(args.__dict__['model'])
 
     ## Save Run Information
-    shelf = shelve.open(os.path.join(file_location,'./train_hist/{}/{}/run_info.shlf'.format(today, project_name)))
+    shelf = shelve.open(os.path.join(file_location,'train_hist/{}/{}/run_info.shlf'.format(today, project_name)))
     shelf['Project'] = project_name
     shelf['Files'] = args.__dict__['input']
     shelf['Train_Inds'] = train_inds
@@ -223,10 +226,12 @@ if __name__ == "__main__":
     shelf['Test_Inds'] = test_inds
     shelf.close()
 
+    shutil.copy(args.__dict__['model'], os.path.join(file_location,'train_hist/{}/{}/model.cfg'.format(today, project_name)))
+
 #################### Train the Model #########################################################
 
   CSV_log = keras.callbacks.CSVLogger( \
-    os.path.join(file_location,'./train_hist/{}/{}/loss_logger.csv'.format(today, project_name)), 
+    os.path.join(file_location,'train_hist/{}/{}/loss_logger.csv'.format(today, project_name)), 
     append=True)
 
   early_stop = keras.callbacks.EarlyStopping(\
