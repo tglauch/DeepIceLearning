@@ -87,9 +87,9 @@ def base_model(model_def):
               layer = cur_line[1:-1]
           elif mode == 'args':
               try:
-                  args.append(eval(cur_line.split('=')[1]))
+                  args.append(eval(cur_line.split('=')[1].strip()))
               except:
-                  args.append(cur_line.split('=')[1])
+                  args.append(cur_line.split('=')[1].strip())
           elif mode == 'kwargs':
               split_line = cur_line.split('=')
               try:
@@ -215,7 +215,7 @@ if __name__ == "__main__":
     print(test_inds)
 
     ### Create the Model
-    model = base_model(args.__dict__['model'])
+    model = base_model(os.path.join('Networks', args.__dict__['model']))
 
     ## Save Run Information
     shelf = shelve.open(os.path.join(file_location,'train_hist/{}/{}/run_info.shlf'.format(today, project_name)))
