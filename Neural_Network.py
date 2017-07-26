@@ -64,9 +64,9 @@ def add_layer(model, layer, args, kwargs):
     return
 
 
-def base_model(model_def):
+def base_model(conf_model_file):
   model = Sequential()
-  with open('./{}'.format(model_def)) as f:
+  with open(conf_model_file) as f:
       args = []
       kwargs = dict()
       layer = ''
@@ -215,7 +215,8 @@ if __name__ == "__main__":
     print(test_inds)
 
     ### Create the Model
-    model = base_model(os.path.join('Networks', args.__dict__['model']))
+    conf_model_file = os.path.join('Networks', args.__dict__['model'])
+    model = base_model(conf_model_file)
 
     ## Save Run Information
     shelf = shelve.open(os.path.join(file_location,'train_hist/{}/{}/run_info.shlf'.format(today, project_name)))
@@ -226,7 +227,7 @@ if __name__ == "__main__":
     shelf['Test_Inds'] = test_inds
     shelf.close()
 
-    shutil.copy(args.__dict__['model'], os.path.join(file_location,'train_hist/{}/{}/model.cfg'.format(today, project_name)))
+    shutil.copy(conf_model_file, os.path.join(file_location,'train_hist/{}/{}/model.cfg'.format(today, project_name)))
 
 #################### Train the Model #########################################################
 
