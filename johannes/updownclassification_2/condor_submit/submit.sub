@@ -1,0 +1,14 @@
+	executable   = ../updown_network.py 
+ 	universe     = vanilla  
+	request_gpus = 1 
+	request_memory = 8GB 
+	requirements = TARGET.CUDACapability 
+	log          = train_hist/2017-07-26/time10_highE/condor.log 
+	output       = train_hist/2017-07-26/time10_highE/condor.out 
+	error        = train_hist/2017-07-26/time10_highE/condor.err 
+	getenv = True 
+ 	stream_output = True 
+	IWD = /data/user/jkager/NN_Reco/johannes/updownclassification_2/ 
+	arguments =  --project time10_highE --input 11069_00000-00999.h5:11069_01000-01999.h5:11069_02000-02999.h5:11069_03000-03999.h5:11069_04000-04999.h5:11069_05000-05999.h5 --model simple_FCNN.cfg --continue None --virtual_len -1 --date 2017-07-26 
+	queue 1 
+	

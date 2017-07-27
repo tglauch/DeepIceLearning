@@ -36,6 +36,7 @@ import time
 import resource
 import shelve
 import itertools
+import shutil
 
 ## constants ##
 energy, azmiuth, zenith, muex = 0, 1, 2, 3
@@ -48,6 +49,8 @@ def parseArguments():
     parser.add_argument("--input", help="Name of the input files seperated by :", type=str ,default='all')
     parser.add_argument("--model", help="Name of the File containing the model", type=str, default='simple_FCNN.cfg')
     parser.add_argument("--virtual_len", help="Use an artifical array length (for debugging only!)", type=int , default=-1)
+    parser.add_argument("--continue", help="Give a folder to continue the training of the network", type=str, default = 'None')
+    parser.add_argument("--date", help="Give current date to identify safe folder", type=str, default = 'None')
     parser.add_argument("--version", action="version", version='%(prog)s - Version 1.0')
     parser.add_argument("--filesizes", help="Print the number of events in each file and don't do anything else.", nargs='?',
                        const=True, default=False)
@@ -153,7 +156,7 @@ def generator(batch_size, input_data, out_data, inds):
     while True:
         temp_in = []
         temp_out = []
-        while cur_len<batch_size:
+        while cur_len < batch_size:
             fill_batch = batch_size-cur_len
             if fill_batch < (up_to-cur_event_id):
                 #oder zuerst flatten und dann preprocess?
@@ -187,68 +190,7 @@ def generator(batch_size, input_data, out_data, inds):
         """
         yield (batch_input, batch_out)
 
-
-if __name__ == "__main__":
-
-#################### Process Command Line Arguments ######################################
-
-    parser = ConfigParser()
-    parser.read('config.cfg')
-    file_location = parser.get('Basics', 'thisfolder') # /data/user/jkager/NN_Reco/johannes/updownclassification_2/
-    data_location = parser.get('Basics', 'data_enc_folder')
-  
-    args = parseArguments()
-    print"\n ############################################"
-    print("You are running the script with arguments: ")
-    for a in args.__dict__:
-        print(str(a) + ": " + str(args.__dict__[a]))
-    print"############################################\n "
-  
-    project_name = args.project
-  
-    if args.input =='all':
-        input_files = os.listdir(os.path.join(data_location, 'training_data/'))
-    else:
-        input_files = (args.input).split(':')
-  
-    
-#################### Load and Split the Datasets ######################################  
-  
-    tvt_ratio=[float(parser.get('Training_Parameters', 'training_fraction')),
-    float(parser.get('Training_Parameters', 'validation_fraction')),
-    float(parser.get('Training_Parameters', 'test_fraction'))] 
-  
-    ## Create Folders
-    today = datetime.date.today()
-    folders=['train_hist/',
-         'train_hist/{}'.format(today),
-         'train_hist/{}/{}'.format(today, project_name)]
-    if not args.testing:
-        for folder in folders:
-            if not os.path.exists('{}'.format(os.path.join(file_location,folder))):
-                os.makedirs('{}'.format(os.path.join(file_location,folder)))
-    else:
-        if not os.path.exists('{}'.format(os.path.join(file_location,folders[0]))):
-            print "no training history found"
-            sys.exit()
-        hist_list = os.listdir(os.path.join(file_location,folders[0]))
-        if len(hist_list) == 0:
-            print "no training history found"
-            sys.exit()
-        for today in reversed(sorted(hist_list)):
-            project_folder = 'train_hist/{}/{}'.format(today, project_name)
-            print "looking for", project_folder
-            if os.path.exists('{}'.format(os.path.join(file_location,project_folder))):
-                print "project found!" 
-                break
-        else:
-            print "project not found. exiting..."
-            sys.exit(-1)
-    if args.crtfolders and not args.filesizes:
-        print "Created the folder structure for you:", folders[2]
-        print "Now exiting."
-        sys.exit(1)
-    
+def read_files(input_files, data_location, virtual_len=-1, printfilesizes=False):
     input_data = []
     out_data = []
     file_len = []
@@ -261,47 +203,127 @@ if __name__ == "__main__":
         else:
             data_len = args.virtual_len
             print('Only use the first {} Monte Carlo Events'.format(data_len))
-        if args.filesizes:
+        if printfilesizes:
             print "{:10d}   {}".format(data_len, input_file)
         else:
             input_data.append(h5py.File(data_file, 'r')['time'])
             out_data.append(h5py.File(data_file, 'r')['reco_vals'])
             file_len.append(data_len)
-            # print type(input_data), type(input_data[-1]), type(input_data[-1][0]) == list, h5py.Dataset, ndarray
-            # print input_data[-1].shape = (970452, 1, 21, 21, 51)
+            print type(input_data), type(input_data[-1]), type(input_data[-1][0]) #== list, h5py.Dataset, ndarray
+            print input_data[-1].shape #= (970452, 1, 21, 21, 51)
+            
+    return input_data, out_data, file_len
+            
+
+if __name__ == "__main__":
+
+#################### Process Command Line Arguments ######################################
+
+    parser = ConfigParser()
+    parser.read('config.cfg')
+    file_location = parser.get('Basics', 'thisfolder') # /data/user/jkager/NN_Reco/johannes/updownclassification_2/
+    data_location = parser.get('Basics', 'data_enc_folder')
+  
+    args = parseArguments()
+    print"\n ############################################"
+    print("You are running the network script with arguments: ")
+    for a in args.__dict__:
+        print(str(a) + ": " + str(args.__dict__[a]))
+    print"############################################\n "
+  
+    project_name = args.project
+  
+    if args.input =='all':
+        input_files = os.listdir(os.path.join(data_location, 'training_data/'))
+    else:
+        input_files = (args.input).split(':')
+  
+    
+#################### set today date and check for --filesizes #################################  
+  
     if args.filesizes:
+        read_data(input_files, data_location, printfilesizes=True)
         print 20*"-" + "\nOnly printed filesizes. Now exiting."
         sys.exit(1)
-    train_frac  = float(tvt_ratio[0])/np.sum(tvt_ratio)
-    valid_frac = float(tvt_ratio[1])/np.sum(tvt_ratio)
-    train_inds = [(0, int(tot_len*train_frac)) for tot_len in file_len] 
-    valid_inds = [(int(tot_len*train_frac), int(tot_len*(train_frac+valid_frac))) for tot_len in file_len] 
-    test_inds = [(int(tot_len*(train_frac+valid_frac)), tot_len-1) for tot_len in file_len] 
-  
-    print(train_inds)
-    print(valid_inds)
-    print(test_inds)
-  
+    
+    if args.date != 'None':
+        today = args.date
+    else:
+        today = datetime.date.today()
+        
+
+        
+################### see if --continue is set and do accordingly ###############
     if not args.testing:
+        if args.__dict__['continue'] != 'None':
+            shelf = shelve.open(os.path.join(file_location,args.__dict__['continue'], 'run_info.shlf'))
+            project_name = shelf['Project']
+            input_files = shelf['Files']
+            train_inds = shelf['Train_Inds'] 
+            valid_inds = shelf['Valid_Inds']
+            test_inds = shelf['Test_Inds']
+            model = load_model(os.path.join(file_location, args.__dict__['continue'], 'best_val_loss.npy'))
+            today = args.__dict__['continue'].split('/')[1]
+            print(today)
+            shelf.close()
+            
+            input_data, out_data, file_len = read_files(input_files.split(':'), data_location)
+            
+        else:
+#################### Create Folder Strucutre #####################
+            ## Create Folders
+            folders=['train_hist/',
+                     'train_hist/{}'.format(today),
+                     'train_hist/{}/{}'.format(today, project_name)]
+            for folder in folders:
+                if not os.path.exists('{}'.format(os.path.join(file_location,folder))):
+                    os.makedirs('{}'.format(os.path.join(file_location,folder)))
+            
+            if args.crtfolders:
+                print "Created the folder structure for you:", folders[2]
+                print "Now exiting."
+                sys.exit(1)
+                    
+##################### Load and Split Dataset #########################################################
+            input_data, out_data, file_len = read_files(input_files, data_location, virtual_len = args.virtual_len)
+
+            tvt_ratio=[float(parser.get('Training_Parameters', 'training_fraction')),
+                float(parser.get('Training_Parameters', 'validation_fraction')),
+                float(parser.get('Training_Parameters', 'test_fraction'))] 
+    
+            train_frac  = float(tvt_ratio[0])/np.sum(tvt_ratio)
+            valid_frac = float(tvt_ratio[1])/np.sum(tvt_ratio)
+            train_inds = [(0, int(tot_len*train_frac)) for tot_len in file_len] 
+            valid_inds = [(int(tot_len*train_frac), int(tot_len*(train_frac+valid_frac))) for tot_len in file_len] 
+            test_inds = [(int(tot_len*(train_frac+valid_frac)), tot_len-1) for tot_len in file_len] 
+          
+            print(train_inds)
+            print(valid_inds)
+            print(test_inds)
+            
+            
+#################### Create Model #########################################################
+            conf_model_file = args.model
+            model = base_model(conf_model_file)
+        
 #################### Save Run-Information #################################################
   
-        shelf = shelve.open(os.path.join(file_location,'./train_hist/{}/{}/run_info.shlf'.format(today, project_name)))
-        shelf['Project'] = project_name
-        shelf['Files'] = args.input
-        shelf['arguments'] = str(sys.argv)
-        with open(os.path.join(file_location,args.model)) as f:
-            shelf['model'] = f.read()
-            f.close()
-        shelf['Train_Inds'] = train_inds
-        shelf['Valid_Inds'] = valid_inds
-        shelf['Test_Inds'] = test_inds
-        shelf.close()
+            shelf = shelve.open(os.path.join(file_location,'./train_hist/{}/{}/run_info.shlf'.format(today, project_name)))
+            shelf['Project'] = project_name
+            shelf['Files'] = args.input
+            shelf['arguments'] = str(sys.argv)
+            shelf['Train_Inds'] = train_inds
+            shelf['Valid_Inds'] = valid_inds
+            shelf['Test_Inds'] = test_inds
+            shelf.close()
 
-#################### Train the Model #########################################################
+            shutil.copy(conf_model_file, os.path.join(file_location, 'train_hist/{}/{}/model.cfg'.format(today, project_name)))
+
+#################### Train the Model ########################################################
         start = time.time()
 
         CSV_log = keras.callbacks.CSVLogger( \
-          os.path.join(file_location,'./train_hist/{}/{}/loss_logger.csv'.format(today, project_name)), 
+          os.path.join(file_location,'train_hist/{}/{}/loss_logger.csv'.format(today, project_name)), 
           append=True)
 
         """ see: https://keras.io/callbacks/#earlystopping """
@@ -320,7 +342,6 @@ if __name__ == "__main__":
           mode='auto', 
           period=1)
 
-        model = base_model(args.model)
         batch_size = int(parser.get('Training_Parameters', 'batch_size'))
         model.fit_generator(generator(batch_size, input_data, out_data, train_inds), 
                       steps_per_epoch = math.ceil(np.sum([k[1]-k[0] for k in train_inds])/batch_size),
@@ -337,6 +358,22 @@ if __name__ == "__main__":
 #################### Saving and Calculation of Result for Test Dataset ######################
   
     if args.testing:
+        if not os.path.exists('{}'.format(os.path.join(file_location,'train_hist/'))):
+            print "no training history found"
+            sys.exit()
+        hist_list = os.listdir(os.path.join(file_location,'train_hist/'))
+        if len(hist_list) == 0:
+            print "no training history found"
+            sys.exit()
+        for today in reversed(sorted(hist_list)):
+            project_folder = 'train_hist/{}/{}'.format(today, project_name)
+            print "looking for", project_folder
+            if os.path.exists('{}'.format(os.path.join(file_location,project_folder))):
+                print "project found!"
+                break
+        else:
+            print "project not found. exiting..."
+            sys.exit(-1)
         print('\n Load the Model \n')
         model = load_model(os.path.join(\
         file_location,'train_hist/{}/{}/final_network.h5'.format(today, project_name)))
