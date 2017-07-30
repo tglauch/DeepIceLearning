@@ -1,17 +1,20 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# bigdata == suggests that this script uses theos datasets. That is a try to reduce overfitting
+# this script uses theos datasets. That is a try to reduce overfitting
 
+import jkutils
 import os
 os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=gpu,floatX=float32" 
 os.environ["PATH"] += os.pathsep + '/usr/local/cuda/bin/'
+os.environ['PYTHONUNBUFFERED'] = '1'
 import sys
 import numpy as np
-import theano
-# theano.config.device = 'gpu'
-# theano.config.floatX = 'float32'
-import keras
+with jkutils.suppress_stdout_stderr(): #prevents printed info from theano
+    import theano
+    # theano.config.device = 'gpu'
+    # theano.config.floatX = 'float32'
+    import keras
 from keras.models import Sequential, load_model
 from keras.layers import Dense, Dropout, Activation, Flatten, Convolution2D,\
  BatchNormalization, MaxPooling2D,Convolution3D,MaxPooling3D
@@ -21,10 +24,7 @@ from keras.utils import np_utils
 from keras.utils.io_utils import HDF5Matrix
 from keras.constraints import maxnorm
 from keras import regularizers
-from sklearn.cross_validation import train_test_split
-from keras.wrappers.scikit_learn import KerasClassifier
-from sklearn.model_selection import GridSearchCV
-from sklearn.model_selection import RandomizedSearchCV
+from sklearn.model_selection import train_test_split
 import h5py
 import datetime
 import gc
@@ -189,30 +189,6 @@ def generator(batch_size, input_data, out_data, inds):
         sys.exit()
         """
         yield (batch_input, batch_out)
-
-def read_files(input_files, data_location, virtual_len=-1, printfilesizes=False):
-    input_data = []
-    out_data = []
-    file_len = []
-  
-    for run, input_file in enumerate(input_files):
-        data_file = os.path.join(data_location, 'training_data/{}'.format(input_file))
-  
-        if args.__dict__['virtual_len'] == -1:
-            data_len = len(h5py.File(data_file)['time'])
-        else:
-            data_len = args.virtual_len
-            print('Only use the first {} Monte Carlo Events'.format(data_len))
-        if printfilesizes:
-            print "{:10d}   {}".format(data_len, input_file)
-        else:
-            input_data.append(h5py.File(data_file, 'r')['time'])
-            out_data.append(h5py.File(data_file, 'r')['reco_vals'])
-            file_len.append(data_len)
-            print type(input_data), type(input_data[-1]), type(input_data[-1][0]) #== list, h5py.Dataset, ndarray
-            print input_data[-1].shape #= (970452, 1, 21, 21, 51)
-            
-    return input_data, out_data, file_len
             
 
 if __name__ == "__main__":
@@ -220,7 +196,7 @@ if __name__ == "__main__":
 #################### Process Command Line Arguments ######################################
 
     parser = ConfigParser()
-    parser.read('config.cfg')
+    parser.read('/data/user/jkager/NN_Reco/johannes/updownclassification_2/config.cfg')
     file_location = parser.get('Basics', 'thisfolder') # /data/user/jkager/NN_Reco/johannes/updownclassification_2/
     data_location = parser.get('Basics', 'data_enc_folder')
   
@@ -242,7 +218,7 @@ if __name__ == "__main__":
 #################### set today date and check for --filesizes #################################  
   
     if args.filesizes:
-        read_data(input_files, data_location, printfilesizes=True)
+        jkutil.read_files(input_files, data_location, printfilesizes=True)
         print 20*"-" + "\nOnly printed filesizes. Now exiting."
         sys.exit(1)
     
@@ -267,7 +243,7 @@ if __name__ == "__main__":
             print(today)
             shelf.close()
             
-            input_data, out_data, file_len = read_files(input_files.split(':'), data_location)
+            input_data, out_data, file_len = jkutil.read_files(input_files.split(':'), data_location)
             
         else:
 #################### Create Folder Strucutre #####################
@@ -285,7 +261,7 @@ if __name__ == "__main__":
                 sys.exit(1)
                     
 ##################### Load and Split Dataset #########################################################
-            input_data, out_data, file_len = read_files(input_files, data_location, virtual_len = args.virtual_len)
+            input_data, out_data, file_len = jkutil.read_files(input_files, data_location, virtual_len = args.virtual_len)
 
             tvt_ratio=[float(parser.get('Training_Parameters', 'training_fraction')),
                 float(parser.get('Training_Parameters', 'validation_fraction')),
@@ -374,7 +350,15 @@ if __name__ == "__main__":
         else:
             print "project not found. exiting..."
             sys.exit(-1)
-        print('\n Load the Model \n')
+        shelf = shelve.open(os.path.join(file_location,project_folder, 'run_info.shlf'))
+        input_files = shelf['Files']
+        train_inds = shelf['Train_Inds'] 
+        valid_inds = shelf['Valid_Inds']
+        test_inds = shelf['Test_Inds']
+        shelf.close()
+            
+        input_data, out_data, file_len = jkutil.read_files(input_files.split(':'), data_location)
+        print('\n Load the Model (final_network.h5) \n')
         model = load_model(os.path.join(\
         file_location,'train_hist/{}/{}/final_network.h5'.format(today, project_name)))
     else:
