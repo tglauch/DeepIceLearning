@@ -1,5 +1,6 @@
 import os
 import h5py
+import numpy as np
 
 # Define a context manager to suppress stdout and stderr.
 class suppress_stdout_stderr(object):
@@ -54,7 +55,46 @@ def read_files(input_files, data_location, virtual_len=-1, printfilesizes=False)
             input_data.append(h5py.File(data_file, 'r')['time'])
             out_data.append(h5py.File(data_file, 'r')['reco_vals'])
             file_len.append(data_len)
-            print type(input_data), type(input_data[-1]), type(input_data[-1][0]) #== list, h5py.Dataset, ndarray
-            print input_data[-1].shape #= (970452, 1, 21, 21, 51)
+            #print type(input_data), type(input_data[-1]), type(input_data[-1][0]) #== list, h5py.Dataset, ndarray
+            #print input_data[-1].shape #= (970452, 1, 21, 21, 51)
             
     return input_data, out_data, file_len
+
+
+def zenith_to_binary(zenith):
+    if type(zenith) == np.ndarray:
+        ret = np.copy(zenith)
+        ret[ret < 1.5707963268] = 0.0
+        ret[ret > 1] = 1.0
+        return ret
+    if isinstance(zenith, float) or isinstance(zenith, int):
+        return 1.0 if zenith > 1.5707963268 else 0.0
+    if isinstance(zenith, list):
+        temp_zenith = np.array(zenith)
+        temp_zenith[temp_zenith < 1.5707963268] = 0.0
+        temp_zenith[temp_zenith > 1] = 1.0
+        return temp_zenith.tolist()
+        """
+        cur = zenith
+        parent_cur = cur
+        indize = []
+        i = 0
+        while type(cur) == list:
+            parent_cur = cur
+            indize.append(i)
+            cur = cur[indize[-1]]
+        for j in range(len(parent_cur)):
+            exec("zenith{f} = 1 if zenith{f} > 1.5707963268 else 0".format(
+                f="["+ "][".join(map(str,indize[:-1] + [j])) + "]"))
+        """
+        
+def preprocess(times, replace_with=10):
+    """
+    print type(times) == np.ndarray
+    print len(times) == 5000
+    print type(times[0]) == np.ndarray
+    print times[0].shape == (1,21,21,51)
+    """
+    ret = np.copy(times)
+    ret[ret == np.inf] = replace_with
+    return ret
