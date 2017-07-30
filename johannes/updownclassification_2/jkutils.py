@@ -43,7 +43,7 @@ def read_files(input_files, data_location, virtual_len=-1, printfilesizes=False)
     for run, input_file in enumerate(input_files):
         data_file = os.path.join(data_location, 'training_data/{}'.format(input_file))
   
-        if args.__dict__['virtual_len'] == -1:
+        if virtual_len == -1:
             data_len = len(h5py.File(data_file)['time'])
         else:
             data_len = virtual_len

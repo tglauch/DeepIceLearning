@@ -47,7 +47,7 @@ def parseArguments():
     parser = argparse.ArgumentParser()
     parser.add_argument("--project", help="The name for the Project", type=str ,default='updown_NN')
     parser.add_argument("--input", help="Name of the input files seperated by :", type=str ,default='all')
-    parser.add_argument("--model", help="Name of the File containing the model", type=str, default='simple_FCNN.cfg')
+    parser.add_argument("--model", help="Name of the File containing the model", type=str, default='FCNN_v1.cfg')
     parser.add_argument("--virtual_len", help="Use an artifical array length (for debugging only!)", type=int , default=-1)
     parser.add_argument("--continue", help="Give a folder to continue the training of the network", type=str, default = 'None')
     parser.add_argument("--date", help="Give current date to identify safe folder", type=str, default = 'None')
@@ -218,7 +218,7 @@ if __name__ == "__main__":
 #################### set today date and check for --filesizes #################################  
   
     if args.filesizes:
-        jkutil.read_files(input_files, data_location, printfilesizes=True)
+        jkutils.read_files(input_files, data_location, printfilesizes=True)
         print 20*"-" + "\nOnly printed filesizes. Now exiting."
         sys.exit(1)
     
@@ -243,7 +243,7 @@ if __name__ == "__main__":
             print(today)
             shelf.close()
             
-            input_data, out_data, file_len = jkutil.read_files(input_files.split(':'), data_location)
+            input_data, out_data, file_len = jkutils.read_files(input_files.split(':'), data_location)
             
         else:
 #################### Create Folder Strucutre #####################
@@ -261,7 +261,7 @@ if __name__ == "__main__":
                 sys.exit(1)
                     
 ##################### Load and Split Dataset #########################################################
-            input_data, out_data, file_len = jkutil.read_files(input_files, data_location, virtual_len = args.virtual_len)
+            input_data, out_data, file_len = jkutils.read_files(input_files, data_location, virtual_len = args.virtual_len)
 
             tvt_ratio=[float(parser.get('Training_Parameters', 'training_fraction')),
                 float(parser.get('Training_Parameters', 'validation_fraction')),
@@ -357,7 +357,7 @@ if __name__ == "__main__":
         test_inds = shelf['Test_Inds']
         shelf.close()
             
-        input_data, out_data, file_len = jkutil.read_files(input_files.split(':'), data_location)
+        input_data, out_data, file_len = jkutils.read_files(input_files.split(':'), data_location)
         print('\n Load the Model (final_network.h5) \n')
         model = load_model(os.path.join(\
         file_location,'train_hist/{}/{}/final_network.h5'.format(today, project_name)))
