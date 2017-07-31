@@ -2,11 +2,37 @@
 # coding: utf-8
 
 import os
-os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=gpu,floatX=float32" 
-os.environ["PATH"] += os.pathsep + '/usr/local/cuda/bin/'
 import sys
+from configparser import ConfigParser
+import socket
+
+print('Running on Hostcomputer {}'.format(socket.gethostname()))
+
+parser = ConfigParser()
+
+if os.path.exists('config.cfg'):
+	parser.read('config.cfg')
+else:
+	raise Exception('Config File is missing!!!!')
+
+backend = parser.get('Basics', 'keras_backend')
+cuda_path = parser.get('Basics', 'cuda_installation')
+os.environ["PATH"] += os.pathsep + cuda_path
+
+if not os.path.exists(cuda_path):
+	raise Exception('Given Cuda installation does not exist!')
+
+if backend == 'tensorflow':
+	print('Run with backend Tensorflow')
+	import tensorflow as tf
+elif backend == 'theano':
+	print('Run with backend Theano')
+	import theano
+	os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=gpu,floatX=float32" 
+else:
+	raise NameError('Choose tensorflow or theano as keras backend')
+
 import numpy as np
-import theano
 import keras
 from keras.models import Sequential, load_model
 from keras.layers import Dense, Dropout, Activation, Flatten, Convolution2D,\
@@ -14,7 +40,6 @@ from keras.layers import Dense, Dropout, Activation, Flatten, Convolution2D,\
 from keras import regularizers
 import h5py
 import datetime
-from configparser import ConfigParser
 import argparse
 import math
 import time
