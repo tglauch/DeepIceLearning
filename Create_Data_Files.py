@@ -8,7 +8,7 @@ import itertools
 import math
 import tables   
 import argparse
-import os
+import os, sys
 
 #### File paths #########
 basepath = '/data/ana/PointSource/PS/IC86_2012/files/sim/2012/neutrino-generator/'
@@ -16,7 +16,7 @@ geometry_file = '/data/sim/sim-new/downloads/GCD/GeoCalibDetectorStatus_2012.560
 file_location = '/data/user/tglauch/ML_Reco/'
 
 
-input_shape = [21,21,51]  ### hardcoded at the moment
+input_shape = [20,10,60]  ### hardcoded at the moment
 
 
 def parseArguments():
@@ -33,7 +33,8 @@ def parseArguments():
   return args
 
 def make_grid_dict(input_shape, geometry):
-    """Put the Icecube Geometry in a cubic grid. For each DOM calculate the corresponding grid position
+    """Put the Icecube Geometry in a cubic grid. For each DOM calculate the corresponding grid position. Rotates the x-y-plane
+    in order to make icecube better fit into a grid.
 
     Arguments:
     input_shape : The shape of the grid (x,y,z)
@@ -41,20 +42,35 @@ def make_grid_dict(input_shape, geometry):
     
     Returns:
     grid: a dictionary mapping (string, om) => (grid_x, grid_y, grid_z), i.e. dom id to its index position in the cubic grid
-    dom_list_ret: list of all (string, om), i.e. list of all dom ids in the geofile 
+    dom_list_ret: list of all (string, om), i.e. list of all dom ids in the geofile  (sorted(dom_list_ret)==sorted(grid.keys()))
     """
     
+    
+    dom_6_pos = geometry[icetray.OMKey(6,1)].position
+    dom_1_pos = geometry[icetray.OMKey(1,1)].position
+    theta = -np.arctan( (dom_6_pos.y - dom_1_pos.y)/(dom_6_pos.x - dom_1_pos.x) )
+    c, s = np.cos(theta), np.sin(theta)
+    rot_mat = np.matrix([[c, -s], [s, c]])
+    
     grid = dict()
-    DOM_List = [i for i in geometry.keys() if i.om<61] # om > 60 are icetops
+    DOM_List = [i for i in geometry.keys() if  i.om < 61                      # om > 60 are icetops
+                                           and i.string not in range(79,87)]  # exclude deep core strings
     xpos=[geometry[i].position.x for i in DOM_List]
     ypos=[geometry[i].position.y for i in DOM_List]
     zpos=[geometry[i].position.z for i in DOM_List]
+    
+    rotxy = [np.squeeze(np.asarray(np.dot(rot_mat, xy))) for xy in zip(xpos, ypos)]
+    xpos, ypos = zip(*rotxy)
+    
     xmin, xmax = np.min(xpos), np.max(xpos)
-    delta_x = (xmax - xmin)/input_shape[0]
+    delta_x = (xmax - xmin)/(input_shape[0]-1)
+    xmin, xmaz = xmin - delta_x/2, xmax + delta_x/2
     ymin, ymax = np.min(ypos), np.max(ypos)
-    delta_y = (ymax - ymin)/input_shape[1]
+    delta_y = (ymax - ymin)/(input_shape[1]-1)
+    ymin, ymaz = ymin - delta_y/2, ymax + delta_y/2
     zmin, zmax = np.min(zpos), np.max(zpos)
-    delta_z = (zmax - zmin)/input_shape[2]
+    delta_z = (zmax - zmin)/(input_shape[2]-1)
+    zmin, zmax = zmin - delta_z/2, zmax + delta_z/2
     dom_list_ret = []
     for i, odom in enumerate(DOM_List):
         dom_list_ret.append((odom.string, odom.om))
@@ -66,11 +82,34 @@ def make_grid_dict(input_shape, geometry):
                                         min(int(math.floor((ypos[i]-ymin)/delta_y)),
                                             input_shape[1]-1
                                            ),
-                                        min(int(math.floor((zpos[i]-zmin)/delta_z)),
-                                            input_shape[2]-1
-                                           )
+                                        input_shape[2] - 1 -
+                                            min(int(math.floor((zpos[i]-zmin)/delta_z)),
+                                                input_shape[2]-1
+                                           ) # so that z coordinates count from bottom to top (righthanded coordinate system)
                                        )
     return grid, dom_list_ret
+
+def analyze_grid(grid):
+    """
+    if you want to see which string/om the bins contain
+    """
+    dims = []
+    for dim in range(3):
+        for index in range(input_shape[dim]):
+            strings=set()
+            dims.append(list())
+            for k, v in grid.items():
+                if v[dim] == index:
+                    if dim == 2:
+                        strings.add(k[1]) ## print om
+                    else:
+                        strings.add(k[0]) ## print string
+            dims[dim].append(strings)
+    for i, c in enumerate("xyz"):
+        print c
+        for index, strings in enumerate(dims[i]):
+            print index, strings
+
 
 if __name__ == "__main__":
 
@@ -79,7 +118,7 @@ if __name__ == "__main__":
     print"\n ############################################"
     print("You are running the script with arguments: ")
     for a in args.__dict__:
-      print(str(a) + ": " + str(args.__dict__[a]))
+        print(str(a) + ": " + str(args.__dict__[a]))
     print"############################################\n "
 
     if args.__dict__['project'] == 'none':
@@ -90,6 +129,7 @@ if __name__ == "__main__":
     geometry = dataio.I3File(geometry_file)
     geo = geometry.pop_frame()['I3Geometry'].omgeo
     grid, DOM_list = make_grid_dict(input_shape,geo)
+
     ######### Create HDF5 File ##########
     OUTFILE = os.path.join(file_location, 'training_data/{}.h5'.format(project_name))
     if os.path.exists(OUTFILE):
