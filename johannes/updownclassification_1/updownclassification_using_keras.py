@@ -147,7 +147,7 @@ def train_model(data, labels, tuning=False, randomtune=True, n_iter=20, params=N
         
 
 
-train_model(data,labels,params={'dropout_rates':(0.6,0.6),'weight_constraints':(3,3)},savefile="saved_model_unfiltered.h5")
+train_model(data,labels,params={'neurons':(500,400),'dropout_rates':(0.9,0.9),'weight_constraints':(3,3)},savefile="saved_model_3_unfiltered.h5")
     
 
 """
