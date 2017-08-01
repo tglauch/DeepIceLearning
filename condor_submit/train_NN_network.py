@@ -67,11 +67,9 @@ if workload_manager != 'slurm' and workload_manager != 'condor':
 	raise NameError('Workload manager not defined. Should either be condor or slurm!')
 
 if args['input'] == 'lowE':
-	files = '11029_00000-00999.h5:11029_01000-01999.h5:11029_02000-02999.h5:\
-	11029_03000-03999.h5:11029_04000-04999.h5:11029_05000-05999.h5'
+	files = '11029_00000-00999.h5:11029_01000-01999.h5:11029_02000-02999.h5:11029_03000-03999.h5:11029_04000-04999.h5:11029_05000-05999.h5'
 elif args['input'] == 'highE':
-	files = '11069_00000-00999.h5:11069_01000-01999.h5:11069_02000-02999.h5:\
-	11069_03000-03999.h5:11069_04000-04999.h5:11069_05000-05999.h5'
+	files = '11069_00000-00999.h5:11069_01000-01999.h5:11069_02000-02999.h5:11069_03000-03999.h5:11069_04000-04999.h5:11069_05000-05999.h5'
 else:
 	files = args['input']
 
@@ -83,10 +81,9 @@ if args['continue'] != 'None':
 		addpath= addpath[:-1]
 
 	if workload_manager == 'slurm':
-		make_slurm(request_gpus, float(request_memory)*1e3, addpath, file_location, arguments)
+		submit_info = make_slurm(request_gpus, float(request_memory)*1e3, addpath, file_location, arguments)
 	elif workload_manager == 'condor':
-		make_condor(request_gpus, request_memory, requirements, addpath, file_location, arguments)
-
+		submit_info = make_condor(request_gpus, request_memory, requirements, addpath, file_location, arguments)
 
 else:
 	today = str(datetime.date.today())
@@ -96,25 +93,26 @@ else:
 	for folder in folders:
 	    if not os.path.exists('{}'.format(os.path.join(file_location,folder))):
 	        os.makedirs('{}'.format(os.path.join(file_location,folder)))
-
-	print("\n --------- \n You are running the script with arguments: ")
+	        
 	arguments = ''
 	for a in args:
-	  print('{} : {}'.format(a, args[a]))
 	  if not a == 'input':
 	  	arguments += '--{} {} '.format(a, args[a])
 	  else:
 		arguments += '--input {} '.format(files)  	
-	print("--------- \n")
+
+	print("\n --------- \n \
+		You are running the script with arguments:{}  \
+		\n --------- \n").format(arguments)
 
 	arguments += '--date {}'.format(today)
 	addpath = os.path.join('train_hist',today,project_name)
 
 	if workload_manager == 'slurm':
-		make_slurm(request_gpus, float(request_memory)*1e3, addpath, file_location, arguments)
+		submit_info = make_slurm(request_gpus, float(request_memory)*1e3, addpath, file_location, arguments)
 
 	elif workload_manager == 'condor':
-		make_condor(request_gpus, request_memory, requirements, addpath, file_location, arguments)
+		submit_info = make_condor(request_gpus, request_memory, requirements, addpath, file_location, arguments)
 
 print(submit_info) 
 

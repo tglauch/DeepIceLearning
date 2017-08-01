@@ -9,12 +9,10 @@ import socket
 print('Running on Hostcomputer {}'.format(socket.gethostname()))
 
 parser = ConfigParser()
-
-if os.path.exists('config.cfg'):
+try:
 	parser.read('config.cfg')
-else:
+except:
 	raise Exception('Config File is missing!!!!')
-
 backend = parser.get('Basics', 'keras_backend')
 cuda_path = parser.get('Basics', 'cuda_installation')
 os.environ["PATH"] += os.pathsep + cuda_path
@@ -175,7 +173,6 @@ if __name__ == "__main__":
 
 #################### Process Command Line Arguments ######################################
 
-  parser = ConfigParser()
   parser.read('config.cfg')
   file_location = parser.get('Basics', 'thisfolder')
 
@@ -259,7 +256,7 @@ if __name__ == "__main__":
   CSV_log = keras.callbacks.CSVLogger( \
     os.path.join(file_location,'train_hist/{}/{}/loss_logger.csv'.format(today, project_name)), 
     append=True)
-
+  
   early_stop = keras.callbacks.EarlyStopping(\
     monitor='val_loss',
     min_delta = int(parser.get('Training_Parameters', 'delta')), 
