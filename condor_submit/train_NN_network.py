@@ -40,16 +40,18 @@ def make_condor(request_gpus, request_memory, requirements, addpath, file_locati
 	return submit_info
 
 def make_slurm(request_gpus, request_memory, addpath, file_location, arguments):
-	submit_info = '#!/usr/bin/env bash \n \
-	#SBATCH --time=24:00:00 \n\
-	#SBATCH --partition=gpu \n\
-	#SBATCH --gres=gpu:{0} \n\
-	#SBATCH --mem={1} \n\
-	#SBATCH --error={2}/condor.err \n\
-	#SBATCH --output={2}/condor.out \n\
-	#SBATCH --workdir={3} \n\
-	python Neural_Network.py {4} \n'.\
-	format(request_gpus, request_memory, addpath, file_location, arguments)
+	submit_info = \
+'#!/usr/bin/env bash\n\
+#SBATCH --time=24:00:00\n\
+#SBATCH --partition=gpu\n\
+#SBATCH --gres=gpu:{0}\n\
+#SBATCH --mem={1} \n\
+#SBATCH --error={2}/condor.err\n\
+#SBATCH --output={2}/condor.out\n\
+#SBATCH --workdir={3}\n\
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64\n\
+python Neural_Network.py {4} \n'.\
+format(request_gpus, int(request_memory), addpath, file_location, arguments)
 	return submit_info
 
 args = parseArguments().__dict__
@@ -93,7 +95,7 @@ else:
 	for folder in folders:
 	    if not os.path.exists('{}'.format(os.path.join(file_location,folder))):
 	        os.makedirs('{}'.format(os.path.join(file_location,folder)))
-	        
+
 	arguments = ''
 	for a in args:
 	  if not a == 'input':
@@ -102,10 +104,11 @@ else:
 		arguments += '--input {} '.format(files)  	
 
 	print("\n --------- \n \
-		You are running the script with arguments:{}  \
+		You are running the script with arguments: \n {}  \
 		\n --------- \n").format(arguments)
 
-	arguments += '--date {}'.format(today)
+	arguments += '--date {} '.format(today)
+	arguments += '--ngpus {} '.format(request_gpus)
 	addpath = os.path.join('train_hist',today,project_name)
 
 	if workload_manager == 'slurm':
@@ -128,4 +131,7 @@ else:
 
 time.sleep(3)
 
-shutil.copy('submit.sub', os.path.join(file_location, addpath))
+if os.path.exists(os.path.join(file_location, addpath,'submit.sub')):
+	os.remove(os.path.join(file_location, addpath,'submit.sub'))
+
+shutil.move('submit.sub', os.path.join(file_location, addpath))

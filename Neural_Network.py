@@ -12,7 +12,7 @@ parser = ConfigParser()
 try:
 	parser.read('config.cfg')
 except:
-	raise Exception('Config File is missing!!!!')
+	raise Exception('Config File is missing!!!!')  
 backend = parser.get('Basics', 'keras_backend')
 cuda_path = parser.get('Basics', 'cuda_installation')
 os.environ["PATH"] += os.pathsep + cuda_path
@@ -44,6 +44,8 @@ import time
 import resource
 import shelve
 import shutil
+from keras_exp.multigpu import get_available_gpus
+from keras_exp.multigpu import make_parallel
 
 ################# Function Definitions ####################################################################
 
@@ -56,6 +58,7 @@ def parseArguments():
   parser.add_argument("--virtual_len", help="Use an artifical array length (for debugging only!)", type=int , default=-1)
   parser.add_argument("--continue", help="Give a folder to continue the training of the network", type=str, default = 'None')
   parser.add_argument("--date", help="Give current date to identify safe folder", type=str, default = 'None')
+  parser.add_argument("--ngpus", help="Number of GPUs for parallel training", type=int, default = 1)
   parser.add_argument("--version", action="version", version='%(prog)s - Version 1.0')
   args = parser.parse_args()
   return args
@@ -123,13 +126,12 @@ def base_model(conf_model_file):
           add_layer(model, layer, args,kwargs)
   
   print(model.summary())
-  adam = keras.optimizers.Adam(lr=float(parser.get('Training_Parameters', 'learning_rate')))
-  model.compile(loss='mean_squared_error', optimizer=adam, metrics=['accuracy'])
   return model
 
 class MemoryCallback(keras.callbacks.Callback):
     def on_epoch_end(self, epoch, log={}):
-        print('RAM Usage {:.2f} GB'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
+        print(' \n RAM Usage {:.2f} GB \n \n'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
+        os.system("nvidia-smi")
 
 def generator(batch_size, input_data, out_data, inds):
   batch_input = np.zeros((batch_size, 1, 21, 21, 51))
@@ -173,7 +175,6 @@ if __name__ == "__main__":
 
 #################### Process Command Line Arguments ######################################
 
-  parser.read('config.cfg')
   file_location = parser.get('Basics', 'thisfolder')
 
   args = parseArguments()
@@ -232,13 +233,28 @@ if __name__ == "__main__":
     valid_inds = [(int(tot_len*train_frac), int(tot_len*(train_frac+valid_frac))) for tot_len in file_len] 
     test_inds = [(int(tot_len*(train_frac+valid_frac)), tot_len-1) for tot_len in file_len] 
 
-    print(train_inds)
-    print(valid_inds)
-    print(test_inds)
+    # print(train_inds)
+    # print(valid_inds)
+    # print(test_inds)
 
     ### Create the Model
     conf_model_file = os.path.join('Networks', args.__dict__['model'])
-    model = base_model(conf_model_file)
+    ngpus = args.__dict__['ngpus']
+
+    adam = keras.optimizers.Adam(lr=float(parser.get('Training_Parameters', 'learning_rate')))
+    if ngpus > 1 :
+      with tf.device('/cpu:0'):
+        # define the serial model.
+        model_serial = base_model(conf_model_file)
+
+      gdev_list = get_available_gpus()
+      print('Using GPUs: {}'.format(gdev_list))
+      model = make_parallel(model_serial, gdev_list)
+    else:
+      model = base_model(conf_model_file)
+
+    model.compile(loss='mean_squared_error', optimizer=adam, metrics=['accuracy'])
+    os.system("nvidia-smi")  
 
     ## Save Run Information
     shelf = shelve.open(os.path.join(file_location,'train_hist/{}/{}/run_info.shlf'.format(today, project_name)))
@@ -272,7 +288,7 @@ if __name__ == "__main__":
     mode='auto', 
     period=1)
 
-  batch_size = int(parser.get('Training_Parameters', 'batch_size'))
+  batch_size = ngpus*int(parser.get('Training_Parameters', 'single_gpu_batch_size'))
   model.fit_generator(generator(batch_size, input_data, out_data, train_inds), 
                 steps_per_epoch = math.ceil(np.sum([k[1]-k[0] for k in train_inds])/batch_size),
                 validation_data = generator(batch_size, input_data, out_data, valid_inds),
@@ -280,7 +296,7 @@ if __name__ == "__main__":
                 callbacks = [CSV_log, early_stop, best_model, MemoryCallback()], 
                 epochs = int(parser.get('Training_Parameters', 'epochs')), 
                 verbose = int(parser.get('Training_Parameters', 'verbose')),
-                max_q_size=int(parser.get('Training_Parameters', 'max_queue_size'))
+                max_q_size = int(parser.get('Training_Parameters', 'max_queue_size'))
                 )
 
 
@@ -295,7 +311,7 @@ if __name__ == "__main__":
   test_out = []
 
   for i in range(len(input_data)):
-    print('Predict Values for {}'.format(input_file))
+    print('Predict Values for File {}/{}'.format(i, len(input_data)))
     test  = input_data[i][test_inds[i][0]:test_inds[i][1]]
     test_out_chunk = np.log10(out_data[i][test_inds[i][0]:test_inds[i][1],0:1])
     res_chunk= model.predict(test, verbose=int(parser.get('Training_Parameters', 'verbose')))
