@@ -33,7 +33,7 @@ class suppress_stdout_stderr(object):
         os.close(self.null_fds[1])
         
         
-def read_files(input_files, data_location, virtual_len=-1, printfilesizes=False):
+def read_files(input_files, data_location, using='time', virtual_len=-1, printfilesizes=False):
     input_data = []
     out_data = []
     file_len = []
@@ -45,14 +45,14 @@ def read_files(input_files, data_location, virtual_len=-1, printfilesizes=False)
         data_file = os.path.join(data_location, 'training_data/{}'.format(input_file))
   
         if virtual_len == -1:
-            data_len = len(h5py.File(data_file)['time'])
+            data_len = len(h5py.File(data_file)[using])
         else:
             data_len = virtual_len
             print('Only use the first {} Monte Carlo Events'.format(data_len))
         if printfilesizes:
             print "{:10d}   {}".format(data_len, input_file)
         else:
-            input_data.append(h5py.File(data_file, 'r')['time'])
+            input_data.append(h5py.File(data_file, 'r')[using])
             out_data.append(h5py.File(data_file, 'r')['reco_vals'])
             file_len.append(data_len)
             #print type(input_data), type(input_data[-1]), type(input_data[-1][0]) #== list, h5py.Dataset, ndarray
@@ -98,3 +98,6 @@ def preprocess(times, replace_with=10):
     ret = np.copy(times)
     ret[ret == np.inf] = replace_with
     return ret
+
+def fake_preprocess(data, replace_with=0):
+    return data
