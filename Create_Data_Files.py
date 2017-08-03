@@ -16,14 +16,13 @@ geometry_file = '/data/sim/sim-new/downloads/GCD/GeoCalibDetectorStatus_2012.560
 file_location = '/data/user/tglauch/ML_Reco/'
 
 
-input_shape = [20,10,60]  ### hardcoded at the moment
-
-
 def parseArguments():
   parser = argparse.ArgumentParser()
   parser.add_argument("--project", help="The name for the Project", type=str ,default='none')
   parser.add_argument("--num_files", help="The name for the Project", type=str ,default=-1)
   parser.add_argument("--folder", help="neutrino-generator folder", type=str ,default='11069/00000-00999')
+  parser.add_argument("--grid_shape", help="The shape of the (rotated) rectangular grid [x,y,z]", type=str ,default='[20,10,60]')
+
   ### relative to /data/ana/PointSource/PS/IC86_2012/files/sim/2012/neutrino-generator/ , 
   ## use ':' seperator for more then one folder
   parser.add_argument("--version", action="version", version='%(prog)s - Version 1.0')
@@ -134,6 +133,7 @@ if __name__ == "__main__":
     else:
         project_name = args.__dict__['project']
 
+    input_shape = eval(args.__dict__['grid_shape'])
     geometry = dataio.I3File(geometry_file)
     geo = geometry.pop_frame()['I3Geometry'].omgeo
     grid, DOM_list = make_grid_dict(input_shape,geo)
