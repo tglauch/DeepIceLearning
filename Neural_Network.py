@@ -91,7 +91,6 @@ def add_layer(model, layer, args, kwargs):
 
 
 def base_model(conf_model_file):
-  print ngpus
   model = Sequential()
   with open(conf_model_file) as f:
       args = []
@@ -312,7 +311,7 @@ if __name__ == "__main__":
   test_out = []
 
   for i in range(len(input_data)):
-    print('Predict Values for {}'.format(input_file))
+    print('Predict Values for File {}/{}'.format(i, len(input_data)))
     test  = input_data[i][test_inds[i][0]:test_inds[i][1]]
     test_out_chunk = np.log10(out_data[i][test_inds[i][0]:test_inds[i][1],0:1])
     res_chunk= model.predict(test, verbose=int(parser.get('Training_Parameters', 'verbose')))
