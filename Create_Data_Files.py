@@ -16,14 +16,13 @@ geometry_file = '/data/sim/sim-new/downloads/GCD/GeoCalibDetectorStatus_2012.560
 file_location = '/data/user/tglauch/ML_Reco/'
 
 
-input_shape = [20,10,60]  ### hardcoded at the moment
-
-
 def parseArguments():
   parser = argparse.ArgumentParser()
   parser.add_argument("--project", help="The name for the Project", type=str ,default='none')
   parser.add_argument("--num_files", help="The name for the Project", type=str ,default=-1)
   parser.add_argument("--folder", help="neutrino-generator folder", type=str ,default='11069/00000-00999')
+  parser.add_argument("--grid_shape", help="The shape of the (rotated) rectangular grid [x,y,z]", type=str ,default='[20,10,60]')
+
   ### relative to /data/ana/PointSource/PS/IC86_2012/files/sim/2012/neutrino-generator/ , 
   ## use ':' seperator for more then one folder
   parser.add_argument("--version", action="version", version='%(prog)s - Version 1.0')
@@ -110,6 +109,14 @@ def analyze_grid(grid):
         for index, strings in enumerate(dims[i]):
             print index, strings
 
+def calc_depositedE(physics_frame):
+    I3Tree = physics_frame['I3MCTree']
+    truncated_energy = 0
+    for i in I3Tree:
+        interaction_type = str(i.type)
+        if interaction_type in ['DeltaE','PairProd','Brems','EMinus']:
+            truncated_energy += i.energy
+    return truncated_energy
 
 if __name__ == "__main__":
 
@@ -126,6 +133,7 @@ if __name__ == "__main__":
     else:
         project_name = args.__dict__['project']
 
+    input_shape = eval(args.__dict__['grid_shape'])
     geometry = dataio.I3File(geometry_file)
     geo = geometry.pop_frame()['I3Geometry'].omgeo
     grid, DOM_list = make_grid_dict(input_shape,geo)
@@ -139,18 +147,18 @@ if __name__ == "__main__":
     with tables.open_file(OUTFILE, mode = "w", title = "Events for training the NN", filters=FILTERS) as h5file:
 
         charge = h5file.create_earray(h5file.root, 'charge', 
-            tables.Float64Atom(), (0, 1 ,input_shape[0],input_shape[1],input_shape[2]),
+            tables.Float64Atom(), (0, input_shape[0],input_shape[1],input_shape[2],1),
             title = "Charge Distribution")
         time = h5file.create_earray(h5file.root, 'time', 
-            tables.Float64Atom(), (0, 1,input_shape[0],input_shape[1],input_shape[2]), 
+            tables.Float64Atom(), (0, input_shape[0],input_shape[1],input_shape[2],1 ), 
             title = "Timestamp Distribution")
         reco_vals = h5file.create_earray(h5file.root, 'reco_vals', tables.Float64Atom(), 
-            (0,4),title = "Energy,Azimuth,Zenith,MuEx")
+            (0,6), title = "Energy,Azimuth,Zenith,MuEx,depositedE,ow")
     
         print('Created a new HDF File with the Settings:')
         print(h5file)
 
-        #np.save('grid.npy', grid)
+        np.save('grid.npy', grid)
         j=0
         folders = args.__dict__['folder'].split(':')
         for folder in folders:
@@ -174,12 +182,10 @@ if __name__ == "__main__":
                     azmiuth = physics_event['MCMostEnergeticTrack'].dir.azimuth 
                     zenith = physics_event['MCMostEnergeticTrack'].dir.zenith
                     muex = physics_event['SplineMPEMuEXDifferential'].energy
-
-                    ######### The +1 is not optimal....probably reconsider 
-                    ######## now reconsidered: last dom is put into the last bin (so no new bin just for the border-dom)
-                    ######## for consistency we increased total number of bins: 21x21x51 
-                    charge_arr = np.zeros((1, 1,input_shape[0],input_shape[1],input_shape[2]))
-                    time_arr = np.full((1, 1,input_shape[0],input_shape[1],input_shape[2]), np.inf)
+                    ow = physics_event['I3MCWeightDict']['OneWeight']
+                    depositedE = calc_depositedE(physics_event)
+                    charge_arr = np.zeros((1, input_shape[0],input_shape[1],input_shape[2], 1))
+                    time_arr = np.full((1, input_shape[0],input_shape[1],input_shape[2], 1), np.inf)
 
                     ###############################################
                     pulses = physics_event['InIceDSTPulses'].apply(physics_event)
@@ -194,9 +200,9 @@ if __name__ == "__main__":
                     for dom in DOM_list:
                         grid_pos = grid[dom]
                         if dom in final_dict:
-                            charge_arr[0][0][grid_pos[0]][grid_pos[1]][grid_pos[2]] += final_dict[dom][0]
-                            time_arr[0][0][grid_pos[0]][grid_pos[1]][grid_pos[2]] = \
-                                np.minimum(time_arr[0][0][grid_pos[0]][grid_pos[1]][grid_pos[2]], final_dict[dom][1])
+                            charge_arr[0][grid_pos[0]][grid_pos[1]][grid_pos[2]][0] += final_dict[dom][0]
+                            time_arr[0][grid_pos[0]][grid_pos[1]][grid_pos[2]][0] = \
+                                np.minimum(time_arr[0][grid_pos[0]][grid_pos[1]][grid_pos[2]][0], final_dict[dom][1])
 
                     charge.append(np.array(charge_arr))
                     # normalize time on [0,1]. not hit bins will still carry np.inf as time value
@@ -204,7 +210,7 @@ if __name__ == "__main__":
                     time_np_arr_max = np.max(time_np_arr[time_np_arr != np.inf])
                     time_np_arr_min = np.min(time_np_arr)
                     time.append((time_np_arr - time_np_arr_min) / (time_np_arr_max - time_np_arr_min))
-                    reco_vals.append(np.array([energy,azmiuth, zenith, muex])[np.newaxis])
+                    reco_vals.append(np.array([energy,azmiuth, zenith, muex, depositedE, ow])[np.newaxis])
                     j+=1
             charge.flush()
             time.flush()

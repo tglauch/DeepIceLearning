@@ -81,8 +81,9 @@ def read_files(input_files, virtual_len=-1):
     input_data.append(h5py.File(data_file, 'r')['charge'])
     out_data.append(h5py.File(data_file, 'r')['reco_vals'])
     file_len.append(data_len)
+    inp_shape = input_data[0][0]
 
-  return input_data, out_data, file_len
+  return input_data, out_data, file_len, inp_shape
 
 
 def add_layer(model, layer, args, kwargs):
@@ -91,8 +92,8 @@ def add_layer(model, layer, args, kwargs):
 
 
 def base_model(conf_model_file):
-  print ngpus
   model = Sequential()
+  inp_shape = None
   with open(conf_model_file) as f:
       args = []
       kwargs = dict()
@@ -102,6 +103,8 @@ def base_model(conf_model_file):
           cur_line = line.strip()
           if cur_line == '' and layer != '':
               add_layer(model, layer, args,kwargs)
+              if 'input_shape' in kwargs.keys():
+                inp_shape = kwargs['input_shape']
               args = []
               kwargs = dict()
               mode = 'args'
@@ -125,17 +128,23 @@ def base_model(conf_model_file):
                   kwargs[split_line[0].strip()] = split_line[1].strip()
       if layer != '':
           add_layer(model, layer, args,kwargs)
+          if 'input_shape' in kwargs.keys():
+            inp_shape = kwargs['input_shape']
   
   print(model.summary())
-  return model
+  return model, eval(str(inp_shape))
 
 class MemoryCallback(keras.callbacks.Callback):
     def on_epoch_end(self, epoch, log={}):
         print(' \n RAM Usage {:.2f} GB \n \n'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
         os.system("nvidia-smi")
 
-def generator(batch_size, input_data, out_data, inds):
-  batch_input = np.zeros((batch_size, 1, 21, 21, 51))
+def generator(batch_size, input_data, out_data, inds, inp_shape):
+  batch_input = np.zeros((batch_size, 
+    inp_shape[0], 
+    inp_shape[1], 
+    inp_shape[2], 
+    inp_shape[3]))
   batch_out = np.zeros((batch_size,1))
   cur_file = 0
   cur_event_id = inds[cur_file][0]
@@ -246,13 +255,13 @@ if __name__ == "__main__":
     if ngpus > 1 :
       with tf.device('/cpu:0'):
         # define the serial model.
-        model_serial = base_model(conf_model_file)
+        model_serial, inp_shape = base_model(conf_model_file)
 
       gdev_list = get_available_gpus()
       print('Using GPUs: {}'.format(gdev_list))
       model = make_parallel(model_serial, gdev_list)
     else:
-      model = base_model(conf_model_file)
+      model, inp_shape = base_model(conf_model_file)
 
     model.compile(loss='mean_squared_error', optimizer=adam, metrics=['accuracy'])
     os.system("nvidia-smi")  
@@ -290,7 +299,7 @@ if __name__ == "__main__":
     period=1)
 
   batch_size = ngpus*int(parser.get('Training_Parameters', 'single_gpu_batch_size'))
-  model.fit_generator(generator(batch_size, input_data, out_data, train_inds), 
+  model.fit_generator(generator(batch_size, input_data, out_data, train_inds, inp_shape), 
                 steps_per_epoch = math.ceil(np.sum([k[1]-k[0] for k in train_inds])/batch_size),
                 validation_data = generator(batch_size, input_data, out_data, valid_inds),
                 validation_steps = math.ceil(np.sum([k[1]-k[0] for k in valid_inds])/batch_size),
@@ -312,7 +321,7 @@ if __name__ == "__main__":
   test_out = []
 
   for i in range(len(input_data)):
-    print('Predict Values for {}'.format(input_file))
+    print('Predict Values for File {}/{}'.format(i, len(input_data)))
     test  = input_data[i][test_inds[i][0]:test_inds[i][1]]
     test_out_chunk = np.log10(out_data[i][test_inds[i][0]:test_inds[i][1],0:1])
     res_chunk= model.predict(test, verbose=int(parser.get('Training_Parameters', 'verbose')))
