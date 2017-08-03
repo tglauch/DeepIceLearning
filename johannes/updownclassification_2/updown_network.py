@@ -4,6 +4,7 @@
 # this script uses theos datasets. That is a try to reduce overfitting
 
 import jkutils
+from jkutils import zenith_to_binary, read_files
 import os
 os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=gpu,floatX=float32" 
 os.environ["PATH"] += os.pathsep + '/usr/local/cuda/bin/'
@@ -48,6 +49,7 @@ def parseArguments():
     parser.add_argument("--project", help="The name for the Project", type=str ,default='updown_NN')
     parser.add_argument("--input", help="Name of the input files seperated by :", type=str ,default='all')
     parser.add_argument("--model", help="Name of the File containing the model", type=str, default='FCNN_v1.cfg')
+    parser.add_argument("--using", help="charge or time", type=str, default='time')
     parser.add_argument("--virtual_len", help="Use an artifical array length (for debugging only!)", type=int , default=-1)
     parser.add_argument("--continue", help="Give a folder to continue the training of the network", type=str, default = 'None')
     parser.add_argument("--date", help="Give current date to identify safe folder", type=str, default = 'None')
@@ -59,33 +61,6 @@ def parseArguments():
       # Parse arguments
     args = parser.parse_args()
     return args
-
-def zenith_to_binary(zenith):
-    if type(zenith) == np.ndarray:
-        ret = np.copy(zenith)
-        ret[ret < 1.5707963268] = 0
-        ret[ret > 1] = 1
-        return ret
-    if isinstance(zenith, float):
-        return 1 if zenith > 1.5707963268 else 0
-    if isinstance(zenith, list):
-        temp_zenith = np.array(zenith)
-        temp_zenith[temp_zenith < 1.5707963268] = 0
-        temp_zenith[temp_zenith > 1] = 1
-        return temp_zenith.tolist()
-        """
-        cur = zenith
-        parent_cur = cur
-        indize = []
-        i = 0
-        while type(cur) == list:
-            parent_cur = cur
-            indize.append(i)
-            cur = cur[indize[-1]]
-        for j in range(len(parent_cur)):
-            exec("zenith{f} = 1 if zenith{f} > 1.5707963268 else 0".format(
-                f="["+ "][".join(map(str,indize[:-1] + [j])) + "]"))
-        """
 
 def add_layer(model, layer, args, kwargs):
     eval('model.add({}(*args,**kwargs))'.format(layer))
@@ -134,19 +109,15 @@ def base_model(model_def):
 class MemoryCallback(keras.callbacks.Callback):
     def on_epoch_end(self, epoch, log={}):
         print('RAM Usage {:.2f} GB'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
-
-def preprocess(times):
-    """
-    print type(times) == np.ndarray
-    print len(times) == 5000
-    print type(times[0]) == np.ndarray
-    print times[0].shape == (1,21,21,51)
-    """
-    ret = np.copy(times)
-    ret[ret == np.inf] = 10
-    return ret
         
-def generator(batch_size, input_data, out_data, inds):
+        
+def generator(batch_size, input_data, out_data, inds, inf_times_as = 1): 
+    #even when using charge as input this could be left as it is (preprocess will not find any inf values)
+    preprocess = jkutils.preprocess # this is needed, because python throws an error, if preprocess is used when using=time
+                                    # (preprocess must then be in locals if referenced before.)
+    if 'args' in globals():
+        if args.using == 'charge':
+            preprocess = jkutils.fake_preprocess
     batch_input = np.zeros((batch_size, 22491))
     batch_out = np.zeros((batch_size,1))
     cur_file = 0
@@ -179,13 +150,14 @@ def generator(batch_size, input_data, out_data, inds):
                     cur_event_id = inds[cur_file][0]
                     up_to = inds[cur_file][1]
         for i in range(len(temp_in)):
-            batch_input[i] = preprocess(temp_in[i])
+            batch_input[i] = preprocess(temp_in[i], replace_with = inf_times_as)
             batch_out[i] = zenith_to_binary(temp_out[i][zenith])
         cur_len = 0 
         """
         from scipy.stats import describe
         print describe(batch_input[0])
         print describe(np.array(batch_out))
+        print batch_out[0:50]
         sys.exit()
         """
         yield (batch_input, batch_out)
@@ -195,8 +167,9 @@ if __name__ == "__main__":
 
 #################### Process Command Line Arguments ######################################
 
+    config_path = '/data/user/jkager/NN_Reco/johannes/updownclassification_2/config.cfg'
     parser = ConfigParser()
-    parser.read('/data/user/jkager/NN_Reco/johannes/updownclassification_2/config.cfg')
+    parser.read(config_path)
     file_location = parser.get('Basics', 'thisfolder') # /data/user/jkager/NN_Reco/johannes/updownclassification_2/
     data_location = parser.get('Basics', 'data_enc_folder')
   
@@ -218,7 +191,7 @@ if __name__ == "__main__":
 #################### set today date and check for --filesizes #################################  
   
     if args.filesizes:
-        jkutils.read_files(input_files, data_location, printfilesizes=True)
+        read_files(input_files, data_location, printfilesizes=True)
         print 20*"-" + "\nOnly printed filesizes. Now exiting."
         sys.exit(1)
     
@@ -234,16 +207,24 @@ if __name__ == "__main__":
         if args.__dict__['continue'] != 'None':
             shelf = shelve.open(os.path.join(file_location,args.__dict__['continue'], 'run_info.shlf'))
             project_name = shelf['Project']
-            input_files = shelf['Files']
+            input_files = shelf['Files'].split(':')
             train_inds = shelf['Train_Inds'] 
             valid_inds = shelf['Valid_Inds']
             test_inds = shelf['Test_Inds']
+            try:
+                args.using = shelf['using']
+            except KeyError:
+                pass
             model = load_model(os.path.join(file_location, args.__dict__['continue'], 'best_val_loss.npy'))
             today = args.__dict__['continue'].split('/')[1]
             print(today)
             shelf.close()
             
-            input_data, out_data, file_len = jkutils.read_files(input_files.split(':'), data_location)
+            config_path = os.path.join(file_location,args.__dict__['continue'], 'config.cfg')
+            parser = ConfigParser()
+            parser.read(config_path)
+            
+            input_data, out_data, file_len = read_files(input_files, data_location, using=args.using)
             
         else:
 #################### Create Folder Strucutre #####################
@@ -261,7 +242,7 @@ if __name__ == "__main__":
                 sys.exit(1)
                     
 ##################### Load and Split Dataset #########################################################
-            input_data, out_data, file_len = jkutils.read_files(input_files, data_location, virtual_len = args.virtual_len)
+            input_data, out_data, file_len = read_files(input_files, data_location, using=args.using, virtual_len = args.virtual_len)
 
             tvt_ratio=[float(parser.get('Training_Parameters', 'training_fraction')),
                 float(parser.get('Training_Parameters', 'validation_fraction')),
@@ -277,11 +258,6 @@ if __name__ == "__main__":
             print(valid_inds)
             print(test_inds)
             
-            
-#################### Create Model #########################################################
-            conf_model_file = args.model
-            model = base_model(conf_model_file)
-        
 #################### Save Run-Information #################################################
   
             shelf = shelve.open(os.path.join(file_location,'./train_hist/{}/{}/run_info.shlf'.format(today, project_name)))
@@ -291,9 +267,17 @@ if __name__ == "__main__":
             shelf['Train_Inds'] = train_inds
             shelf['Valid_Inds'] = valid_inds
             shelf['Test_Inds'] = test_inds
+            shelf['using'] = args.using
+            shelf['inf_times_as'] = float(parser.get('Training_Parameters','inf_times_as'))
             shelf.close()
 
-            shutil.copy(conf_model_file, os.path.join(file_location, 'train_hist/{}/{}/model.cfg'.format(today, project_name)))
+            shutil.copy(args.model, os.path.join(file_location, 'train_hist/{}/{}/model.cfg'.format(today, project_name)))
+            shutil.copy(config_path, os.path.join(file_location, 'train_hist/{}/{}/config.cfg'.format(today, project_name)))           
+            
+#################### Create Model #########################################################
+            model = base_model(args.model)
+            #from keras.utils import plot_model
+            #plot_model(model, to_file='model.png')
 
 #################### Train the Model ########################################################
         start = time.time()
@@ -319,9 +303,11 @@ if __name__ == "__main__":
           period=1)
 
         batch_size = int(parser.get('Training_Parameters', 'batch_size'))
-        model.fit_generator(generator(batch_size, input_data, out_data, train_inds), 
+        model.fit_generator(generator(batch_size, input_data, out_data, train_inds,
+                                      float(parser.get('Training_Parameters','inf_times_as'))), 
                       steps_per_epoch = math.ceil(np.sum([k[1]-k[0] for k in train_inds])/batch_size),
-                      validation_data = generator(batch_size, input_data, out_data, valid_inds),
+                      validation_data = generator(batch_size, input_data, out_data, valid_inds, 
+                                                  float(parser.get('Training_Parameters','inf_times_as'))),
                       validation_steps = math.ceil(np.sum([k[1]-k[0] for k in valid_inds])/batch_size),
                       callbacks = [CSV_log, early_stop, best_model, MemoryCallback()], 
                       epochs = int(parser.get('Training_Parameters', 'epochs')), 
@@ -330,7 +316,7 @@ if __name__ == "__main__":
                       )
 
         print "time to fit: {:d}h {:d}min {:.2f}sec".format(*(lambda t: (int(t/3600),int(t/60)%60,t%60))(time.time()-start))
-  
+        
 #################### Saving and Calculation of Result for Test Dataset ######################
   
     if args.testing:
@@ -350,14 +336,22 @@ if __name__ == "__main__":
         else:
             print "project not found. exiting..."
             sys.exit(-1)
-        shelf = shelve.open(os.path.join(file_location,project_folder, 'run_info.shlf'))
-        input_files = shelf['Files']
+        shelf = shelve.open(os.path.join(file_location, project_folder, 'run_info.shlf'))
+        input_files = shelf['Files'].split(':')
         train_inds = shelf['Train_Inds'] 
         valid_inds = shelf['Valid_Inds']
         test_inds = shelf['Test_Inds']
+        try:
+            args.using = shelf['using']
+        except KeyError:
+            pass
         shelf.close()
+        
+        config_path = os.path.join(file_location, project_folder, 'config.cfg')
+        parser = ConfigParser()
+        parser.read(config_path)
             
-        input_data, out_data, file_len = jkutils.read_files(input_files.split(':'), data_location)
+        input_data, out_data, file_len = read_files(input_files, data_location, using=args.using)
         print('\n Load the Model (final_network.h5) \n')
         model = load_model(os.path.join(\
         file_location,'train_hist/{}/{}/final_network.h5'.format(today, project_name)))
@@ -370,9 +364,15 @@ if __name__ == "__main__":
     res = []
     test_out = []
   
+    inf_times_as=float(parser.get('Training_Parameters','inf_times_as'))
+    if args.using == 'charge':
+        preprocess = jkutils.fake_preprocess
+    else:
+        preprocess = jkutils.preprocess
     for i in range(len(input_data)):
         print('Predict Values for {}'.format(input_files[i]))
-        test_in_chunk  = np.array(map(np.ndarray.flatten, preprocess(input_data[i][test_inds[i][0]:test_inds[i][1]])))
+        test_in_chunk  = np.array(map(np.ndarray.flatten, preprocess(input_data[i][test_inds[i][0]:test_inds[i][1]], 
+                                                                     replace_with = inf_times_as)))
         test_out_chunk = zenith_to_binary(out_data[i][test_inds[i][0]:test_inds[i][1],zenith:zenith+1])
         res_chunk = model.predict(test_in_chunk, verbose=int(parser.get('Training_Parameters', 'verbose')))
         res.extend(list(res_chunk))

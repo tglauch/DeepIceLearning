@@ -7,12 +7,15 @@ import argparse
 from ConfigParser import ConfigParser
 import datetime
 import shutil
+import subprocess
+import itertools
 
 
 def parseArguments():
     parser = argparse.ArgumentParser()
     parser.add_argument("--project", help="The name for the Project", type=str ,default='some_NN')
     parser.add_argument("--input", help="Name of the input files seperated by :", type=str ,default='all')
+    parser.add_argument("--using", help="charge or time", type=str, default='time')
     parser.add_argument("--model", help="Name of the File containing the model", type=str, default='simple_FCNN.cfg')
     parser.add_argument("--virtual_len", help="Use an artifical array length (for debugging only!)", type=int , default=-1)
     parser.add_argument("--continue", help="Give a folder to continue the training of the network", type=str, default = 'None')
@@ -31,13 +34,22 @@ request_memory = parser.get('GPU', 'request_memory')
 requirements = parser.get('GPU', 'requirements')
 project_name = args['project']
 
+low_files = ['11029_00000-00999.h5','11029_01000-01999.h5','11029_02000-02999.h5','11029_03000-03999.h5','11029_04000-04999.h5','11029_05000-05999.h5']
+high_files = ['11069_00000-00999.h5','11069_01000-01999.h5','11069_02000-02999.h5','11069_03000-03999.h5','11069_04000-04999.h5','11069_05000-05999.h5']
 
 if args['input'] == 'lowE':
-	files = '11029_00000-00999.h5:11029_01000-01999.h5:11029_02000-02999.h5:11029_03000-03999.h5:11029_04000-04999.h5:11029_05000-05999.h5'
+	files = ':'.join(low_files)
 elif args['input'] == 'highE':
-	files = '11069_00000-00999.h5:11069_01000-01999.h5:11069_02000-02999.h5:11069_03000-03999.h5:11069_04000-04999.h5:11069_05000-05999.h5'
+	files = ':'.join(high_files)
 elif args['input'] == 'highE_reduced': #same as highE, but only three files
-    files = '11069_00000-00999.h5:11069_01000-01999.h5:11069_02000-02999.h5'
+    files = ':'.join(high_files[0:3])
+elif len(args['input']) > 0 and (args['input'][0] == 'h' or args['input'][0] == 'l') and args['input'][1].isdigit():
+    inputs = {k:v for k, v in zip(*[iter(["".join(x) for _, x in itertools.groupby(args['input'], key=str.isdigit)])]*2)}
+    files = ''
+    if 'h' in inputs:
+        files = ':'.join([high_files[i] for i in map(int, list(inputs['h']))])
+    if 'l' in inputs:
+        files = ':'.join(filter(lambda s: len(s) > 0, files.split(':')) + [low_files[i] for i in map(int, list(inputs['l']))])
 else:
 	files = args['input']
 
@@ -106,9 +118,13 @@ else:
 
 print(submit_info)
 
-with open('submit.sub', 'w') as file:
-	file.write(submit_info)
+with open('submit.sub', 'w') as f:
+	f.write(submit_info)
 
-os.system("condor_submit submit.sub")
+#os.system("condor_submit submit.sub")
+output = subprocess.check_output("condor_submit submit.sub", shell=True)
+print output
 time.sleep(3)
+with open('submit.sub', 'a') as f:
+    f.write(output)
 shutil.copy('submit.sub', os.path.join(file_location, addpath))
