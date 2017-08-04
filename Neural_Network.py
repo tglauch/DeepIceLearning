@@ -51,6 +51,12 @@ from keras_exp.multigpu import make_parallel
 
 def parseArguments():
 
+  """Parse the command line arguments
+
+  Returns: 
+  args : Dictionary containing the command line arguments
+
+  """
   parser = argparse.ArgumentParser()
   parser.add_argument("--project", help="The name for the Project", type=str ,default='some_NN')
   parser.add_argument("--input", help="Name of the input files seperated by :", type=str ,default='all')
@@ -64,18 +70,19 @@ def parseArguments():
   return args
 
 def read_files(input_files, virtual_len=-1):
-"""Create an Array of Input and Output HDF5 Monte Carlo data from a given list of files(e.g file1:file2 ...) 
 
-Arguments:
-input_shape : The file list as above
-virtual_len : can be set for debugging purposes if only the first $virtual_len events shell be considered 
+  """Create an Array of Input and Output HDF5 Monte Carlo data from a given list of files(e.g file1:file2 ...) 
 
-Returns: 
-input_data : A list of datafiles to be feeded into the network
-output_data : A list of datafiles as true value for the network
-file_len : The number of events for each file
+  Arguments:
+  input_shape : The file list as above
+  virtual_len : can be set for debugging purposes if only the first $virtual_len events shell be considered 
 
-"""
+  Returns: 
+  input_data : A list of datafiles to be feeded into the network
+  output_data : A list of datafiles as true value for the network
+  file_len : The number of events for each file
+
+  """
 
   input_data = []
   out_data = []
@@ -98,31 +105,32 @@ file_len : The number of events for each file
 
 
 def add_layer(model, layer, args, kwargs):
-"""Given the data read from the network configuration file, add a layer to the Keras xnetwork model object
 
-Arguments:
-model : the model object of the network
-layer : the type of layer (https://keras.io/layers/core/)
+  """Given the data read from the network configuration file, add a layer to the Keras xnetwork model object
 
-Returns: True
+  Arguments:
+  model : the model object of the network
+  layer : the type of layer (https://keras.io/layers/core/)
 
-"""
-    eval('model.add({}(*args,**kwargs))'.format(layer))
-    return
+  Returns: True
+
+  """
+  eval('model.add({}(*args,**kwargs))'.format(layer))
+  return
 
 
 def base_model(conf_model_file):
  
-"""Main function to create the Keras Neural Network.
+  """Main function to create the Keras Neural Network.
 
-Arguments:
-model : (Relative) Path to the config (definition) file of the neural network
+  Arguments:
+  model : (Relative) Path to the config (definition) file of the neural network
 
-Returns: 
-model : the (non-compiled) model object
-inp_shape : the required shape of the input data
+  Returns: 
+  model : the (non-compiled) model object
+  inp_shape : the required shape of the input data
 
-"""
+  """
 
   model = Sequential()
   inp_shape = None
@@ -173,16 +181,16 @@ class MemoryCallback(keras.callbacks.Callback):
 
 def generator(batch_size, input_data, out_data, inds, inp_shape):
 
-"""Generator to create the mini-batches feeded to the network.
+  """Generator to create the mini-batches feeded to the network.
 
-Arguments:
-model : (Relative) Path to the config (definition) file of the neural network
+  Arguments:
+  model : (Relative) Path to the config (definition) file of the neural network
 
-Returns: 
-model : the (non-compiled) model object
-inp_shape : the required shape of the input data
+  Returns: 
+  model : the (non-compiled) model object
+  inp_shape : the required shape of the input data
 
-"""
+  """
 
   batch_input = np.zeros((batch_size, 
     inp_shape[0], 
