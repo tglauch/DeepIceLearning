@@ -1,0 +1,13 @@
+	executable   = ../updown_network.py 
+ 	universe     = vanilla  
+	request_gpus = 1 
+	request_memory = 8GB 
+	requirements = TARGET.CUDACapability 
+	log          = train_hist/2017-08-03/charge_all_v2/condor.log 
+	output       = train_hist/2017-08-03/charge_all_v2/condor.out 
+	error        = train_hist/2017-08-03/charge_all_v2/condor.err 
+	getenv = True 
+ 	stream_output = True 
+	IWD = /data/user/jkager/NN_Reco/johannes/updownclassification_2/ 
+	arguments =  --project charge_all_v2 --testing 
+	queue 1 
