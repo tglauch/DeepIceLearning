@@ -40,6 +40,7 @@ def make_condor(request_gpus, request_memory, requirements, addpath, file_locati
 	return submit_info
 
 def make_slurm(request_gpus, request_memory, addpath, file_location, arguments):
+
 	submit_info = \
 '#!/usr/bin/env bash\n\
 #SBATCH --time=24:00:00\n\
@@ -49,7 +50,7 @@ def make_slurm(request_gpus, request_memory, addpath, file_location, arguments):
 #SBATCH --error={2}/condor.err\n\
 #SBATCH --output={2}/condor.out\n\
 #SBATCH --workdir={3}\n\
-#SBATCH --exclude=bigbird\n\
+##SBATCH --exclude=bigbird\n\
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64\n\
 python Neural_Network.py {4} \n'.\
 format(request_gpus, int(request_memory), addpath, file_location, arguments)

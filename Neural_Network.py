@@ -34,7 +34,7 @@ import numpy as np
 import keras
 from keras.models import Sequential, load_model
 from keras.layers import Dense, Dropout, Activation, Flatten, Convolution2D,\
- BatchNormalization, MaxPooling2D,Convolution3D,MaxPooling3D
+ BatchNormalization, MaxPooling2D,Convolution3D,MaxPooling3D, Merge
 from keras import regularizers
 import h5py
 import datetime
@@ -65,6 +65,9 @@ def parseArguments():
   parser.add_argument("--continue", help="Give a folder to continue the training of the network", type=str, default = 'None')
   parser.add_argument("--date", help="Give current date to identify safe folder", type=str, default = 'None')
   parser.add_argument("--ngpus", help="Number of GPUs for parallel training", type=int, default = 1)
+  ### not used atm...normalization has to be defined in the config file
+  parser.add_argument('--normalize_input', dest='norm_input', action='store_true')
+  parser.set_defaults(norm_input=True)
   parser.add_argument("--version", action="version", version='%(prog)s - Version 1.0')
   args = parser.parse_args()
   return args
@@ -85,8 +88,9 @@ def read_files(input_files, virtual_len=-1):
   """
 
   input_data = []
-  out_data = []
+  output_data = []
   file_len = []
+  inp_shape = []
   print input_files
   for run, input_file in enumerate(input_files):
     data_file = os.path.join(file_location, 'training_data/{}'.format(input_file))
@@ -97,12 +101,67 @@ def read_files(input_files, virtual_len=-1):
       data_len = virtual_len
       print('Only use the first {} Monte Carlo Events'.format(data_len))
 
-    input_data.append(h5py.File(data_file, 'r')['charge'])
-    out_data.append(h5py.File(data_file, 'r')['reco_vals'])
+    this_input = h5py.File(data_file, 'r')['charge']
+    input_data.append(this_input)
+    this_shape = np.shape(this_input[0])
+    if run == 0:
+      inp_shape=this_shape 
+    else:
+      if not this_shape == inp_shape:
+        raise Exception('The input shape of the data contained in the input files does not match')
+
+    output_data.append(h5py.File(data_file, 'r')['reco_vals'])
     file_len.append(data_len)
 
-  return input_data, out_data, file_len
+  return input_data, output_data, file_len
 
+def prepare_input_shapes(one_input_array, model_settings):
+  shapes = []
+  shape_names = []
+  if len(model_settings) == 0:
+    model_settings = ['[Inputs]', 'model = x']
+  for block in model_settings:
+    if block[0]=='[Inputs]':
+      for i in range(1,len(block)):
+        this_definition = block[i].split('=')
+        shape_names.append(this_definition[0].strip())
+        pre_shape = np.shape(eval(this_definition[1].strip().replace('x', 'one_input_array')))
+        if pre_shape == ():
+          shapes.append((1,))
+        else:
+          shapes.append(pre_shape)
+  return shapes, shape_names
+
+def parse_config_file(conf_file_path):
+
+  f = open(conf_file_path)
+  config_array = f.read().splitlines()
+  config_blocks = []
+  single_block = []
+  for line in config_array:
+      if line=='':
+          config_blocks.append(single_block)
+          single_block = []
+      else:
+          single_block.append(line)
+  settings =[]
+  model = []
+  mode = ''
+  for block in config_blocks:
+      if mode =='' or block[0][0]=='*':
+          if block[0] == '*Settings*':
+              mode = 'settings'
+          elif block[0] == '*Model*':
+              mode = 'model'
+          else:
+              raise Exception('config file is corrupted')
+      else:
+          if mode=='settings':
+              settings.append(block)
+          elif mode=='model':
+              model.append(block)
+
+  return settings, model
 
 def add_layer(model, layer, args, kwargs):
 
@@ -110,7 +169,7 @@ def add_layer(model, layer, args, kwargs):
 
   Arguments:
   model : the model object of the network
-  layer : the type of layer (https://keras.io/layers/core/)
+  layer (str): the type of layer (https://keras.io/layers/core/)
 
   Returns: True
 
@@ -118,68 +177,80 @@ def add_layer(model, layer, args, kwargs):
   eval('model.add({}(*args,**kwargs))'.format(layer))
   return
 
-
-def base_model(conf_model_file):
- 
+def base_model(model_def, shapes, shape_names):
   """Main function to create the Keras Neural Network.
 
   Arguments:
-  model : (Relative) Path to the config (definition) file of the neural network
+  model_def : (Relative) Path to the config (definition) file of the neural network
 
   Returns: 
   model : the (non-compiled) model object
   inp_shape : the required shape of the input data
 
   """
-
-  model = Sequential()
-  inp_shape = None
-  with open(conf_model_file) as f:
-      args = []
-      kwargs = dict()
-      layer = ''
-      mode = 'args'
-      for line in f:
-          cur_line = line.strip()
-          if cur_line == '' and layer != '':
-              add_layer(model, layer, args,kwargs)
-              if 'input_shape' in kwargs.keys():
-                inp_shape = kwargs['input_shape']
-              args = []
+  models = dict()
+  cur_model = None
+  cur_model_name = ''
+  print shapes
+  print shape_names
+  for block in model_def:
+      if block[0][0] == '{' and block[0][-1] == '}' or cur_model == None:
+          if cur_model != None:
+              print(cur_model.summary())
+              models[cur_model_name] = cur_model    
+          cur_model = Sequential()
+          input_layer = True
+          if block[0][0] == '{' and block[0][-1] == '}':
+              cur_model_name = block[0][1:-1]
+          else:
+              cur_model_name = 'model'   
+      if block[0][0] == '[' and block[0][-1] == ']':
+          args = []
+          kwargs = dict()
+          layer = ''
+          mode = 'args'
+          layer=block[0][1:-1]
+          for i in range(1,len(block)):
+              if block[i]=='[kwargs]':
+                  mode = 'kwargs'
+              elif mode == 'args':
+                  try:
+                      args.append(eval(block[i].split('=')[1].strip()))
+                  except:
+                      args.append(block[i].split('=')[1].strip())
+              elif mode == 'kwargs':
+                  split_line = block[i].split('=')
+                  try:
+                      kwargs[split_line[0].strip()] = eval(split_line[1].strip())
+                  except:
+                      kwargs[split_line[0].strip()] = split_line[1].strip()   
+          if not layer == 'Merge':
+              if not 'input_shape' in kwargs and input_layer==True:
+                ind = shape_names.index(cur_model_name)
+                kwargs['input_shape']=shapes[ind]
+              print kwargs
+              add_layer(cur_model, layer, args,kwargs)
+          else:
+              merge_layer_names = [name.strip() for name in kwargs['layers'][1:-1].split(',')]
               kwargs = dict()
-              mode = 'args'
-              layer = ''
-          elif cur_line[0] == '#':
-              continue
-          elif cur_line == '[kwargs]':
-              mode = 'kwargs'
-          elif layer == '':
-              layer = cur_line[1:-1]
-          elif mode == 'args':
-              try:
-                  args.append(eval(cur_line.split('=')[1].strip()))
-              except:
-                  args.append(cur_line.split('=')[1].strip())
-          elif mode == 'kwargs':
-              split_line = cur_line.split('=')
-              try:
-                  kwargs[split_line[0].strip()] = eval(split_line[1].strip())
-              except:
-                  kwargs[split_line[0].strip()] = split_line[1].strip()
-      if layer != '':
-          add_layer(model, layer, args,kwargs)
-          if 'input_shape' in kwargs.keys():
-            inp_shape = kwargs['input_shape']
+              kwargs['mode']='concat'
+              add_layer(cur_model, layer,[[models[name] for name in merge_layer_names]], kwargs)
+              for name in merge_layer_names:
+                  del models[name] 
+          input_layer = False
+  print(cur_model.summary())
+  models[cur_model_name] = cur_model  
+  return cur_model
   
-  print(model.summary())
-  return model, eval(str(inp_shape))
+  # print(model.summary())
+  # return model, eval(str(inp_shape))
 
 class MemoryCallback(keras.callbacks.Callback):
     def on_epoch_end(self, epoch, log={}):
         print(' \n RAM Usage {:.2f} GB \n \n'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
         os.system("nvidia-smi")
 
-def generator(batch_size, input_data, out_data, inds, inp_shape):
+def generator(batch_size, input_data, output_data, inds, inp_shape, model_settings):
 
   """Generator to create the mini-batches feeded to the network.
 
@@ -192,16 +263,18 @@ def generator(batch_size, input_data, out_data, inds, inp_shape):
 
   """
 
-  batch_input = np.zeros((batch_size, 
-    inp_shape[0], 
-    inp_shape[1], 
-    inp_shape[2], 
-    inp_shape[3]))
+  batch_input = [ np.zeros((batch_size,)+i) for i in inp_shape ]
   batch_out = np.zeros((batch_size,1))
   cur_file = 0
   cur_event_id = inds[cur_file][0]
   cur_len = 0
   up_to = inds[cur_file][1]
+  for i in model_settings:
+    if i[0] == '[Inputs]':
+      input_transformation = i[1:]
+  print(input_transformation)
+  transformations = [i.split('=')[1].strip().replace('x', 'temp_in[i]') for i in input_transformation]
+  print(transformations)
   while True:
     temp_in = []
     temp_out = []
@@ -209,12 +282,12 @@ def generator(batch_size, input_data, out_data, inds, inp_shape):
       fill_batch = batch_size-cur_len
       if fill_batch < (up_to-cur_event_id):
         temp_in.extend(input_data[cur_file][cur_event_id:cur_event_id+fill_batch])
-        temp_out.extend(out_data[cur_file][cur_event_id:cur_event_id+fill_batch])
+        temp_out.extend(output_data[cur_file][cur_event_id:cur_event_id+fill_batch])
         cur_len += fill_batch
         cur_event_id += fill_batch
       else:
         temp_in.extend(input_data[cur_file][cur_event_id:up_to])
-        temp_out.extend(out_data[cur_file][cur_event_id:up_to])
+        temp_out.extend(output_data[cur_file][cur_event_id:up_to])
         cur_len += up_to-cur_event_id
         cur_file+=1
         if cur_file == len(inds):
@@ -227,7 +300,8 @@ def generator(batch_size, input_data, out_data, inds, inp_shape):
           cur_event_id = inds[cur_file][0]
           up_to = inds[cur_file][1]
     for i in range(len(temp_in)):
-      batch_input[i] = temp_in[i]
+      for j, transform in enumerate(input_transformation):
+          batch_input[j][i] = eval(transformations[j])
       batch_out[i] = np.log10(temp_out[i][0])
     cur_len = 0 
     yield (batch_input, batch_out)
@@ -263,13 +337,13 @@ if __name__ == "__main__":
     print(today)
     shelf.close()
 
-    input_data, out_data, file_len = read_files(input_files.split(':'))
+    input_data, output_data, file_len = read_files(input_files.split(':'))
 
   else:
     project_name = args.__dict__['project']
 
     if args.__dict__['input'] =='all':
-      input_files = os.listdir(os.path.join(file_location, 'training_data/'))
+      input_files = [file for file in os.listdir(os.path.join(file_location, 'training_data/')) if os.path.isfile(os.path.join(file_location, 'training_data/', file))]
     else:
       input_files = (args.__dict__['input']).split(':')
 
@@ -282,11 +356,16 @@ if __name__ == "__main__":
       today = args.__dict__['date']
     else:
       today = datetime.date.today()
-      folders=['train_hist/',
-       'train_hist/{}'.format(today),
-       'train_hist/{}/{}'.format(today, project_name)]
 
-    input_data, out_data, file_len = read_files(input_files,
+    folders=['train_hist/',
+     'train_hist/{}'.format(today),
+     'train_hist/{}/{}'.format(today, project_name)]
+
+    for folder in folders:
+        if not os.path.exists('{}'.format(os.path.join(file_location,folder))):
+            os.makedirs('{}'.format(os.path.join(file_location,folder)))
+
+    input_data, output_data, file_len = read_files(input_files,
      virtual_len = args.__dict__['virtual_len'])
 
     train_frac  = float(tvt_ratio[0])/np.sum(tvt_ratio)
@@ -295,25 +374,26 @@ if __name__ == "__main__":
     valid_inds = [(int(tot_len*train_frac), int(tot_len*(train_frac+valid_frac))) for tot_len in file_len] 
     test_inds = [(int(tot_len*(train_frac+valid_frac)), tot_len-1) for tot_len in file_len] 
 
-    # print(train_inds)
-    # print(valid_inds)
-    # print(test_inds)
-
     ### Create the Model
     conf_model_file = os.path.join('Networks', args.__dict__['model'])
+    model_settings, model_def = parse_config_file(conf_model_file)
+    shapes, shape_names = prepare_input_shapes(input_data[0][0], model_settings)
     ngpus = args.__dict__['ngpus']
 
     adam = keras.optimizers.Adam(lr=float(parser.get('Training_Parameters', 'learning_rate')))
     if ngpus > 1 :
       with tf.device('/cpu:0'):
         # define the serial model.
-        model_serial, inp_shape = base_model(conf_model_file)
+        ##### TODO Include the correct input shape of the data as calculated from the input files.
+        ## Why? Don't want to rely on user giving the correct input shape
+
+        model_serial = base_model(model_def, shapes, shape_names)
 
       gdev_list = get_available_gpus()
       print('Using GPUs: {}'.format(gdev_list))
       model = make_parallel(model_serial, gdev_list)
     else:
-      model, inp_shape = base_model(conf_model_file)
+      model = base_model(model_def, shapes, shape_names)
 
     model.compile(loss='mean_squared_error', optimizer=adam, metrics=['accuracy'])
     os.system("nvidia-smi")  
@@ -351,9 +431,9 @@ if __name__ == "__main__":
     period=1)
 
   batch_size = ngpus*int(parser.get('Training_Parameters', 'single_gpu_batch_size'))
-  model.fit_generator(generator(batch_size, input_data, out_data, train_inds, inp_shape), 
+  model.fit_generator(generator(batch_size, input_data, output_data, train_inds, shapes, model_settings), 
                 steps_per_epoch = math.ceil(np.sum([k[1]-k[0] for k in train_inds])/batch_size),
-                validation_data = generator(batch_size, input_data, out_data, valid_inds, inp_shape),
+                validation_data = generator(batch_size, input_data, output_data, valid_inds, shapes, model_settings),
                 validation_steps = math.ceil(np.sum([k[1]-k[0] for k in valid_inds])/batch_size),
                 callbacks = [CSV_log, early_stop, best_model, MemoryCallback()], 
                 epochs = int(parser.get('Training_Parameters', 'epochs')), 
@@ -375,7 +455,7 @@ if __name__ == "__main__":
   for i in range(len(input_data)):
     print('Predict Values for File {}/{}'.format(i, len(input_data)))
     test  = input_data[i][test_inds[i][0]:test_inds[i][1]]
-    test_out_chunk = np.log10(out_data[i][test_inds[i][0]:test_inds[i][1],0:1])
+    test_out_chunk = np.log10(output_data[i][test_inds[i][0]:test_inds[i][1],0:1])
     res_chunk= model.predict(test, verbose=int(parser.get('Training_Parameters', 'verbose')))
     res.extend(list(res_chunk))
     test_out.extend(list(test_out_chunk))
