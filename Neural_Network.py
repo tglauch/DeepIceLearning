@@ -116,6 +116,22 @@ def read_files(input_files, virtual_len=-1):
   return input_data, output_data, file_len
 
 def prepare_input_shapes(one_input_array, model_settings):
+
+  """given the transformations of the 'raw' input data (i.e the charges per gridelement) the
+  the input shape for the network is calculated. example: transformation is np.sum(x) -->
+  input shape = (1,)
+
+
+  Arguments:
+  one_input_array : one exemplary input data array on which the transformation is applied
+  model_settings : the different settings for the model. has to include a section [Inputs] 
+                   otherwise assume no transformation at all 
+
+  Returns: 
+  shapes : the shapes after transformation (ordered)
+  shape_names : the names of the corresponding model branches (ordered)
+
+  """
   shapes = []
   shape_names = []
   if len(model_settings) == 0:
@@ -133,6 +149,15 @@ def prepare_input_shapes(one_input_array, model_settings):
   return shapes, shape_names
 
 def parse_config_file(conf_file_path):
+  """Function that parses the config file and returns the settings and architecture of the model
+
+  Arguments:
+  conf_file_path : name of the config file in the folder ./Networks
+
+  Returns: 
+  settings : settings for the network. e.g. the input shapes
+  model : the 'architecture' of the model. basically contains a list of layers with their args and kwargs
+  """
 
   f = open(conf_file_path)
   config_array = f.read().splitlines()
@@ -181,11 +206,11 @@ def base_model(model_def, shapes, shape_names):
   """Main function to create the Keras Neural Network.
 
   Arguments:
-  model_def : (Relative) Path to the config (definition) file of the neural network
+  model_def : list containing blocks (list) of model-branches and layer definitions (compare the network config files)
+  shape, shape_names: input shapes and names as constructed in prepare_input_shapes(one_input_array, model_settings)
 
   Returns: 
   model : the (non-compiled) model object
-  inp_shape : the required shape of the input data
 
   """
   models = dict()
@@ -241,9 +266,6 @@ def base_model(model_def, shapes, shape_names):
   print(cur_model.summary())
   models[cur_model_name] = cur_model  
   return cur_model
-  
-  # print(model.summary())
-  # return model, eval(str(inp_shape))
 
 class MemoryCallback(keras.callbacks.Callback):
     def on_epoch_end(self, epoch, log={}):
@@ -343,7 +365,9 @@ if __name__ == "__main__":
     project_name = args.__dict__['project']
 
     if args.__dict__['input'] =='all':
-      input_files = [file for file in os.listdir(os.path.join(file_location, 'training_data/')) if os.path.isfile(os.path.join(file_location, 'training_data/', file))]
+      input_files = [file for file in \
+      os.listdir(os.path.join(file_location, 'training_data/')) \
+      if os.path.isfile(os.path.join(file_location, 'training_data/', file))]
     else:
       input_files = (args.__dict__['input']).split(':')
 
@@ -384,9 +408,6 @@ if __name__ == "__main__":
     if ngpus > 1 :
       with tf.device('/cpu:0'):
         # define the serial model.
-        ##### TODO Include the correct input shape of the data as calculated from the input files.
-        ## Why? Don't want to rely on user giving the correct input shape
-
         model_serial = base_model(model_def, shapes, shape_names)
 
       gdev_list = get_available_gpus()
@@ -399,7 +420,8 @@ if __name__ == "__main__":
     os.system("nvidia-smi")  
 
     ## Save Run Information
-    shelf = shelve.open(os.path.join(file_location,'train_hist/{}/{}/run_info.shlf'.format(today, project_name)))
+    shelf = shelve.open(os.path.join(file_location,
+      'train_hist/{}/{}/run_info.shlf'.format(today, project_name)))
     shelf['Project'] = project_name
     shelf['Files'] = args.__dict__['input']
     shelf['Train_Inds'] = train_inds
@@ -407,7 +429,8 @@ if __name__ == "__main__":
     shelf['Test_Inds'] = test_inds
     shelf.close()
 
-    shutil.copy(conf_model_file, os.path.join(file_location,'train_hist/{}/{}/model.cfg'.format(today, project_name)))
+    shutil.copy(conf_model_file, os.path.join(file_location,
+      'train_hist/{}/{}/model.cfg'.format(today, project_name)))
 
 #################### Train the Model #########################################################
 
