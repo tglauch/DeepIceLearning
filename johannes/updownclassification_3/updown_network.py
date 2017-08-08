@@ -341,9 +341,10 @@ if __name__ == "__main__":
             sys.exit(-1)
         shelf = shelve.open(os.path.join(file_location, project_folder, 'run_info.shlf'))
         input_files = shelf['Files'].split(':')
+        print input_files
         if input_files[0] == 'all':
             input_files = os.listdir(os.path.join(data_location, 'training_data/'))
-        print input_files
+            print input_files
         train_inds = shelf['Train_Inds'] 
         valid_inds = shelf['Valid_Inds']
         test_inds = shelf['Test_Inds']

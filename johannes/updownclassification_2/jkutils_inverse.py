@@ -33,11 +33,10 @@ class suppress_stdout_stderr(object):
         os.close(self.null_fds[1])
         
         
-def read_files(input_files, data_location, using='time', virtual_len=-1, printfilesizes=False):
+def read_files(input_files, data_location, virtual_len=-1, printfilesizes=False):
     input_data = []
     out_data = []
     file_len = []
-    
   
     if printfilesizes:
         input_files = sorted(input_files)
@@ -45,16 +44,15 @@ def read_files(input_files, data_location, using='time', virtual_len=-1, printfi
     for run, input_file in enumerate(input_files):
         data_file = os.path.join(data_location, 'training_data/{}'.format(input_file))
   
-        #print data_file, h5py.File(data_file).keys()
         if virtual_len == -1:
-            data_len = len(h5py.File(data_file)[using])
+            data_len = len(h5py.File(data_file)['time'])
         else:
             data_len = virtual_len
             print('Only use the first {} Monte Carlo Events'.format(data_len))
         if printfilesizes:
             print "{:10d}   {}".format(data_len, input_file)
         else:
-            input_data.append(h5py.File(data_file, 'r')[using])
+            input_data.append(h5py.File(data_file, 'r')['time'])
             out_data.append(h5py.File(data_file, 'r')['reco_vals'])
             file_len.append(data_len)
             #print type(input_data), type(input_data[-1]), type(input_data[-1][0]) #== list, h5py.Dataset, ndarray
@@ -66,15 +64,15 @@ def read_files(input_files, data_location, using='time', virtual_len=-1, printfi
 def zenith_to_binary(zenith):
     if type(zenith) == np.ndarray:
         ret = np.copy(zenith)
-        ret[ret < 1.5707963268] = 0.0
-        ret[ret > 1] = 1.0
+        ret[ret < 1.5707963268] = 1
+        ret[ret > 1.5] = 0
         return ret
-    if isinstance(zenith, float) or isinstance(zenith, int):
-        return 1.0 if zenith > 1.5707963268 else 0.0
+    if isinstance(zenith, float):
+        return 1 if zenith < 1.5707963268 else 0
     if isinstance(zenith, list):
         temp_zenith = np.array(zenith)
-        temp_zenith[temp_zenith < 1.5707963268] = 0.0
-        temp_zenith[temp_zenith > 1] = 1.0
+        temp_zenith[temp_zenith < 1.5707963268] = 1
+        temp_zenith[temp_zenith > 1.5] = 0
         return temp_zenith.tolist()
         """
         cur = zenith
@@ -100,6 +98,3 @@ def preprocess(times, replace_with=10):
     ret = np.copy(times)
     ret[ret == np.inf] = replace_with
     return ret
-
-def fake_preprocess(data, replace_with=0):
-    return data
