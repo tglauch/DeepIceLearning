@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+
+###### DeepIceLearning, a Project by Theo Glauch and Johannes Kager, 2017 #################
+
 import os
 import sys
 from configparser import ConfigParser
@@ -40,19 +43,17 @@ if cuda_path not in os.environ['LD_LIBRARY_PATH'].split(os.pathsep):
     sys.exit(1)
 
 import numpy as np
-import h5py
 import datetime
 import argparse
 import math
 import time
-import resource
 import shelve
 import shutil
 from keras_exp.multigpu import get_available_gpus
 from keras_exp.multigpu import make_parallel
 from functions import *   
 
-################# Function Definitions ####################################################################
+################# Function Definitions ########################################################
 
 def parseArguments():
 
@@ -79,7 +80,7 @@ def parseArguments():
 
 if __name__ == "__main__":
 
-#################### Process Command Line Arguments ######################################
+#################### Process Command Line Arguments ###########################################
 
   file_location = parser.get('Basics', 'thisfolder')
 
@@ -90,7 +91,7 @@ if __name__ == "__main__":
       print('{} : {}'.format(a, args.__dict__[a]))
   print("--------- \n")
 
-######################## Setup the Training Objects and Variables ########################################################
+#################### Setup the Training Objects and Variables #################################
 
 ####### Continuing the training of a model ##############################
 
@@ -112,7 +113,7 @@ if __name__ == "__main__":
     input_data, output_data, file_len = read_files(file_location, input_files.split(':'))
 
 
-####### Build-up a new Model ##############################
+####### Build-up a new Model ###########################################
 
   else:
     project_name = args.__dict__['project']
@@ -138,7 +139,7 @@ if __name__ == "__main__":
         if not os.path.exists('{}'.format(os.path.join(file_location,folder))):
             os.makedirs('{}'.format(os.path.join(file_location,folder)))
 
-    tvt_ratio=[float(parser.get('Training_Parameters', 'training_fraction')),
+    train_val_test_ratio=[float(parser.get('Training_Parameters', 'training_fraction')),
     float(parser.get('Training_Parameters', 'validation_fraction')),
     float(parser.get('Training_Parameters', 'test_fraction'))] 
 
@@ -146,8 +147,8 @@ if __name__ == "__main__":
       input_files, 
       virtual_len = args.__dict__['virtual_len'])
 
-    train_frac  = float(tvt_ratio[0])/np.sum(tvt_ratio)
-    valid_frac = float(tvt_ratio[1])/np.sum(tvt_ratio)
+    train_frac  = float(train_val_test_ratio[0])/np.sum(train_val_test_ratio)
+    valid_frac = float(train_val_test_ratio[1])/np.sum(train_val_test_ratio)
     train_inds = [(0, int(tot_len*train_frac)) for tot_len in file_len] 
     valid_inds = [(int(tot_len*train_frac), int(tot_len*(train_frac+valid_frac))) for tot_len in file_len] 
     test_inds = [(int(tot_len*(train_frac+valid_frac)), tot_len-1) for tot_len in file_len] 

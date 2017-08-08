@@ -10,12 +10,14 @@ from keras import regularizers
 import os
 import numpy as np
 import h5py
+import resource
 
 def read_files(file_location, input_files, virtual_len=-1):
 
   """Create an Array of Input and Output HDF5 Monte Carlo data from a given list of files(e.g file1:file2 ...) 
 
   Arguments:
+  file_location: location of this file, as saved in config.cfg
   input_shape : The file list as above
   virtual_len : can be set for debugging purposes if only the first $virtual_len events shell be considered 
 
