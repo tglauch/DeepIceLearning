@@ -4,6 +4,19 @@
 
 ###### DeepIceLearning, a Project by Theo Glauch and Johannes Kager, 2017 #################
 
+"""This file is part of DeepIceLearning
+DeepIceLearning is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 import os
 import sys
 from configparser import ConfigParser
@@ -16,7 +29,9 @@ try:
 	parser.read('config.cfg')
 except:
 	raise Exception('Config File is missing!!!!')  
+
 backend = parser.get('Basics', 'keras_backend')
+
 cuda_path = parser.get('Basics', 'cuda_installation')
 if not os.path.exists(cuda_path):
 	raise Exception('Given Cuda installation does not exist!')
@@ -157,7 +172,7 @@ if __name__ == "__main__":
     ### Create the Model
     conf_model_file = os.path.join('Networks', args.__dict__['model'])
     model_settings, model_def = parse_config_file(conf_model_file)
-    shapes, shape_names = prepare_input_shapes(input_data[0][0], model_settings)
+    shapes, shape_names, inp_variables, transformations = prepare_input(input_data[0][0], model_settings)
     ngpus = args.__dict__['ngpus']
     adam = keras.optimizers.Adam(lr=float(parser.get('Training_Parameters', 'learning_rate')))
 
@@ -213,6 +228,7 @@ if __name__ == "__main__":
     period=1)
 
   batch_size = ngpus*int(parser.get('Training_Parameters', 'single_gpu_batch_size'))
+
   model.fit_generator(generator(batch_size, input_data, output_data, train_inds, shapes, model_settings), 
                 steps_per_epoch = math.ceil(np.sum([k[1]-k[0] for k in train_inds])/batch_size),
                 validation_data = generator(batch_size, input_data, output_data, valid_inds, shapes, model_settings),
@@ -223,27 +239,26 @@ if __name__ == "__main__":
                 max_q_size = int(parser.get('Training_Parameters', 'max_queue_size'))
                 )
 
-
-#################### Saving and Calculation of Result for Test Dataset ######################
+#################### Saving the Final Model and Calculation/Saving of Result for Test Dataset ######################
 
   print('\n Save the Model \n')
   model.save(os.path.join(\
   file_location,'train_hist/{}/{}/final_network.h5'.format(today,project_name)))  # save trained network
 
   print('\n Calculate Results... \n')
-  res = []
-  test_out = []
+  prediction = model.predict_generator(generator(batch_size, input_data, output_data, test_inds, shapes, model_settings), 
+                steps = math.ceil(np.sum([k[1]-k[0] for k in test_inds])/batch_size),
+                verbose = int(parser.get('Training_Parameters', 'verbose')),
+                max_q_size = int(parser.get('Training_Parameters', 'max_queue_size'))
+                )
 
+  MC_truth = []
   for i in range(len(input_data)):
-    print('Predict Values for File {}/{}'.format(i, len(input_data)))
-    test  = input_data[i][test_inds[i][0]:test_inds[i][1]]
-    test_out_chunk = np.log10(output_data[i][test_inds[i][0]:test_inds[i][1],0:1])
-    res_chunk= model.predict(test, verbose=int(parser.get('Training_Parameters', 'verbose')))
-    res.extend(list(res_chunk))
-    test_out.extend(list(test_out_chunk))
+    one_chunk = np.log10(output_data[i][test_inds[i][0]:test_inds[i][1],0:1])
+    MC_truth.extend(list(one_chunk))
 
 
   np.save(os.path.join(file_location,'train_hist/{}/{}/test_results.npy'.format(today, project_name)), 
-    [res, np.squeeze(test_out)])
+    [prediction, np.squeeze(MC_truth)])
 
-  print(' \n Finished .... ')
+  print(' \n Finished .... Exit.....')

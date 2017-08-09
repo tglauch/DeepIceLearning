@@ -9,12 +9,19 @@ import math
 import tables   
 import argparse
 import os, sys
+from configparser import ConfigParser
+
+parser = ConfigParser()
+try:
+    parser.read('config.cfg')
+except:
+    raise Exception('Config File is missing!!!!') 
+
+file_location = parser.get('Basics', 'thisfolder')
 
 #### File paths #########
 basepath = '/data/ana/PointSource/PS/IC86_2012/files/sim/2012/neutrino-generator/'
 geometry_file = '/data/sim/sim-new/downloads/GCD/GeoCalibDetectorStatus_2012.56063_V0.i3.gz'
-file_location = '/data/user/tglauch/ML_Reco/'
-
 
 def parseArguments():
   parser = argparse.ArgumentParser()

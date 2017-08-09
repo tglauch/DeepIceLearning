@@ -35,30 +35,32 @@ def read_files(file_location, input_files, virtual_len=-1):
   print input_files
   for run, input_file in enumerate(input_files):
     data_file = os.path.join(file_location, 'training_data/{}'.format(input_file))
-
+    hfile = h5py.File(data_file, , 'r')
     if virtual_len == -1:
-      data_len = len(h5py.File(data_file)['charge'])
+      ## Bad style of doing this.
+      ## For further version better save the shape directly in the File
+      ### Which also solves the problem of checking for matching input size of the files
+      data_len = len(hfile[hfile.keys()[0]])  
     else:
       data_len = virtual_len
       print('Only use the first {} Monte Carlo Events'.format(data_len))
 
-    this_input = h5py.File(data_file, 'r')['charge']
-    input_data.append(this_input)
-    this_shape = np.shape(this_input[0])
-    if run == 0:
-      inp_shape=this_shape 
-    else:
-      if not this_shape == inp_shape:
-        raise Exception('The input shape of the data contained in the input files does not match')
+    input_data.append(hfile)
+    # this_shape = np.shape(this_input[0])
+    # if run == 0:
+    #   inp_shape=this_shape 
+    # else:
+    #   if not this_shape == inp_shape:
+    #     raise Exception('The input shape of the data contained in the input files does not match')
 
     output_data.append(h5py.File(data_file, 'r')['reco_vals'])
     file_len.append(data_len)
 
   return input_data, output_data, file_len
 
-def prepare_input_shapes(one_input_array, model_settings):
+def prepare_input(one_input_array, model_settings):
 
-  """given the transformations of the 'raw' input data (i.e the charges per gridelement) the
+  """given the transformations of the 'raw' input data (e.g. the charges per gridelement) the
   the input shape for the network is calculated. example: transformation is np.sum(x) -->
   input shape = (1,)
 
@@ -70,24 +72,62 @@ def prepare_input_shapes(one_input_array, model_settings):
 
   Returns: 
   shapes : the shapes after transformation (ordered)
-  shape_names : the names of the corresponding model branches (ordered)
+  shape_names : the names of the correspondincxg model branches (ordered)
 
   """
+
+
+  inp_variables = []
+  transformations = []
   shapes = []
   shape_names = []
+  mode == ''
   if len(model_settings) == 0:
-    model_settings = ['[Inputs]', 'model = x']
+      model_settings = [['{Inputs}'], ['[model]', 'variables = [charge]', 'transformations = [x]']]
   for block in model_settings:
-    if block[0]=='[Inputs]':
-      for i in range(1,len(block)):
-        this_definition = block[i].split('=')
-        shape_names.append(this_definition[0].strip())
-        pre_shape = np.shape(eval(this_definition[1].strip().replace('x', 'one_input_array')))
-        if pre_shape == ():
-          shapes.append((1,))
-        else:
-          shapes.append(pre_shape)
-  return shapes, shape_names
+      if block[0][0]=='{' and block[0][-1]=='}':
+          mode=block[0][1:-1]
+          continue
+      if mode == 'Inputs':
+          for element in block:
+              if element[0]=='[' and element[-1]==']':
+                  shape_names.append(element[1:-1])
+              else:
+                  split_row = element.split('=')
+                  if split_row[0].strip() == 'variables':
+                      inp_variables.append(split_row[1].strip().split(','))
+                  elif split_row[0].strip() == 'transformations':
+                      transformations.append(split_row[1].strip().split(','))
+      else:
+        ### Todo: Once the output shape gets more flexible, change this here. function is then called
+        ## prepare_inp_out_shapes
+          continue
+
+
+  for i in range(len(shape_names)):
+      temp_shape_arr = []
+      for j in range(len(inp_variables[i])):
+          temp_shape_arr.append(np.shape(eval(transformations[i][j].replace('x', 'one_input_array'))))
+          if len(np.unique(temp_shape_arr))==1:
+            shapes.append(temp_shape_arr[0:-1]+(len(temp_shape_arr),))
+          else:
+            raise Exception('The transformations that you applied do not results in the same shape!!!!')
+
+  # shapes = []
+  # shape_names = []
+  # if len(model_settings) == 0:
+  #   model_settings = [['{Inputs}'], ['[model]', 'variables = [charge]', 'transformations = [x]']]
+  # for block in model_settings:
+  #   if block[0]=='[Inputs]':
+  #     for i in range(1,len(block)):
+  #       this_definition = block[i].split('=')
+  #       shape_names.append(this_definition[0].strip())
+  #       pre_shape = np.shape(eval(this_definition[1].strip().replace('x', 'one_input_array')))
+  #       if pre_shape == ():
+  #         shapes.append((1,))
+  #       else:
+  #         shapes.append(pre_shape)
+  return shapes, shape_names, inp_variables, transformations
 
 def parse_config_file(conf_file_path):
   """Function that parses the config file and returns the settings and architecture of the model
@@ -213,9 +253,9 @@ class MemoryCallback(keras.callbacks.Callback):
         print(' \n RAM Usage {:.2f} GB \n \n'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
         os.system("nvidia-smi")
 
-def generator(batch_size, input_data, output_data, inds, inp_shape, model_settings):
+def generator(batch_size, input_data, output_data, inds, inp_shape, inp_variables, transformations):
 
-  """Generator to create the mini-batches feeded to the network.
+  """Generator to create the mini-batches to be fed to the network.
 
   Arguments:
   model : (Relative) Path to the config (definition) file of the neural network
@@ -227,17 +267,13 @@ def generator(batch_size, input_data, output_data, inds, inp_shape, model_settin
   """
 
   batch_input = [ np.zeros((batch_size,)+i) for i in inp_shape ]
+
+  ###Todo: Make the output variable for further updates
   batch_out = np.zeros((batch_size,1))
   cur_file = 0
   cur_event_id = inds[cur_file][0]
   cur_len = 0
   up_to = inds[cur_file][1]
-  for i in model_settings:
-    if i[0] == '[Inputs]':
-      input_transformation = i[1:]
-  print(input_transformation)
-  transformations = [i.split('=')[1].strip().replace('x', 'temp_in[i]') for i in input_transformation]
-  print(transformations)
   while True:
     temp_in = []
     temp_out = []
@@ -263,8 +299,11 @@ def generator(batch_size, input_data, output_data, inds, inp_shape, model_settin
           cur_event_id = inds[cur_file][0]
           up_to = inds[cur_file][1]
     for i in range(len(temp_in)):
-      for j, transform in enumerate(input_transformation):
-          batch_input[j][i] = eval(transformations[j])
+      for j, transform_arr in enumerate(transformations):
+        for k, transform in enumerate(transform_arr):
+          slice_ind = [slice(None)]*inp_shape[j].ndim
+          slice_ind[-1] = slice(k,k+1,1)
+          batch_input[j][i][slice_ind] = eval(transform..replace('x', 'input_data[i]'))
       batch_out[i] = np.log10(temp_out[i][0])
     cur_len = 0 
     yield (batch_input, batch_out)
