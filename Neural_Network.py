@@ -36,16 +36,6 @@ cuda_path = parser.get('Basics', 'cuda_installation')
 if not os.path.exists(cuda_path):
 	raise Exception('Given Cuda installation does not exist!')
 
-if backend == 'tensorflow':
-	print('Run with backend Tensorflow')
-	import tensorflow as tf
-elif backend == 'theano':
-	print('Run with backend Theano')
-	import theano
-	os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=gpu,floatX=float32" 
-else:
-	raise NameError('Choose tensorflow or theano as keras backend')
-
 if cuda_path not in os.environ['LD_LIBRARY_PATH'].split(os.pathsep):
   print('Setting Cuda Path...')
   os.environ["PATH"] += os.pathsep + cuda_path
@@ -56,6 +46,17 @@ if cuda_path not in os.environ['LD_LIBRARY_PATH'].split(os.pathsep):
   except Exception, exc:
     print 'Failed re-exec:', exc
     sys.exit(1)
+
+if backend == 'tensorflow':
+	print('Run with backend Tensorflow')
+	import tensorflow as tf
+elif backend == 'theano':
+	print('Run with backend Theano')
+	import theano
+	os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=gpu,floatX=float32" 
+else:
+	raise NameError('Choose tensorflow or theano as keras backend')
+
 
 import numpy as np
 import datetime
@@ -172,7 +173,7 @@ if __name__ == "__main__":
     ### Create the Model
     conf_model_file = os.path.join('Networks', args.__dict__['model'])
     model_settings, model_def = parse_config_file(conf_model_file)
-    shapes, shape_names, inp_variables, transformations = prepare_input(input_data[0][0], model_settings)
+    shapes, shape_names, inp_variables, transformations = prepare_input(input_data[0], model_settings)
     ngpus = args.__dict__['ngpus']
     adam = keras.optimizers.Adam(lr=float(parser.get('Training_Parameters', 'learning_rate')))
 
@@ -229,9 +230,9 @@ if __name__ == "__main__":
 
   batch_size = ngpus*int(parser.get('Training_Parameters', 'single_gpu_batch_size'))
 
-  model.fit_generator(generator(batch_size, input_data, output_data, train_inds, shapes, model_settings), 
+  model.fit_generator(generator(batch_size, input_data, output_data, train_inds, shapes, inp_variables, transformations), 
                 steps_per_epoch = math.ceil(np.sum([k[1]-k[0] for k in train_inds])/batch_size),
-                validation_data = generator(batch_size, input_data, output_data, valid_inds, shapes, model_settings),
+                validation_data = generator(batch_size, input_data, output_data, valid_inds, shapes, inp_variables, transformations),
                 validation_steps = math.ceil(np.sum([k[1]-k[0] for k in valid_inds])/batch_size),
                 callbacks = [CSV_log, early_stop, best_model, MemoryCallback()], 
                 epochs = int(parser.get('Training_Parameters', 'epochs')), 

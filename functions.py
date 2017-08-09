@@ -1,6 +1,19 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+"""This file is part of DeepIceLearning
+DeepIceLearning is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 
 import keras
 from keras.models import Sequential, load_model
@@ -35,7 +48,7 @@ def read_files(file_location, input_files, virtual_len=-1):
   print input_files
   for run, input_file in enumerate(input_files):
     data_file = os.path.join(file_location, 'training_data/{}'.format(input_file))
-    hfile = h5py.File(data_file, , 'r')
+    hfile = h5py.File(data_file, 'r')
     if virtual_len == -1:
       ## Bad style of doing this.
       ## For further version better save the shape directly in the File
@@ -76,12 +89,12 @@ def prepare_input(one_input_array, model_settings):
 
   """
 
-
+  print(model_settings)
   inp_variables = []
   transformations = []
   shapes = []
   shape_names = []
-  mode == ''
+  mode = ''
   if len(model_settings) == 0:
       model_settings = [['{Inputs}'], ['[model]', 'variables = [charge]', 'transformations = [x]']]
   for block in model_settings:
@@ -103,16 +116,15 @@ def prepare_input(one_input_array, model_settings):
         ## prepare_inp_out_shapes
           continue
 
-
   for i in range(len(shape_names)):
       temp_shape_arr = []
       for j in range(len(inp_variables[i])):
-          temp_shape_arr.append(np.shape(eval(transformations[i][j].replace('x', 'one_input_array'))))
-          if len(np.unique(temp_shape_arr))==1:
-            shapes.append(temp_shape_arr[0:-1]+(len(temp_shape_arr),))
-          else:
-            raise Exception('The transformations that you applied do not results in the same shape!!!!')
-
+          temp_shape_arr.append(np.shape(eval(transformations[i][j].replace('x', 'one_input_array[\'{}\'][0]'.format(inp_variables[i][j])))))
+      if all(x==temp_shape_arr[0] for x in temp_shape_arr):
+        shapes.append(temp_shape_arr[0][0:-1]+(len(temp_shape_arr),))
+      else:
+        raise Exception('The transformations that you applied do not results in the same shape!!!!')
+      print shapes
   # shapes = []
   # shape_names = []
   # if len(model_settings) == 0:
@@ -197,8 +209,6 @@ def base_model(model_def, shapes, shape_names):
   models = dict()
   cur_model = None
   cur_model_name = ''
-  print shapes
-  print shape_names
   for block in model_def:
       if block[0][0] == '{' and block[0][-1] == '}' or cur_model == None:
           if cur_model != None:
@@ -234,7 +244,6 @@ def base_model(model_def, shapes, shape_names):
               if not 'input_shape' in kwargs and input_layer==True:
                 ind = shape_names.index(cur_model_name)
                 kwargs['input_shape']=shapes[ind]
-              print kwargs
               add_layer(cur_model, layer, args,kwargs)
           else:
               merge_layer_names = [name.strip() for name in kwargs['layers'][1:-1].split(',')]
@@ -303,7 +312,7 @@ def generator(batch_size, input_data, output_data, inds, inp_shape, inp_variable
         for k, transform in enumerate(transform_arr):
           slice_ind = [slice(None)]*inp_shape[j].ndim
           slice_ind[-1] = slice(k,k+1,1)
-          batch_input[j][i][slice_ind] = eval(transform..replace('x', 'input_data[i]'))
+          batch_input[j][i][slice_ind] = eval(transform.replace('x', 'input_data[i]'))
       batch_out[i] = np.log10(temp_out[i][0])
     cur_len = 0 
     yield (batch_input, batch_out)
