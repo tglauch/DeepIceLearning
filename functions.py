@@ -59,13 +59,6 @@ def read_files(file_location, input_files, virtual_len=-1):
       print('Only use the first {} Monte Carlo Events'.format(data_len))
 
     input_data.append(hfile)
-    # this_shape = np.shape(this_input[0])
-    # if run == 0:
-    #   inp_shape=this_shape 
-    # else:
-    #   if not this_shape == inp_shape:
-    #     raise Exception('The input shape of the data contained in the input files does not match')
-
     output_data.append(h5py.File(data_file, 'r')['reco_vals'])
     file_len.append(data_len)
 
@@ -290,10 +283,8 @@ def generator(batch_size, input_data, output_data, inds,
   """
 
   batch_input = [ np.zeros((batch_size,)+i) for i in inp_shape ]
-  print inp_shape
-  print inp_variables
-  print inp_transformations
-  ###Todo: Make the output variable for further updates
+  ###Todo: Read correct output varibles from the model configuration
+  ### for this the dtype in the Create Dataset file has to be changed 
   batch_out = np.zeros((batch_size,1))
   cur_file = 0
   cur_event_id = inds[cur_file][0]
@@ -302,9 +293,6 @@ def generator(batch_size, input_data, output_data, inds,
   loop_counter = 0 
   while True:
     loop_counter+=1
-    # if (loop_counter%20) == 1:
-    #   print cur_file
-    #   prin cur_event_id
     temp_out = []
     for j, var_array in enumerate(inp_variables):
       for k, var in enumerate(var_array):
@@ -339,12 +327,7 @@ def generator(batch_size, input_data, output_data, inds,
           pre_append = eval(inp_transformations[j][k].replace('x', 'temp_in[i]'))
           if var == 'time':
             pre_append[pre_append==np.inf]=-1
-          batch_input[j][i][slice_ind] = pre_append
-
-      # if (loop_counter%20) == 1:
-      #   print batch_input[0][0][0:2,0:2,0:2,0:1] 
-      #   print'----'
-      #   print batch_input[0][0][0:2,0:2,0:2,1:2] 
+          batch_input[j][i][slice_ind] = pre_append 
 
     for j, var in enumerate(out_variables):
       for i in range(len(temp_out)):
@@ -358,5 +341,4 @@ def generator(batch_size, input_data, output_data, inds,
       cur_file = temp_cur_file
       cur_event_id = temp_cur_event_id
       up_to = temp_up_to           
-      # batch_out[i] = np.log10(temp_out[i][0]) 
     yield (batch_input, batch_out)
