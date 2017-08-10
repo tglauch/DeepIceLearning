@@ -262,57 +262,101 @@ class MemoryCallback(keras.callbacks.Callback):
         print(' \n RAM Usage {:.2f} GB \n \n'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
         os.system("nvidia-smi")
 
-def generator(batch_size, input_data, output_data, inds, inp_shape, inp_variables, transformations):
+def generator(batch_size, input_data, output_data, inds,
+  inp_shape, inp_variables, inp_transformations,
+  out_shape=[(1,)], out_variables = [0], out_transformations= ['np.log10(x)']):
 
-  """Generator to create the mini-batches to be fed to the network.
+  """ This function is a real braintwister and presumably really bad implemented.
+  It produces all input and output data and applies the transformations
+  as defined in the network definition file.
 
   Arguments:
-  model : (Relative) Path to the config (definition) file of the neural network
+  batch size : the batch size per gpu
+  input_data: a list containing the input data
+  output_data: a list containing the output data
+  inds: the index range used for the training set
+  inp_shape: the shapes of the input neurons
+  inp_variables: list of variables used for the input
+  inp_transformations: list of transformations for the input data
+  out_shape: shape of the output data
+  out_variables: variables for the output data
+  out_transformations: transformations applied to the output data
+
 
   Returns: 
-  model : the (non-compiled) model object
-  inp_shape : the required shape of the input data
+  batch_input : a batch of input data
+  batch_out: a batch of output data
 
   """
 
   batch_input = [ np.zeros((batch_size,)+i) for i in inp_shape ]
-
+  print inp_shape
+  print inp_variables
+  print inp_transformations
   ###Todo: Make the output variable for further updates
   batch_out = np.zeros((batch_size,1))
   cur_file = 0
   cur_event_id = inds[cur_file][0]
   cur_len = 0
   up_to = inds[cur_file][1]
+  loop_counter = 0 
   while True:
-    temp_in = []
+    loop_counter+=1
+    # if (loop_counter%20) == 1:
+    #   print cur_file
+    #   prin cur_event_id
     temp_out = []
-    while cur_len<batch_size:
-      fill_batch = batch_size-cur_len
-      if fill_batch < (up_to-cur_event_id):
-        temp_in.extend(input_data[cur_file][cur_event_id:cur_event_id+fill_batch])
-        temp_out.extend(output_data[cur_file][cur_event_id:cur_event_id+fill_batch])
-        cur_len += fill_batch
-        cur_event_id += fill_batch
-      else:
-        temp_in.extend(input_data[cur_file][cur_event_id:up_to])
-        temp_out.extend(output_data[cur_file][cur_event_id:up_to])
-        cur_len += up_to-cur_event_id
-        cur_file+=1
-        if cur_file == len(inds):
-          cur_file = 0
-          cur_event_id = inds[cur_file][0]
-          cur_len = 0
-          up_to = inds[cur_file][1]
-          break
-        else:
-          cur_event_id = inds[cur_file][0]
-          up_to = inds[cur_file][1]
-    for i in range(len(temp_in)):
-      for j, transform_arr in enumerate(transformations):
-        for k, transform in enumerate(transform_arr):
-          slice_ind = [slice(None)]*inp_shape[j].ndim
+    for j, var_array in enumerate(inp_variables):
+      for k, var in enumerate(var_array):
+        temp_in = []
+        temp_cur_file = cur_file
+        temp_cur_event_id = cur_event_id
+        temp_up_to = up_to
+        cur_len = 0
+        while cur_len<batch_size:
+          fill_batch = batch_size-cur_len
+          if fill_batch < (temp_up_to-cur_event_id):
+            temp_in.extend(input_data[temp_cur_file][var][temp_cur_event_id:temp_cur_event_id+fill_batch])
+            if j==0 and k==0:
+              temp_out.extend(output_data[cur_file][cur_event_id:cur_event_id+fill_batch])
+            cur_len += fill_batch
+            temp_cur_event_id += fill_batch
+          else:
+            temp_in.extend(input_data[temp_cur_file][var][temp_cur_event_id:temp_up_to])
+            if j==0 and k==0:
+              temp_out.extend(output_data[cur_file][cur_event_id:up_to])
+            cur_len += temp_up_to-temp_cur_event_id
+            temp_cur_file+=1
+            if temp_cur_file == len(inds):
+              break
+            else:
+              temp_cur_event_id = inds[temp_cur_file][0]
+              temp_up_to = inds[temp_cur_file][1]
+
+        for i in range(len(temp_in)):
+          slice_ind = [slice(None)]*batch_input[j][i].ndim
           slice_ind[-1] = slice(k,k+1,1)
-          batch_input[j][i][slice_ind] = eval(transform.replace('x', 'input_data[i]'))
-      batch_out[i] = np.log10(temp_out[i][0])
-    cur_len = 0 
+          pre_append = eval(inp_transformations[j][k].replace('x', 'temp_in[i]'))
+          if var == 'time':
+            pre_append[pre_append==np.inf]=-1
+          batch_input[j][i][slice_ind] = pre_append
+
+      # if (loop_counter%20) == 1:
+      #   print batch_input[0][0][0:2,0:2,0:2,0:1] 
+      #   print'----'
+      #   print batch_input[0][0][0:2,0:2,0:2,1:2] 
+
+    for j, var in enumerate(out_variables):
+      for i in range(len(temp_out)):
+        batch_out[i][j] =  eval(out_transformations[j].replace('x', 'temp_out[i][var]')) 
+
+    if temp_cur_file == len(inds):
+      cur_file = 0
+      cur_event_id = inds[0][0]
+      up_to = inds[0][1] 
+    else:
+      cur_file = temp_cur_file
+      cur_event_id = temp_cur_event_id
+      up_to = temp_up_to           
+      # batch_out[i] = np.log10(temp_out[i][0]) 
     yield (batch_input, batch_out)
