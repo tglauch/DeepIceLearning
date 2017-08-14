@@ -59,7 +59,7 @@ def read_files(file_location, input_files, virtual_len=-1):
       print('Only use the first {} Monte Carlo Events'.format(data_len))
 
     input_data.append(hfile)
-    output_data.append(h5py.File(data_file, 'r')['reco_vals'])
+    output_data.append(h5py.File(data_file, 'r'))
     file_len.append(data_len)
 
   return input_data, output_data, file_len
@@ -116,22 +116,8 @@ def prepare_input(one_input_array, model_settings):
       if all(x==temp_shape_arr[0] for x in temp_shape_arr):
         shapes.append(temp_shape_arr[0][0:-1]+(len(temp_shape_arr),))
       else:
-        raise Exception('The transformations that you applied do not results in the same shape!!!!')
+        raise Exception('The transformations that you have applied do not results in the same shape!!!!')
       print shapes
-  # shapes = []
-  # shape_names = []
-  # if len(model_settings) == 0:
-  #   model_settings = [['{Inputs}'], ['[model]', 'variables = [charge]', 'transformations = [x]']]
-  # for block in model_settings:
-  #   if block[0]=='[Inputs]':
-  #     for i in range(1,len(block)):
-  #       this_definition = block[i].split('=')
-  #       shape_names.append(this_definition[0].strip())
-  #       pre_shape = np.shape(eval(this_definition[1].strip().replace('x', 'one_input_array')))
-  #       if pre_shape == ():
-  #         shapes.append((1,))
-  #       else:
-  #         shapes.append(pre_shape)
   return shapes, shape_names, inp_variables, transformations
 
 def parse_config_file(conf_file_path):
@@ -291,12 +277,14 @@ def generator(batch_size, input_data, output_data, inds,
   cur_len = 0
   up_to = inds[cur_file][1]
   loop_counter = 0 
+  temp_out = []
+  temp_in = []
   while True:
     loop_counter+=1
-    temp_out = []
+    if (loop_counter%500)==1:
+      print(' \n RAM Usage {:.2f} GB \n \n'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
     for j, var_array in enumerate(inp_variables):
       for k, var in enumerate(var_array):
-        temp_in = []
         temp_cur_file = cur_file
         temp_cur_event_id = cur_event_id
         temp_up_to = up_to
@@ -306,15 +294,16 @@ def generator(batch_size, input_data, output_data, inds,
           if fill_batch < (temp_up_to-cur_event_id):
             temp_in.extend(input_data[temp_cur_file][var][temp_cur_event_id:temp_cur_event_id+fill_batch])
             if j==0 and k==0:
-              temp_out.extend(output_data[cur_file][cur_event_id:cur_event_id+fill_batch])
+              temp_out.extend(output_data[temp_cur_file]['reco_vals'][temp_cur_event_id:temp_cur_event_id+fill_batch])
             cur_len += fill_batch
             temp_cur_event_id += fill_batch
           else:
             temp_in.extend(input_data[temp_cur_file][var][temp_cur_event_id:temp_up_to])
             if j==0 and k==0:
-              temp_out.extend(output_data[cur_file][cur_event_id:up_to])
+              temp_out.extend(output_data[temp_cur_file]['reco_vals'][temp_cur_event_id:temp_up_to])
             cur_len += temp_up_to-temp_cur_event_id
             temp_cur_file+=1
+            print 'Read File Number {}'.format(temp_cur_file) 
             if temp_cur_file == len(inds):
               break
             else:
@@ -328,10 +317,12 @@ def generator(batch_size, input_data, output_data, inds,
           if var == 'time':
             pre_append[pre_append==np.inf]=-1
           batch_input[j][i][slice_ind] = pre_append 
+        temp_in = []
 
     for j, var in enumerate(out_variables):
       for i in range(len(temp_out)):
         batch_out[i][j] =  eval(out_transformations[j].replace('x', 'temp_out[i][var]')) 
+    temp_out=[]
 
     if temp_cur_file == len(inds):
       cur_file = 0
@@ -340,5 +331,7 @@ def generator(batch_size, input_data, output_data, inds,
     else:
       cur_file = temp_cur_file
       cur_event_id = temp_cur_event_id
-      up_to = temp_up_to           
+      up_to = temp_up_to    
+    if (loop_counter%500)==1:
+      print(' \n RAM Usage {:.2f} GB \n \n'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
     yield (batch_input, batch_out)

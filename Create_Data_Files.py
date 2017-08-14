@@ -36,18 +36,23 @@ try:
 except:
     raise Exception('Config File is missing!!!!') 
 
+dataset_configparser = ConfigParser()
+try:
+    parser.read('create_dataset.cfg')
+except:
+    raise Exception('Config File is missing!!!!') 
+
 file_location = parser.get('Basics', 'thisfolder')
 
 #### File paths #########
-basepath = '/data/ana/PointSource/PS/IC86_2012/files/sim/2012/neutrino-generator/'
-geometry_file = '/data/sim/sim-new/downloads/GCD/GeoCalibDetectorStatus_2012.56063_V0.i3.gz'
+basepath = dataset_configparser.get('Basics', 'MC_path')
+geometry_file = dataset_configparser.get('Basics', 'geometry_file')
 
 def parseArguments():
   parser = argparse.ArgumentParser()
   parser.add_argument("--project", help="The name for the Project", type=str ,default='none')
-  parser.add_argument("--num_files", help="The name for the Project", type=str ,default=-1)
+  parser.add_argument("--num_files", help="The number of files to be read", type=str ,default=-1)
   parser.add_argument("--folder", help="neutrino-generator folder", type=str ,default='11069/00000-00999')
-  parser.add_argument("--grid_shape", help="The shape of the (rotated) rectangular grid [x,y,z]", type=str ,default='[20,10,60]')
 
   ### relative to /data/ana/PointSource/PS/IC86_2012/files/sim/2012/neutrino-generator/ , 
   ## use ':' seperator for more then one folder
@@ -56,6 +61,29 @@ def parseArguments():
   args = parser.parse_args()
 
   return args
+
+def input_variables(cfg_parser):
+    dtype = []
+    data_source = []
+    for i, key in enumerate(parser.keys()):
+        if key == 'DEFAULT' or key =='Basics':
+            continue
+        cut = [-np.inf, np.inf]
+        if 'min' in parser[key].keys():
+            cut[0] = eval(parser[key]['min'])
+        if 'max' in parser[key].keys():
+            cut[1] = eval(parser[key]['max'])  
+
+        if 'variable' in parser[key].keys():
+            data_source.append(('variable', parser[key]['variable'], cut))
+        elif 'function' in parser[key].keys():
+            data_source.append(('function', parser[key]['function'], cut))
+        else:
+            raise Exception('No Input Type given. Variable or funtion must be given')        
+        dtype.append((str(key), eval('np.'+parser[key]['out_type'])))
+    dtype=np.dtype(dtype)
+
+    return dtype, data_source
 
 def make_grid_dict(input_shape, geometry):
     """Put the Icecube Geometry in a cubic grid. For each DOM calculate the corresponding grid position. Rotates the x-y-plane
@@ -159,7 +187,7 @@ if __name__ == "__main__":
     else:
         project_name = args.__dict__['project']
 
-    input_shape = eval(args.__dict__['grid_shape'])
+    input_shape = eval(dataset_configparser.get('Basics', 'input_shape'))
     geometry = dataio.I3File(geometry_file)
     geo = geometry.pop_frame()['I3Geometry'].omgeo
     grid, DOM_list = make_grid_dict(input_shape,geo)
@@ -169,6 +197,8 @@ if __name__ == "__main__":
     if os.path.exists(OUTFILE):
         os.remove(OUTFILE)
 
+    dtype, data_source = input_variables(dataset_configparser)
+
     FILTERS = tables.Filters(complib='zlib', complevel=9)
     with tables.open_file(OUTFILE, mode = "w", title = "Events for training the NN", filters=FILTERS) as h5file:
 
@@ -176,10 +206,10 @@ if __name__ == "__main__":
             tables.Float64Atom(), (0, input_shape[0],input_shape[1],input_shape[2],1),
             title = "Charge Distribution")
         time = h5file.create_earray(h5file.root, 'time', 
-            tables.Float64Atom(), (0, input_shape[0],input_shape[1],input_shape[2],1 ), 
+            tables.Float64Atom(), (0, input_shape[0],input_shape[1],input_shape[2],1), 
             title = "Timestamp Distribution")
-        reco_vals = h5file.create_earray(h5file.root, 'reco_vals', tables.Float64Atom(), 
-            (0,6), title = "Energy,Azimuth,Zenith,MuEx,depositedE,ow")
+        reco_vals = tables.Table(h5file.root, 'reco_vals', description = dtype)
+        h5file.root._v_attrs.shape = input_shape 
     
         print('Created a new HDF File with the Settings:')
         print(h5file)
@@ -197,20 +227,33 @@ if __name__ == "__main__":
                     print('Processing File {}/{}'.format(counter, len(filelist)))
                 event_file = dataio.I3File(os.path.join(basepath, folder, in_file))
                 while event_file.more():
-                    try:
-                        physics_event = event_file.pop_physics()
-                        energy = physics_event['MCMostEnergeticTrack'].energy
-                    except AttributeError:
-                        print('Attribute Error occured')
-                        continue
-                    if energy<100:
-                        continue
-                    azmiuth = physics_event['MCMostEnergeticTrack'].dir.azimuth 
-                    zenith = physics_event['MCMostEnergeticTrack'].dir.zenith
-                    muex = physics_event['SplineMPEMuEXDifferential'].energy
-                    ow = physics_event['I3MCWeightDict']['OneWeight']
-                    depositedE = calc_depositedE(physics_event)
-                    charge_arr = np.zeros((1, input_shape[0],input_shape[1],input_shape[2], 1))
+                    physics_event = event_file.pop_physics()
+                    reco_arr = []
+                    for k, cur_var in enumerate(data_source):
+                        if cur_var[0]=='variable':
+                            try:
+                                cur_value = eval('physics_event{}'.format(cur_var[1]))
+                            except AttributeibuteError:
+                                print('Attribute Error occured')
+                                continue
+                        if cur_var[0]=='function':
+                            try:
+                                cur_value = eval(cur_var[1].replace('(x)', '(physics_event)'))
+                            except AttributeibuteError:
+                                print('The given function seems to be not implemented')
+                                continue
+
+                        if cur_value<cur_var[0] or cur_value>cur_var[1]:
+                            continue
+                        else:
+                            reco_arr.append(cur_value)
+
+                    # azmiuth = physics_event['MCMostEnergeticTrack'].dir.azimuth 
+                    # zenith = physics_event['MCMostEnergeticTrack'].dir.zenith
+                    # muex = physics_event['SplineMPEMuEXDifferential'].energy
+                    # ow = physics_event['I3MCWeightDict']['OneWeight']
+                    # depositedE = calc_depositedE(physics_event)
+                    # charge_arr = np.zeros((1, input_shape[0],input_shape[1],input_shape[2], 1))
                     time_arr = np.full((1, input_shape[0],input_shape[1],input_shape[2], 1), np.inf)
 
                     ###############################################
@@ -235,11 +278,12 @@ if __name__ == "__main__":
                     time_np_arr = np.array(time_arr)
                     time_np_arr_max = np.max(time_np_arr[time_np_arr != np.inf])
                     time_np_arr_min = np.min(time_np_arr)
-                    time.append((time_np_arr - time_np_arr_min) / (time_np_arr_max - time_np_arr_min))
-                    reco_vals.append(np.array([energy,azmiuth, zenith, muex, depositedE, ow])[np.newaxis])
+                    # time.append((time_np_arr - time_np_arr_min) / (time_np_arr_max - time_np_arr_min))
+                    time.append(time_np_arr)
+                    reco_vals.append(reco_arr)
                     j+=1
             charge.flush()
             time.flush()
             reco_vals.flush()
-
+        h5file.root._v_attrs.len = j
         h5file.close()
