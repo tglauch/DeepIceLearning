@@ -1,6 +1,19 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+"""This file is part of DeepIceLearning
+DeepIceLearning is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 
 import keras
 from keras.models import Sequential, load_model
@@ -35,30 +48,25 @@ def read_files(file_location, input_files, virtual_len=-1):
   print input_files
   for run, input_file in enumerate(input_files):
     data_file = os.path.join(file_location, 'training_data/{}'.format(input_file))
-
+    hfile = h5py.File(data_file, 'r')
     if virtual_len == -1:
-      data_len = len(h5py.File(data_file)['charge'])
+      ## Bad style of doing this.
+      ## For further version better save the shape directly in the File
+      ### Which also solves the problem of checking for matching input size of the files
+      data_len = len(hfile[hfile.keys()[0]])  
     else:
       data_len = virtual_len
       print('Only use the first {} Monte Carlo Events'.format(data_len))
 
-    this_input = h5py.File(data_file, 'r')['charge']
-    input_data.append(this_input)
-    this_shape = np.shape(this_input[0])
-    if run == 0:
-      inp_shape=this_shape 
-    else:
-      if not this_shape == inp_shape:
-        raise Exception('The input shape of the data contained in the input files does not match')
-
-    output_data.append(h5py.File(data_file, 'r')['reco_vals'])
+    input_data.append(hfile)
+    output_data.append(h5py.File(data_file, 'r'))
     file_len.append(data_len)
 
   return input_data, output_data, file_len
 
-def prepare_input_shapes(one_input_array, model_settings):
+def prepare_input(one_input_array, model_settings):
 
-  """given the transformations of the 'raw' input data (i.e the charges per gridelement) the
+  """given the transformations of the 'raw' input data (e.g. the charges per gridelement) the
   the input shape for the network is calculated. example: transformation is np.sum(x) -->
   input shape = (1,)
 
@@ -70,24 +78,47 @@ def prepare_input_shapes(one_input_array, model_settings):
 
   Returns: 
   shapes : the shapes after transformation (ordered)
-  shape_names : the names of the corresponding model branches (ordered)
+  shape_names : the names of the correspondincxg model branches (ordered)
 
   """
+
+  print(model_settings)
+  inp_variables = []
+  transformations = []
   shapes = []
   shape_names = []
+  mode = ''
   if len(model_settings) == 0:
-    model_settings = ['[Inputs]', 'model = x']
+      model_settings = [['{Inputs}'], ['[model]', 'variables = [charge]', 'transformations = [x]']]
   for block in model_settings:
-    if block[0]=='[Inputs]':
-      for i in range(1,len(block)):
-        this_definition = block[i].split('=')
-        shape_names.append(this_definition[0].strip())
-        pre_shape = np.shape(eval(this_definition[1].strip().replace('x', 'one_input_array')))
-        if pre_shape == ():
-          shapes.append((1,))
-        else:
-          shapes.append(pre_shape)
-  return shapes, shape_names
+      if block[0][0]=='{' and block[0][-1]=='}':
+          mode=block[0][1:-1]
+          continue
+      if mode == 'Inputs':
+          for element in block:
+              if element[0]=='[' and element[-1]==']':
+                  shape_names.append(element[1:-1])
+              else:
+                  split_row = element.split('=')
+                  if split_row[0].strip() == 'variables':
+                      inp_variables.append(split_row[1].strip().split(','))
+                  elif split_row[0].strip() == 'transformations':
+                      transformations.append(split_row[1].strip().split(','))
+      else:
+        ### Todo: Once the output shape gets more flexible, change this here. function is then called
+        ## prepare_inp_out_shapes
+          continue
+
+  for i in range(len(shape_names)):
+      temp_shape_arr = []
+      for j in range(len(inp_variables[i])):
+          temp_shape_arr.append(np.shape(eval(transformations[i][j].replace('x', 'one_input_array[\'{}\'][0]'.format(inp_variables[i][j])))))
+      if all(x==temp_shape_arr[0] for x in temp_shape_arr):
+        shapes.append(temp_shape_arr[0][0:-1]+(len(temp_shape_arr),))
+      else:
+        raise Exception('The transformations that you have applied do not results in the same shape!!!!')
+      print shapes
+  return shapes, shape_names, inp_variables, transformations
 
 def parse_config_file(conf_file_path):
   """Function that parses the config file and returns the settings and architecture of the model
@@ -157,8 +188,6 @@ def base_model(model_def, shapes, shape_names):
   models = dict()
   cur_model = None
   cur_model_name = ''
-  print shapes
-  print shape_names
   for block in model_def:
       if block[0][0] == '{' and block[0][-1] == '}' or cur_model == None:
           if cur_model != None:
@@ -194,7 +223,6 @@ def base_model(model_def, shapes, shape_names):
               if not 'input_shape' in kwargs and input_layer==True:
                 ind = shape_names.index(cur_model_name)
                 kwargs['input_shape']=shapes[ind]
-              print kwargs
               add_layer(cur_model, layer, args,kwargs)
           else:
               merge_layer_names = [name.strip() for name in kwargs['layers'][1:-1].split(',')]
@@ -213,58 +241,97 @@ class MemoryCallback(keras.callbacks.Callback):
         print(' \n RAM Usage {:.2f} GB \n \n'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
         os.system("nvidia-smi")
 
-def generator(batch_size, input_data, output_data, inds, inp_shape, model_settings):
+def generator(batch_size, input_data, output_data, inds,
+  inp_shape, inp_variables, inp_transformations,
+  out_shape=[(1,)], out_variables = [0], out_transformations= ['np.log10(x)']):
 
-  """Generator to create the mini-batches feeded to the network.
+  """ This function is a real braintwister and presumably really bad implemented.
+  It produces all input and output data and applies the transformations
+  as defined in the network definition file.
 
   Arguments:
-  model : (Relative) Path to the config (definition) file of the neural network
+  batch size : the batch size per gpu
+  input_data: a list containing the input data
+  output_data: a list containing the output data
+  inds: the index range used for the training set
+  inp_shape: the shapes of the input neurons
+  inp_variables: list of variables used for the input
+  inp_transformations: list of transformations for the input data
+  out_shape: shape of the output data
+  out_variables: variables for the output data
+  out_transformations: transformations applied to the output data
+
 
   Returns: 
-  model : the (non-compiled) model object
-  inp_shape : the required shape of the input data
+  batch_input : a batch of input data
+  batch_out: a batch of output data
 
   """
 
   batch_input = [ np.zeros((batch_size,)+i) for i in inp_shape ]
+  ###Todo: Read correct output varibles from the model configuration
+  ### for this the dtype in the Create Dataset file has to be changed 
   batch_out = np.zeros((batch_size,1))
   cur_file = 0
   cur_event_id = inds[cur_file][0]
   cur_len = 0
   up_to = inds[cur_file][1]
-  for i in model_settings:
-    if i[0] == '[Inputs]':
-      input_transformation = i[1:]
-  print(input_transformation)
-  transformations = [i.split('=')[1].strip().replace('x', 'temp_in[i]') for i in input_transformation]
-  print(transformations)
+  loop_counter = 0 
+  temp_out = []
+  temp_in = []
   while True:
-    temp_in = []
-    temp_out = []
-    while cur_len<batch_size:
-      fill_batch = batch_size-cur_len
-      if fill_batch < (up_to-cur_event_id):
-        temp_in.extend(input_data[cur_file][cur_event_id:cur_event_id+fill_batch])
-        temp_out.extend(output_data[cur_file][cur_event_id:cur_event_id+fill_batch])
-        cur_len += fill_batch
-        cur_event_id += fill_batch
-      else:
-        temp_in.extend(input_data[cur_file][cur_event_id:up_to])
-        temp_out.extend(output_data[cur_file][cur_event_id:up_to])
-        cur_len += up_to-cur_event_id
-        cur_file+=1
-        if cur_file == len(inds):
-          cur_file = 0
-          cur_event_id = inds[cur_file][0]
-          cur_len = 0
-          up_to = inds[cur_file][1]
-          break
-        else:
-          cur_event_id = inds[cur_file][0]
-          up_to = inds[cur_file][1]
-    for i in range(len(temp_in)):
-      for j, transform in enumerate(input_transformation):
-          batch_input[j][i] = eval(transformations[j])
-      batch_out[i] = np.log10(temp_out[i][0])
-    cur_len = 0 
+    loop_counter+=1
+    if (loop_counter%500)==1:
+      print(' \n RAM Usage {:.2f} GB \n \n'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
+    for j, var_array in enumerate(inp_variables):
+      for k, var in enumerate(var_array):
+        temp_cur_file = cur_file
+        temp_cur_event_id = cur_event_id
+        temp_up_to = up_to
+        cur_len = 0
+        while cur_len<batch_size:
+          fill_batch = batch_size-cur_len
+          if fill_batch < (temp_up_to-cur_event_id):
+            temp_in.extend(input_data[temp_cur_file][var][temp_cur_event_id:temp_cur_event_id+fill_batch])
+            if j==0 and k==0:
+              temp_out.extend(output_data[temp_cur_file]['reco_vals'][temp_cur_event_id:temp_cur_event_id+fill_batch])
+            cur_len += fill_batch
+            temp_cur_event_id += fill_batch
+          else:
+            temp_in.extend(input_data[temp_cur_file][var][temp_cur_event_id:temp_up_to])
+            if j==0 and k==0:
+              temp_out.extend(output_data[temp_cur_file]['reco_vals'][temp_cur_event_id:temp_up_to])
+            cur_len += temp_up_to-temp_cur_event_id
+            temp_cur_file+=1
+            print 'Read File Number {}'.format(temp_cur_file) 
+            if temp_cur_file == len(inds):
+              break
+            else:
+              temp_cur_event_id = inds[temp_cur_file][0]
+              temp_up_to = inds[temp_cur_file][1]
+
+        for i in range(len(temp_in)):
+          slice_ind = [slice(None)]*batch_input[j][i].ndim
+          slice_ind[-1] = slice(k,k+1,1)
+          pre_append = eval(inp_transformations[j][k].replace('x', 'temp_in[i]'))
+          if var == 'time':
+            pre_append[pre_append==np.inf]=-1
+          batch_input[j][i][slice_ind] = pre_append 
+        temp_in = []
+
+    for j, var in enumerate(out_variables):
+      for i in range(len(temp_out)):
+        batch_out[i][j] =  eval(out_transformations[j].replace('x', 'temp_out[i][var]')) 
+    temp_out=[]
+
+    if temp_cur_file == len(inds):
+      cur_file = 0
+      cur_event_id = inds[0][0]
+      up_to = inds[0][1] 
+    else:
+      cur_file = temp_cur_file
+      cur_event_id = temp_cur_event_id
+      up_to = temp_up_to    
+    if (loop_counter%500)==1:
+      print(' \n RAM Usage {:.2f} GB \n \n'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
     yield (batch_input, batch_out)
