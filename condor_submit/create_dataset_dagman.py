@@ -56,6 +56,7 @@ if not Resc:
 	                     "output": "$(LOGFILE).out",
 	                     "error": "$(LOGFILE).err",
 	                     "request_memory": "1.5GB",
+			     "IWD" : "/data/user/tglauch/ML_Reco/",
 	                     "arguments": arguments}
 	
 	submitFile = pydag.htcondor.HTCondorSubmit(submitFile,

@@ -15,72 +15,76 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-#### ToDos ###########
-"""
-- implement correct dtype for the reco_vals, including helpfull names!!!
-- save the array shape as attr to the hdf5 files
-"""
-
 from icecube import dataclasses, dataio, icetray
 import numpy as np
-import itertools
 import math
 import tables   
 import argparse
 import os, sys
 from configparser import ConfigParser
 
+os.chdir('/data/user/tglauch/ML_Reco/')
+print os.listdir('.')
 parser = ConfigParser()
 try:
-    parser.read('config.cfg')
+    parser.read('./config.cfg')
 except:
     raise Exception('Config File is missing!!!!') 
 
 dataset_configparser = ConfigParser()
 try:
-    parser.read('create_dataset.cfg')
+    dataset_configparser.read('./create_dataset.cfg')
 except:
     raise Exception('Config File is missing!!!!') 
 
-file_location = parser.get('Basics', 'thisfolder')
+file_location = str(parser.get('Basics', 'thisfolder'))
 
 #### File paths #########
-basepath = dataset_configparser.get('Basics', 'MC_path')
-geometry_file = dataset_configparser.get('Basics', 'geometry_file')
+basepath = str(dataset_configparser.get('Basics', 'MC_path'))
+geometry_file = str(dataset_configparser.get('Basics', 'geometry_file'))
+outfolder = str(dataset_configparser.get('Basics', 'out_folder'))
 
 def parseArguments():
   parser = argparse.ArgumentParser()
   parser.add_argument("--project", help="The name for the Project", type=str ,default='none')
   parser.add_argument("--num_files", help="The number of files to be read", type=str ,default=-1)
   parser.add_argument("--folder", help="neutrino-generator folder", type=str ,default='11069/00000-00999')
+  ### relative to basepath; use ':' seperator for more then one folder
 
-  ### relative to /data/ana/PointSource/PS/IC86_2012/files/sim/2012/neutrino-generator/ , 
-  ## use ':' seperator for more then one folder
   parser.add_argument("--version", action="version", version='%(prog)s - Version 1.0')
     # Parse arguments
   args = parser.parse_args()
 
   return args
 
-def input_variables(cfg_parser):
+def read_variables(cfg_parser):
+    """Function reading a config file, defining the variables to be read from the MC files.
+
+    Arguments:
+    cfg_parser: config parser object for the config file
+    
+    Returns:
+    dtype : the dtype object defining the shape and names of the MC output
+    data_source: list defining the types,names and ranges of monte carlo data 
+                to be saved from a physics frame (e.g [('variable',['MCMostEnergeticTrack'].energy, [1e2,1e9])])
+    """
     dtype = []
     data_source = []
-    for i, key in enumerate(parser.keys()):
+    for i, key in enumerate(cfg_parser.keys()):
         if key == 'DEFAULT' or key =='Basics':
             continue
         cut = [-np.inf, np.inf]
-        if 'min' in parser[key].keys():
-            cut[0] = eval(parser[key]['min'])
-        if 'max' in parser[key].keys():
-            cut[1] = eval(parser[key]['max'])  
-
-        if 'variable' in parser[key].keys():
-            data_source.append(('variable', parser[key]['variable'], cut))
-        elif 'function' in parser[key].keys():
-            data_source.append(('function', parser[key]['function'], cut))
+        if 'min' in cfg_parser[key].keys():
+            cut[0] = float(cfg_parser[key]['min'])
+        if 'max' in cfg_parser[key].keys():
+            cut[1] = float(cfg_parser[key]['max'])  
+        if 'variable' in cfg_parser[key].keys():
+            data_source.append(('variable', cfg_parser[key]['variable'], cut))
+        elif 'function' in cfg_parser[key].keys():
+            data_source.append(('function', cfg_parser[key]['function'], cut))
         else:
             raise Exception('No Input Type given. Variable or funtion must be given')        
-        dtype.append((str(key), eval('np.'+parser[key]['out_type'])))
+        dtype.append((str(key), eval('np.'+cfg_parser[key]['out_type'])))
     dtype=np.dtype(dtype)
 
     return dtype, data_source
@@ -193,11 +197,16 @@ if __name__ == "__main__":
     grid, DOM_list = make_grid_dict(input_shape,geo)
 
     ######### Create HDF5 File ##########
-    OUTFILE = os.path.join(file_location, 'training_data/{}.h5'.format(project_name))
+    save_folder = os.path.join(file_location, 'training_data/{}/'.format(outfolder))
+    if not os.path.exists(save_folder):
+        os.makedirs(save_folder)
+
+    OUTFILE = os.path.join(save_folder,'{}.h5'.format(project_name))
     if os.path.exists(OUTFILE):
         os.remove(OUTFILE)
 
-    dtype, data_source = input_variables(dataset_configparser)
+    dtype, data_source = read_variables(dataset_configparser)
+    dtype_len = len(dtype)
 
     FILTERS = tables.Filters(complib='zlib', complevel=9)
     with tables.open_file(OUTFILE, mode = "w", title = "Events for training the NN", filters=FILTERS) as h5file:
@@ -217,6 +226,7 @@ if __name__ == "__main__":
         np.save('grid.npy', grid)
         j=0
         folders = args.__dict__['folder'].split(':')
+        print('Start reading files...')
         for folder in folders:
             print('Process Folder: {}'.format(os.path.join(basepath,folder)))
             filelist = [ f_name for f_name in os.listdir(os.path.join(basepath,folder)) if f_name[-6:]=='i3.bz2']
@@ -235,25 +245,30 @@ if __name__ == "__main__":
                                 cur_value = eval('physics_event{}'.format(cur_var[1]))
                             except AttributeibuteError:
                                 print('Attribute Error occured')
-                                continue
+                                break
+
                         if cur_var[0]=='function':
                             try:
                                 cur_value = eval(cur_var[1].replace('(x)', '(physics_event)'))
                             except AttributeibuteError:
                                 print('The given function seems to be not implemented')
-                                continue
+                                break
 
-                        if cur_value<cur_var[0] or cur_value>cur_var[1]:
-                            continue
+                        if cur_value<cur_var[2][0] or cur_value>cur_var[2][1]:
+                            break
                         else:
                             reco_arr.append(cur_value)
+
+                    if not len(reco_arr) == dtype_len:
+                        continue
+                            
 
                     # azmiuth = physics_event['MCMostEnergeticTrack'].dir.azimuth 
                     # zenith = physics_event['MCMostEnergeticTrack'].dir.zenith
                     # muex = physics_event['SplineMPEMuEXDifferential'].energy
                     # ow = physics_event['I3MCWeightDict']['OneWeight']
                     # depositedE = calc_depositedE(physics_event)
-                    # charge_arr = np.zeros((1, input_shape[0],input_shape[1],input_shape[2], 1))
+                    charge_arr = np.zeros((1, input_shape[0],input_shape[1],input_shape[2], 1))
                     time_arr = np.full((1, input_shape[0],input_shape[1],input_shape[2], 1), np.inf)
 
                     ###############################################
@@ -280,7 +295,7 @@ if __name__ == "__main__":
                     time_np_arr_min = np.min(time_np_arr)
                     # time.append((time_np_arr - time_np_arr_min) / (time_np_arr_max - time_np_arr_min))
                     time.append(time_np_arr)
-                    reco_vals.append(reco_arr)
+                    reco_vals.append(np.array(reco_arr))
                     j+=1
             charge.flush()
             time.flush()
