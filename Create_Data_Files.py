@@ -24,7 +24,7 @@ import os, sys
 from configparser import ConfigParser
 
 os.chdir('/data/user/tglauch/ML_Reco/')
-print os.listdir('.')
+
 parser = ConfigParser()
 try:
     parser.read('./config.cfg')
@@ -225,6 +225,7 @@ if __name__ == "__main__":
 
         np.save('grid.npy', grid)
         j=0
+        skipped_frames = 0 
         folders = args.__dict__['folder'].split(':')
         print('Start reading files...')
         for folder in folders:
@@ -243,14 +244,16 @@ if __name__ == "__main__":
                         if cur_var[0]=='variable':
                             try:
                                 cur_value = eval('physics_event{}'.format(cur_var[1]))
-                            except AttributeibuteError:
+                            except:
+                                skipped_frames += 1
                                 print('Attribute Error occured')
                                 break
 
                         if cur_var[0]=='function':
                             try:
                                 cur_value = eval(cur_var[1].replace('(x)', '(physics_event)'))
-                            except AttributeibuteError:
+                            except:
+                                skipped_frames += 1
                                 print('The given function seems to be not implemented')
                                 break
 
@@ -262,12 +265,6 @@ if __name__ == "__main__":
                     if not len(reco_arr) == dtype_len:
                         continue
                             
-
-                    # azmiuth = physics_event['MCMostEnergeticTrack'].dir.azimuth 
-                    # zenith = physics_event['MCMostEnergeticTrack'].dir.zenith
-                    # muex = physics_event['SplineMPEMuEXDifferential'].energy
-                    # ow = physics_event['I3MCWeightDict']['OneWeight']
-                    # depositedE = calc_depositedE(physics_event)
                     charge_arr = np.zeros((1, input_shape[0],input_shape[1],input_shape[2], 1))
                     time_arr = np.full((1, input_shape[0],input_shape[1],input_shape[2], 1), np.inf)
 
@@ -300,5 +297,7 @@ if __name__ == "__main__":
             charge.flush()
             time.flush()
             reco_vals.flush()
+        print('###### Run Summary ###########')
+        print('Processed: {} Frames \n Skipped {} Frames with Attribute Error'.format(j,skipped_frames))
         h5file.root._v_attrs.len = j
         h5file.close()
