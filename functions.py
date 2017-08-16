@@ -22,10 +22,10 @@ from keras.layers import Dense, Dropout, Activation, Flatten, Convolution2D,\
 from keras import regularizers
 import os
 import numpy as np
-import h5py
+import tables
 import resource
 
-def read_files(file_location, input_files, virtual_len=-1):
+def read_input_len_shapes(file_location, input_files, virtual_len=-1):
 
   """Create an Array of Input and Output HDF5 Monte Carlo data from a given list of files(e.g file1:file2 ...) 
 
@@ -40,29 +40,24 @@ def read_files(file_location, input_files, virtual_len=-1):
   file_len : The number of events for each file
 
   """
-
-  input_data = []
-  output_data = []
   file_len = []
-  inp_shape = []
-  print input_files
   for run, input_file in enumerate(input_files):
     data_file = os.path.join(file_location, 'training_data/{}'.format(input_file))
-    hfile = h5py.File(data_file, 'r')
+    file_handler = tables.openFile(data_file, 'r')
+    if run==0:
+      test_shape = file_handler.root._v_attrs.shape
+    else:
+      if file_handler.root._v_attrs.shape != test_shape:
+        raise Exception('The input files charges and times do not have the same shape')
     if virtual_len == -1:
-      ## Bad style of doing this.
-      ## For further version better save the shape directly in the File
-      ### Which also solves the problem of checking for matching input size of the files
-      data_len = len(hfile[hfile.keys()[0]])  
+      data_len = file_handler.root._v_attrs.len  
     else:
       data_len = virtual_len
       print('Only use the first {} Monte Carlo Events'.format(data_len))
 
-    input_data.append(hfile)
-    output_data.append(h5py.File(data_file, 'r'))
     file_len.append(data_len)
 
-  return input_data, output_data, file_len
+  return file_len
 
 def prepare_input(one_input_array, model_settings):
 
@@ -241,9 +236,9 @@ class MemoryCallback(keras.callbacks.Callback):
         print(' \n RAM Usage {:.2f} GB \n \n'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
         os.system("nvidia-smi")
 
-def generator(batch_size, input_data, output_data, inds,
+def generator(batch_size, file_location, file_list, inds,
   inp_shape, inp_variables, inp_transformations,
-  out_shape=[(1,)], out_variables = [0], out_transformations= ['np.log10(x)']):
+  out_variables = ['energy'], out_transformations= ['np.log10(x)']):
 
   """ This function is a real braintwister and presumably really bad implemented.
   It produces all input and output data and applies the transformations
@@ -257,7 +252,6 @@ def generator(batch_size, input_data, output_data, inds,
   inp_shape: the shapes of the input neurons
   inp_variables: list of variables used for the input
   inp_transformations: list of transformations for the input data
-  out_shape: shape of the output data
   out_variables: variables for the output data
   out_transformations: transformations applied to the output data
 
@@ -268,10 +262,8 @@ def generator(batch_size, input_data, output_data, inds,
 
   """
 
-  batch_input = [ np.zeros((batch_size,)+i) for i in inp_shape ]
-  ###Todo: Read correct output varibles from the model configuration
-  ### for this the dtype in the Create Dataset file has to be changed 
-  batch_out = np.zeros((batch_size,1))
+  batch_input = [ np.zeros((batch_size,)+i) for i in inp_shape ]  
+  batch_out = np.zeros((batch_size,len(out_variables)))
   cur_file = 0
   cur_event_id = inds[cur_file][0]
   cur_len = 0
@@ -289,26 +281,30 @@ def generator(batch_size, input_data, output_data, inds,
         temp_cur_event_id = cur_event_id
         temp_up_to = up_to
         cur_len = 0
+        cur_file_handler = tables.openFile(os.path.join(file_location, file_list[cur_file]))
         while cur_len<batch_size:
           fill_batch = batch_size-cur_len
           if fill_batch < (temp_up_to-cur_event_id):
-            temp_in.extend(input_data[temp_cur_file][var][temp_cur_event_id:temp_cur_event_id+fill_batch])
+            temp_in.extend(eval('cur_file_handler.root.{}'.format(var))[temp_cur_event_id:temp_cur_event_id+fill_batch])
             if j==0 and k==0:
-              temp_out.extend(output_data[temp_cur_file]['reco_vals'][temp_cur_event_id:temp_cur_event_id+fill_batch])
+              temp_out.extend(cur_file_handler.root.reco_vals.cols[temp_cur_event_id:temp_cur_event_id+fill_batch])
             cur_len += fill_batch
             temp_cur_event_id += fill_batch
           else:
-            temp_in.extend(input_data[temp_cur_file][var][temp_cur_event_id:temp_up_to])
+            temp_in.extend(eval('cur_file_handler.root.{}'.format(var))[temp_cur_event_id:temp_up_to])
             if j==0 and k==0:
-              temp_out.extend(output_data[temp_cur_file]['reco_vals'][temp_cur_event_id:temp_up_to])
+              temp_out.extend(cur_file_handler.root.reco_vals.cols[temp_cur_event_id:temp_up_to])
             cur_len += temp_up_to-temp_cur_event_id
             temp_cur_file+=1
+            cur_file_handler.close()
             print 'Read File Number {}'.format(temp_cur_file) 
+            cur_file_handler = tables.openFile(os.path.join(file_location, file_list[temp_cur_file]))
             if temp_cur_file == len(inds):
               break
             else:
               temp_cur_event_id = inds[temp_cur_file][0]
               temp_up_to = inds[temp_cur_file][1]
+        cur_file_handler.close()
 
         for i in range(len(temp_in)):
           slice_ind = [slice(None)]*batch_input[j][i].ndim

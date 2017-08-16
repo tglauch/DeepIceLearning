@@ -126,7 +126,7 @@ if __name__ == "__main__":
     print(today)
     shelf.close()
 
-    input_data, output_data, file_len = read_files(file_location, input_files.split(':'))
+    input_data, output_data, file_len = read_input_len_shapes(file_location, input_files.split(':'))
 
 
 ####### Build-up a new Model ###########################################
@@ -159,7 +159,7 @@ if __name__ == "__main__":
     float(parser.get('Training_Parameters', 'validation_fraction')),
     float(parser.get('Training_Parameters', 'test_fraction'))] 
 
-    input_data, output_data, file_len = read_files(file_location, 
+    input_data, output_data, file_len = read_input_len_shapes(file_location, 
       input_files, 
       virtual_len = args.__dict__['virtual_len'])
 
@@ -230,9 +230,9 @@ if __name__ == "__main__":
 
   batch_size = ngpus*int(parser.get('Training_Parameters', 'single_gpu_batch_size'))
 
-  model.fit_generator(generator(batch_size, input_data, output_data, train_inds, shapes, inp_variables, transformations), 
+  model.fit_generator(generator(batch_size, file_location, input_files.split(':'), train_inds, shapes, inp_variables, transformations), 
                 steps_per_epoch = math.ceil(np.sum([k[1]-k[0] for k in train_inds])/batch_size),
-                validation_data = generator(batch_size, input_data, output_data, valid_inds, shapes, inp_variables, transformations),
+                validation_data = generator(batch_size, file_location, input_files.split(':'), valid_inds, shapes, inp_variables, transformations),
                 validation_steps = math.ceil(np.sum([k[1]-k[0] for k in valid_inds])/batch_size),
                 callbacks = [CSV_log, early_stop, best_model, MemoryCallback()], 
                 epochs = int(parser.get('Training_Parameters', 'epochs')), 
@@ -248,7 +248,7 @@ if __name__ == "__main__":
   file_location,'train_hist/{}/{}/final_network.h5'.format(today,project_name)))  # save trained network
 
   print('\n Calculate Results... \n')
-  prediction = model.predict_generator(generator(batch_size, input_data, output_data, test_inds, shapes, model_settings), 
+  prediction = model.predict_generator(generator(batch_size, file_location, input_files.split(':'), test_inds, shapes, model_settings), 
                 steps = math.ceil(np.sum([k[1]-k[0] for k in test_inds])/batch_size),
                 verbose = int(parser.get('Training_Parameters', 'verbose')),
                 max_q_size = int(parser.get('Training_Parameters', 'max_queue_size'))
