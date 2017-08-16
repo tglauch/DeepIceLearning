@@ -1,4 +1,4 @@
-# NN_Reco
+# DeepIceLearning
 DeepIceLearning - An Approach to use Deep Neural Networks for the Regression and Classification of IceCube quantities
 
 Firstly: This version of the software is still in test-mode and might contain many bugs or inconsitencys. 
