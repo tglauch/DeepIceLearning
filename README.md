@@ -13,3 +13,11 @@ the training, mainly two files have to be changed.
 
 2. In the folder 'Networks' a config file defining the NN structure has to be created. An example for the syntax can be found in the 
 file 'test.cfg'
+
+In order to run the training you can either:
+
+1. directly run the script Neural_Network.py 
+
+or 
+
+2. submit a job to the condor or slurm cluster by running condor_submit/train_NN_network.py
