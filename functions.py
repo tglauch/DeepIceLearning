@@ -42,7 +42,7 @@ def read_input_len_shapes(file_location, input_files, virtual_len=-1):
   """
   file_len = []
   for run, input_file in enumerate(input_files):
-    data_file = os.path.join(file_location, 'training_data/{}'.format(input_file))
+    data_file = os.path.join(file_location, '{}'.format(input_file))
     file_handler = tables.openFile(data_file, 'r')
     if run==0:
       test_shape = file_handler.root._v_attrs.shape
@@ -59,7 +59,7 @@ def read_input_len_shapes(file_location, input_files, virtual_len=-1):
   return file_len
 
 
-def prepare_input(file_path, model_settings):
+def prepare_input_output_variables(file_path, model_settings):
 
   """given the transformations of the 'raw' input data (e.g. the charges per gridelement) the
   the input shape for the network is calculated. example: transformation is np.sum(x) -->
@@ -67,7 +67,7 @@ def prepare_input(file_path, model_settings):
 
 
   Arguments:
-  one_input_array : one exemplary input data array on which the transformation is applied
+  file_path : the path to one exemplary input file
   model_settings : the different settings for the model. has to include a section [Inputs] 
                    otherwise assume no transformation at all 
 
@@ -81,7 +81,9 @@ def prepare_input(file_path, model_settings):
 
   print(model_settings)
   inp_variables = []
-  transformations = []
+  inp_transformations = []
+  out_variables = []
+  out_transformations = []
   shapes = []
   shape_names = []
   mode = ''
@@ -100,25 +102,30 @@ def prepare_input(file_path, model_settings):
                   if split_row[0].strip() == 'variables':
                       inp_variables.append(split_row[1].strip().split(','))
                   elif split_row[0].strip() == 'transformations':
-                      transformations.append(split_row[1].strip().split(','))
+                      inp_transformations.append(split_row[1].strip().split(','))
+      elif mode == 'Outputs':
+        for element in block:
+          split_row = element.split('=')
+          if split_row[0].strip() == 'variables':
+            out_variables.extend(split_row[1].strip().split(','))
+          elif split_row[0].strip() == 'transformations':
+            out_transformations.extend(split_row[1].strip().split(','))
       else:
-        ### Todo: Once the output shape gets more flexible, change this here. function is then called
-        ## prepare_inp_out_shapes
-          continue
+        print('No idea what to do...:(....continue')
+        continue
+
   cur_file_handler = tables.openFile(file_path)
   for i in range(len(shape_names)):
       temp_shape_arr = []
       for j in range(len(inp_variables[i])):
           test_array = eval('cur_file_handler.root.{}'.format(inp_variables[i][j]))[0]
-          print np.shape(test_array)
-          temp_shape_arr.append(np.shape(eval(transformations[i][j].replace('x', 'test_array'))))
+          temp_shape_arr.append(np.shape(eval(inp_transformations[i][j].replace('x', 'test_array'))))
       if all(x==temp_shape_arr[0] for x in temp_shape_arr):
         shapes.append(temp_shape_arr[0][0:-1]+(len(temp_shape_arr),))
       else:
         raise Exception('The transformations that you have applied do not results in the same shape!!!!')
-      print shapes
   cur_file_handler.close()
-  return shapes, shape_names, inp_variables, transformations
+  return shapes, shape_names, inp_variables, inp_transformations, out_variables, out_transformations
 
 
 def parse_config_file(conf_file_path):
@@ -243,7 +250,7 @@ class MemoryCallback(keras.callbacks.Callback):
 
 def generator(batch_size, file_location, file_list, inds,
   inp_shape, inp_variables, inp_transformations,
-  out_variables = ['energy'], out_transformations= ['np.log10(x)']):
+  out_variables, out_transformations):
 
   """ This function is a real braintwister and presumably really bad implemented.
   It produces all input and output data and applies the transformations
@@ -251,15 +258,14 @@ def generator(batch_size, file_location, file_list, inds,
 
   Arguments:
   batch size : the batch size per gpu
-  input_data: a list containing the input data
-  output_data: a list containing the output data
+  file_location: path to the folder containing the training files
+  file_list: list of files used for the training
   inds: the index range used for the training set
   inp_shape: the shapes of the input neurons
   inp_variables: list of variables used for the input
   inp_transformations: list of transformations for the input data
   out_variables: variables for the output data
   out_transformations: transformations applied to the output data
-
 
   Returns: 
   batch_input : a batch of input data
@@ -278,15 +284,13 @@ def generator(batch_size, file_location, file_list, inds,
   temp_in = []
   while True:
     loop_counter+=1
-    if (loop_counter%500)==1:
-      print(' \n RAM Usage {:.2f} GB \n \n'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
     for j, var_array in enumerate(inp_variables):
       for k, var in enumerate(var_array):
         temp_cur_file = cur_file
         temp_cur_event_id = cur_event_id
         temp_up_to = up_to
         cur_len = 0
-        cur_file_handler = tables.openFile(os.path.join(file_location,'training_data', file_list[cur_file]))
+        cur_file_handler = tables.openFile(os.path.join(file_location, file_list[cur_file]))
         while cur_len<batch_size:
           fill_batch = batch_size-cur_len
           if fill_batch < (temp_up_to-cur_event_id):
@@ -302,7 +306,6 @@ def generator(batch_size, file_location, file_list, inds,
             cur_len += temp_up_to-temp_cur_event_id
             temp_cur_file+=1
             cur_file_handler.close()
-            print 'Read File Number {}'.format(temp_cur_file) 
             cur_file_handler = tables.openFile(os.path.join(file_location, file_list[temp_cur_file]))
             if temp_cur_file == len(inds):
               break
@@ -330,6 +333,8 @@ def generator(batch_size, file_location, file_list, inds,
       cur_event_id = inds[0][0]
       up_to = inds[0][1] 
     else:
+      if temp_cur_file != cur_file:
+        print 'Read File Number {}'.format(cur_file) 
       cur_file = temp_cur_file
       cur_event_id = temp_cur_event_id
       up_to = temp_up_to    

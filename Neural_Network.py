@@ -31,6 +31,9 @@ except:
 	raise Exception('Config File is missing!!!!')  
 
 backend = parser.get('Basics', 'keras_backend')
+os.environ["KERAS_BACKEND"] = backend
+if backend == 'theano':
+    os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=gpu,floatX=float32" 
 
 cuda_path = parser.get('Basics', 'cuda_installation')
 if not os.path.exists(cuda_path):
@@ -48,12 +51,11 @@ if cuda_path not in os.environ['LD_LIBRARY_PATH'].split(os.pathsep):
     sys.exit(1)
 
 if backend == 'tensorflow':
-	print('Run with backend Tensorflow')
-	import tensorflow as tf
+  print('Run with backend Tensorflow')
+  import tensorflow as tf
 elif backend == 'theano':
-	print('Run with backend Theano')
-	import theano
-	os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=gpu,floatX=float32" 
+  print('Run with backend Theano')
+  import theano
 else:
 	raise NameError('Choose tensorflow or theano as keras backend')
 
@@ -65,8 +67,9 @@ import math
 import time
 import shelve
 import shutil
-from keras_exp.multigpu import get_available_gpus
-from keras_exp.multigpu import make_parallel
+if backend == 'tensorflow':
+  from keras_exp.multigpu import get_available_gpus
+  from keras_exp.multigpu import make_parallel
 from functions import *   
 
 ################# Function Definitions ########################################################
@@ -96,6 +99,7 @@ if __name__ == "__main__":
 #################### Process Command Line Arguments ###########################################
 
   file_location = parser.get('Basics', 'thisfolder')
+  mc_location = parser.get('Basics', 'mc_path')
 
   args = parseArguments()
   print("\n ---------")
@@ -130,8 +134,8 @@ if __name__ == "__main__":
 
     if args.__dict__['input'] =='all':
       input_files = [file for file in \
-      os.listdir(os.path.join(file_location, 'training_data/')) \
-      if os.path.isfile(os.path.join(file_location, 'training_data/', file))]
+      os.listdir(mc_location) \
+      if os.path.isfile(os.path.join(mc_location, file))]
     else:
       input_files = (args.__dict__['input']).split(':')
 
@@ -153,7 +157,7 @@ if __name__ == "__main__":
     float(parser.get('Training_Parameters', 'validation_fraction')),
     float(parser.get('Training_Parameters', 'test_fraction'))] 
 
-    file_len = read_input_len_shapes(file_location, 
+    file_len = read_input_len_shapes(mc_location, 
       input_files, 
       virtual_len = args.__dict__['virtual_len'])
 
@@ -167,9 +171,8 @@ if __name__ == "__main__":
     ### Create the Model
     conf_model_file = os.path.join('Networks', args.__dict__['model'])
     model_settings, model_def = parse_config_file(conf_model_file)
-    shapes, shape_names, inp_variables, transformations = prepare_input(os.path.join(file_location,
-      'training_data',input_files[0]), 
-      model_settings)
+    shapes, shape_names, inp_variables, inp_transformations, out_variables, out_transformations = \
+     prepare_input_output_variables(os.path.join(mc_location, input_files[0]), model_settings)
 
     ngpus = args.__dict__['ngpus']
     adam = keras.optimizers.Adam(lr=float(parser.get('Training_Parameters', 'learning_rate')))
@@ -227,9 +230,9 @@ if __name__ == "__main__":
 
   batch_size = ngpus*int(parser.get('Training_Parameters', 'single_gpu_batch_size'))
 
-  model.fit_generator(generator(batch_size, file_location, input_files, train_inds, shapes, inp_variables, transformations), 
+  model.fit_generator(generator(batch_size, mc_location, input_files, train_inds, shapes, inp_variables, inp_transformations, out_variables, out_transformations), 
                 steps_per_epoch = math.ceil(np.sum([k[1]-k[0] for k in train_inds])/batch_size),
-                validation_data = generator(batch_size, file_location, input_files, valid_inds, shapes, inp_variables, transformations),
+                validation_data = generator(batch_size, mc_location, input_files, valid_inds, shapes, inp_variables, inp_transformations, out_variables, out_transformations),
                 validation_steps = math.ceil(np.sum([k[1]-k[0] for k in valid_inds])/batch_size),
                 callbacks = [CSV_log, early_stop, best_model, MemoryCallback()], 
                 epochs = int(parser.get('Training_Parameters', 'epochs')), 
@@ -245,7 +248,7 @@ if __name__ == "__main__":
   file_location,'train_hist/{}/{}/final_network.h5'.format(today,project_name)))  # save trained network
 
   print('\n Calculate Results... \n')
-  prediction = model.predict_generator(generator(batch_size, file_location, input_files, test_inds, shapes, model_settings), 
+  prediction = model.predict_generator(generator(batch_size, mc_location, input_files, test_inds, shapes, inp_variables, inp_transformations, out_variables, out_transformations), 
                 steps = math.ceil(np.sum([k[1]-k[0] for k in test_inds])/batch_size),
                 verbose = int(parser.get('Training_Parameters', 'verbose')),
                 max_q_size = int(parser.get('Training_Parameters', 'max_queue_size'))
