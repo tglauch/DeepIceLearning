@@ -17,7 +17,5 @@ file 'test.cfg'
 In order to run the training you can either:
 
 1. directly run the script Neural_Network.py 
-
 or 
-
 2. submit a job to the condor or slurm cluster by running condor_submit/train_NN_network.py
