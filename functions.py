@@ -27,7 +27,8 @@ import resource
 
 def read_input_len_shapes(file_location, input_files, virtual_len=-1):
 
-  """Create an Array of Input and Output HDF5 Monte Carlo data from a given list of files(e.g file1:file2 ...) 
+  """Read length and shape attribute form datasets and assert that all files have been processed with 
+  the same detector shape. Return the length for further processing.
 
   Arguments:
   file_location: location of this file, as saved in config.cfg
@@ -35,9 +36,8 @@ def read_input_len_shapes(file_location, input_files, virtual_len=-1):
   virtual_len : can be set for debugging purposes if only the first $virtual_len events shell be considered 
 
   Returns: 
-  input_data : A list of datafiles to be feeded into the network
-  output_data : A list of datafiles as true value for the network
-  file_len : The number of events for each file
+
+  file_len : List of number of events for each file
 
   """
   file_len = []
@@ -74,9 +74,12 @@ def prepare_input_output_variables(file_path, model_settings):
   Returns: 
   shapes : the input shapes for each branch after transformation (ordered)
   shape_names : the names of the correspondincxg model branches (ordered)
-  inp_variables : 
-  transformation : 
-
+  inp_variables : list of the input variables for the different branches
+   (e.g [['charge','time'], ['charge']])
+  inp_transformation : the corresponding transformations applied before feeding the network 
+  (e.g [['x-np.mean(x)','x'], ['np.sum(x)']])
+  out_variables: list of output variables (e.g. ['energy', 'zenith'])
+  out_transformation: list of output transformations (e.g. ['np.log10(x)', 'x'])
   """
 
   print(model_settings)
@@ -186,7 +189,7 @@ def base_model(model_def, shapes, shape_names):
 
   Arguments:
   model_def : list containing blocks (list) of model-branches and layer definitions (compare the network config files)
-  shape, shape_names: input shapes and names as constructed in prepare_input_shapes(one_input_array, model_settings)
+  shape, shape_names: input shapes and names as constructed in prepare_input_output_variables(file_path, model_settings)
 
   Returns: 
   model : the (non-compiled) model object
@@ -334,7 +337,7 @@ def generator(batch_size, file_location, file_list, inds,
       up_to = inds[0][1] 
     else:
       if temp_cur_file != cur_file:
-        print 'Read File Number {}'.format(cur_file) 
+        print '\n Read File Number {} \n'.format(cur_file) 
       cur_file = temp_cur_file
       cur_event_id = temp_cur_event_id
       up_to = temp_up_to    
