@@ -54,12 +54,12 @@ def read_input_len_shapes(file_location, input_files, virtual_len=-1):
     else:
       data_len = virtual_len
       print('Only use the first {} Monte Carlo Events'.format(data_len))
-
     file_len.append(data_len)
-
+    file_handler.close()
   return file_len
 
-def prepare_input(one_input_array, model_settings):
+
+def prepare_input(file_path, model_settings):
 
   """given the transformations of the 'raw' input data (e.g. the charges per gridelement) the
   the input shape for the network is calculated. example: transformation is np.sum(x) -->
@@ -72,8 +72,10 @@ def prepare_input(one_input_array, model_settings):
                    otherwise assume no transformation at all 
 
   Returns: 
-  shapes : the shapes after transformation (ordered)
+  shapes : the input shapes for each branch after transformation (ordered)
   shape_names : the names of the correspondincxg model branches (ordered)
+  inp_variables : 
+  transformation : 
 
   """
 
@@ -103,17 +105,21 @@ def prepare_input(one_input_array, model_settings):
         ### Todo: Once the output shape gets more flexible, change this here. function is then called
         ## prepare_inp_out_shapes
           continue
-
+  cur_file_handler = tables.openFile(file_path)
   for i in range(len(shape_names)):
       temp_shape_arr = []
       for j in range(len(inp_variables[i])):
-          temp_shape_arr.append(np.shape(eval(transformations[i][j].replace('x', 'one_input_array[\'{}\'][0]'.format(inp_variables[i][j])))))
+          test_array = eval('cur_file_handler.root.{}'.format(inp_variables[i][j]))[0]
+          print np.shape(test_array)
+          temp_shape_arr.append(np.shape(eval(transformations[i][j].replace('x', 'test_array'))))
       if all(x==temp_shape_arr[0] for x in temp_shape_arr):
         shapes.append(temp_shape_arr[0][0:-1]+(len(temp_shape_arr),))
       else:
         raise Exception('The transformations that you have applied do not results in the same shape!!!!')
       print shapes
+  cur_file_handler.close()
   return shapes, shape_names, inp_variables, transformations
+
 
 def parse_config_file(conf_file_path):
   """Function that parses the config file and returns the settings and architecture of the model
@@ -152,7 +158,6 @@ def parse_config_file(conf_file_path):
               settings.append(block)
           elif mode=='model':
               model.append(block)
-
   return settings, model
 
 def add_layer(model, layer, args, kwargs):
@@ -281,7 +286,7 @@ def generator(batch_size, file_location, file_list, inds,
         temp_cur_event_id = cur_event_id
         temp_up_to = up_to
         cur_len = 0
-        cur_file_handler = tables.openFile(os.path.join(file_location, file_list[cur_file]))
+        cur_file_handler = tables.openFile(os.path.join(file_location,'training_data', file_list[cur_file]))
         while cur_len<batch_size:
           fill_batch = batch_size-cur_len
           if fill_batch < (temp_up_to-cur_event_id):

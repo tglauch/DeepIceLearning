@@ -87,9 +87,6 @@ def parseArguments():
   parser.add_argument("--continue", help="Give a folder to continue the training of the network", type=str, default = 'None')
   parser.add_argument("--date", help="Give current date to identify safe folder", type=str, default = 'None')
   parser.add_argument("--ngpus", help="Number of GPUs for parallel training", type=int, default = 1)
-  ### not used atm...normalization has to be defined in the config file
-  parser.add_argument('--normalize_input', dest='norm_input', action='store_true')
-  parser.set_defaults(norm_input=True)
   parser.add_argument("--version", action="version", version='%(prog)s - Version 1.0')
   args = parser.parse_args()
   return args
@@ -126,9 +123,6 @@ if __name__ == "__main__":
     print(today)
     shelf.close()
 
-    input_data, output_data, file_len = read_input_len_shapes(file_location, input_files.split(':'))
-
-
 ####### Build-up a new Model ###########################################
 
   else:
@@ -159,7 +153,7 @@ if __name__ == "__main__":
     float(parser.get('Training_Parameters', 'validation_fraction')),
     float(parser.get('Training_Parameters', 'test_fraction'))] 
 
-    input_data, output_data, file_len = read_input_len_shapes(file_location, 
+    file_len = read_input_len_shapes(file_location, 
       input_files, 
       virtual_len = args.__dict__['virtual_len'])
 
@@ -173,7 +167,10 @@ if __name__ == "__main__":
     ### Create the Model
     conf_model_file = os.path.join('Networks', args.__dict__['model'])
     model_settings, model_def = parse_config_file(conf_model_file)
-    shapes, shape_names, inp_variables, transformations = prepare_input(input_data[0], model_settings)
+    shapes, shape_names, inp_variables, transformations = prepare_input(os.path.join(file_location,
+      'training_data',input_files[0]), 
+      model_settings)
+
     ngpus = args.__dict__['ngpus']
     adam = keras.optimizers.Adam(lr=float(parser.get('Training_Parameters', 'learning_rate')))
 
@@ -230,9 +227,9 @@ if __name__ == "__main__":
 
   batch_size = ngpus*int(parser.get('Training_Parameters', 'single_gpu_batch_size'))
 
-  model.fit_generator(generator(batch_size, file_location, input_files.split(':'), train_inds, shapes, inp_variables, transformations), 
+  model.fit_generator(generator(batch_size, file_location, input_files, train_inds, shapes, inp_variables, transformations), 
                 steps_per_epoch = math.ceil(np.sum([k[1]-k[0] for k in train_inds])/batch_size),
-                validation_data = generator(batch_size, file_location, input_files.split(':'), valid_inds, shapes, inp_variables, transformations),
+                validation_data = generator(batch_size, file_location, input_files, valid_inds, shapes, inp_variables, transformations),
                 validation_steps = math.ceil(np.sum([k[1]-k[0] for k in valid_inds])/batch_size),
                 callbacks = [CSV_log, early_stop, best_model, MemoryCallback()], 
                 epochs = int(parser.get('Training_Parameters', 'epochs')), 
@@ -248,7 +245,7 @@ if __name__ == "__main__":
   file_location,'train_hist/{}/{}/final_network.h5'.format(today,project_name)))  # save trained network
 
   print('\n Calculate Results... \n')
-  prediction = model.predict_generator(generator(batch_size, file_location, input_files.split(':'), test_inds, shapes, model_settings), 
+  prediction = model.predict_generator(generator(batch_size, file_location, input_files, test_inds, shapes, model_settings), 
                 steps = math.ceil(np.sum([k[1]-k[0] for k in test_inds])/batch_size),
                 verbose = int(parser.get('Training_Parameters', 'verbose')),
                 max_q_size = int(parser.get('Training_Parameters', 'max_queue_size'))
