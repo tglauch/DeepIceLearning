@@ -24,7 +24,7 @@ import os
 import numpy as np
 import tables
 import resource
-from memory_profiler import profile
+#from memory_profiler import profile
 
 def read_input_len_shapes(file_location, input_files, virtual_len=-1):
 
@@ -252,7 +252,7 @@ class MemoryCallback(keras.callbacks.Callback):
         print(' \n RAM Usage {:.2f} GB \n \n'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
         os.system("nvidia-smi")
 
-@profile
+#@profile ### Only from Memory Profiling
 def generator(batch_size, file_location, file_list, inds,
   inp_shape, inp_variables, inp_transformations,
   out_variables, out_transformations):
