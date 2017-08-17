@@ -337,7 +337,7 @@ def generator(batch_size, file_location, file_list, inds,
       up_to = inds[0][1] 
     else:
       if temp_cur_file != cur_file:
-        print '\n Read File Number {} \n'.format(cur_file) 
+        print '\n Read File Number {} \n'.format(temp_cur_file+1) 
       cur_file = temp_cur_file
       cur_event_id = temp_cur_event_id
       up_to = temp_up_to    
