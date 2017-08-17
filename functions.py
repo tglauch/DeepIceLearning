@@ -24,6 +24,7 @@ import os
 import numpy as np
 import tables
 import resource
+from memory_profiler import profile
 
 def read_input_len_shapes(file_location, input_files, virtual_len=-1):
 
@@ -251,6 +252,7 @@ class MemoryCallback(keras.callbacks.Callback):
         print(' \n RAM Usage {:.2f} GB \n \n'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
         os.system("nvidia-smi")
 
+@profile
 def generator(batch_size, file_location, file_list, inds,
   inp_shape, inp_variables, inp_transformations,
   out_variables, out_transformations):
@@ -309,12 +311,12 @@ def generator(batch_size, file_location, file_list, inds,
             cur_len += temp_up_to-temp_cur_event_id
             temp_cur_file+=1
             cur_file_handler.close()
-            cur_file_handler = tables.openFile(os.path.join(file_location, file_list[temp_cur_file]))
             if temp_cur_file == len(inds):
               break
             else:
               temp_cur_event_id = inds[temp_cur_file][0]
               temp_up_to = inds[temp_cur_file][1]
+              cur_file_handler = tables.openFile(os.path.join(file_location, file_list[temp_cur_file]))
         cur_file_handler.close()
 
         for i in range(len(temp_in)):

@@ -237,8 +237,7 @@ if __name__ == "__main__":
                 callbacks = [CSV_log, early_stop, best_model, MemoryCallback()], 
                 epochs = int(parser.get('Training_Parameters', 'epochs')), 
                 verbose = int(parser.get('Training_Parameters', 'verbose')),
-                max_queue_size = int(parser.get('Training_Parameters', 'max_queue_size')),
-                use_multiprocessing=False
+                max_q_size = int(parser.get('Training_Parameters', 'max_queue_size')),
                 )
 
 #################### Saving the Final Model and Calculation/Saving of Result for Test Dataset ######################
