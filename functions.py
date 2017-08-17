@@ -279,7 +279,9 @@ def generator(batch_size, file_location, file_list, inds,
   """
 
   batch_input = [ np.zeros((batch_size,)+i) for i in inp_shape ]  
+  print [np.shape(strange) for strange in batch_input]
   batch_out = np.zeros((batch_size,len(out_variables)))
+  print np.shape(batch_out)
   cur_file = 0
   cur_event_id = inds[cur_file][0]
   cur_len = 0
