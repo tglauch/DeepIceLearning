@@ -347,4 +347,6 @@ def generator(batch_size, file_location, file_list, inds,
       up_to = temp_up_to    
     if (loop_counter%500)==1:
       print(' \n RAM Usage {:.2f} GB \n \n'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
+    if len(batch_input)==1:
+      batch_input = batch_input[0]
     yield (batch_input, batch_out)
