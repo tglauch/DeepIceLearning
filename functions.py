@@ -301,6 +301,9 @@ def generator(batch_size, file_location, file_list, inds,
   temp_in = []
   while True:
     loop_counter+=1
+    if (loop_counter%500)==1:
+      print(' \n CPU RAM Usage {:.2f} GB \n \n'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
+      print(' \n GPU MEM : {:.2f} GB \n'.format(gpu_memory()/1e3))
     for j, var_array in enumerate(inp_variables):
       for k, var in enumerate(var_array):
         temp_cur_file = cur_file
