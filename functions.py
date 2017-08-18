@@ -234,6 +234,9 @@ def base_model(model_def, shapes, shape_names):
               if not 'input_shape' in kwargs and input_layer==True:
                 ind = shape_names.index(cur_model_name)
                 kwargs['input_shape']=shapes[ind]
+              print layer
+              print args
+              print kwargs
               add_layer(cur_model, layer, args,kwargs)
           else:
               merge_layer_names = [name.strip() for name in kwargs['layers'][1:-1].split(',')]
@@ -278,10 +281,8 @@ def generator(batch_size, file_location, file_list, inds,
 
   """
 
-  batch_input = [ np.zeros((batch_size,)+i) for i in inp_shape ]  
-  print [np.shape(strange) for strange in batch_input]
+  batch_input = [np.zeros((batch_size,)+i) for i in inp_shape]
   batch_out = np.zeros((batch_size,len(out_variables)))
-  print np.shape(batch_out)
   cur_file = 0
   cur_event_id = inds[cur_file][0]
   cur_len = 0
@@ -347,6 +348,4 @@ def generator(batch_size, file_location, file_list, inds,
       up_to = temp_up_to    
     if (loop_counter%500)==1:
       print(' \n RAM Usage {:.2f} GB \n \n'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
-    if len(batch_input)==1:
-      batch_input = batch_input[0]
     yield (batch_input, batch_out)
