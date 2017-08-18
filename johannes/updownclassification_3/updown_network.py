@@ -118,7 +118,7 @@ def generator(batch_size, input_data, out_data, inds, inf_times_as = 1):
     if 'args' in globals():
         if args.using == 'charge':
             preprocess = jkutils.fake_preprocess
-    batch_input = np.zeros((batch_size, 22491))
+    batch_input = np.zeros((batch_size, 20,10,60,1))
     batch_out = np.zeros((batch_size,1))
     cur_file = 0
     cur_event_id = inds[cur_file][0]
@@ -130,13 +130,12 @@ def generator(batch_size, input_data, out_data, inds, inf_times_as = 1):
         while cur_len < batch_size:
             fill_batch = batch_size-cur_len
             if fill_batch < (up_to-cur_event_id):
-                #oder zuerst flatten und dann preprocess?
-                temp_in.extend(map(np.ndarray.flatten, input_data[cur_file][cur_event_id:cur_event_id+fill_batch]))
+                temp_in.extend(input_data[cur_file][cur_event_id:cur_event_id+fill_batch])
                 temp_out.extend(out_data[cur_file][cur_event_id:cur_event_id+fill_batch])
                 cur_len += fill_batch
                 cur_event_id += fill_batch
             else:
-                temp_in.extend(map(np.ndarray.flatten, input_data[cur_file][cur_event_id:up_to]))
+                temp_in.extend(input_data[cur_file][cur_event_id:up_to])
                 temp_out.extend(out_data[cur_file][cur_event_id:up_to])
                 cur_len += up_to-cur_event_id
                 cur_file+=1
@@ -152,7 +151,6 @@ def generator(batch_size, input_data, out_data, inds, inf_times_as = 1):
         for i in range(len(temp_in)):
             batch_input[i] = preprocess(temp_in[i], replace_with = inf_times_as)
             batch_out[i] = zenith_to_binary(temp_out[i][zenith])
-            #batch_out[i] = np.zeros(temp_out[i][zenith].shape)
         cur_len = 0 
         """
         from scipy.stats import describe
@@ -161,6 +159,7 @@ def generator(batch_size, input_data, out_data, inds, inf_times_as = 1):
         print batch_out[0:50]
         sys.exit()
         """
+        #batch_input should be tuple: (samples, conv_dim1, conv_dim2, conv_dim3, channels)
         yield (batch_input, batch_out)
             
 
@@ -168,10 +167,10 @@ if __name__ == "__main__":
 
 #################### Process Command Line Arguments ######################################
 
-    config_path = '/data/user/jkager/NN_Reco/johannes/updownclassification_2/config.cfg'
+    config_path = '/data/user/jkager/NN_Reco/johannes/updownclassification_3/config.cfg'
     parser = ConfigParser()
     parser.read(config_path)
-    file_location = parser.get('Basics', 'thisfolder') # /data/user/jkager/NN_Reco/johannes/updownclassification_2/
+    file_location = parser.get('Basics', 'thisfolder') # /data/user/jkager/NN_Reco/johannes/updownclassification_3/
     data_location = parser.get('Basics', 'data_enc_folder')
   
     args = parseArguments()
@@ -341,10 +340,9 @@ if __name__ == "__main__":
             sys.exit(-1)
         shelf = shelve.open(os.path.join(file_location, project_folder, 'run_info.shlf'))
         input_files = shelf['Files'].split(':')
-        print input_files
         if input_files[0] == 'all':
             input_files = os.listdir(os.path.join(data_location, 'training_data/'))
-            print input_files
+        print input_files
         train_inds = shelf['Train_Inds'] 
         valid_inds = shelf['Valid_Inds']
         test_inds = shelf['Test_Inds']
