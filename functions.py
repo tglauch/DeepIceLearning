@@ -233,17 +233,17 @@ def base_model(model_def, shapes, shape_names):
               if not 'input_shape' in kwargs and input_layer==True:
                 ind = shape_names.index(cur_model_name)
                 kwargs['input_shape']=shapes[ind]
-              add_layer(cur_model, layer, args,kwargs)
+              add_layer(cur_model, layer, args, kwargs)
           else:
               merge_layer_names = [name.strip() for name in kwargs['layers'][1:-1].split(',')]
               kwargs = dict()
               kwargs['mode']='concat'
               add_layer(cur_model, layer,[[models[name] for name in merge_layer_names]], kwargs)
               for name in merge_layer_names:
-                  del models[name] 
+                  del models[name]
           input_layer = False
   print(cur_model.summary())
-  models[cur_model_name] = cur_model  
+  models[cur_model_name] = cur_model
   return cur_model
 
 class MemoryCallback(keras.callbacks.Callback):

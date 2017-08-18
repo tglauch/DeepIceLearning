@@ -23,29 +23,13 @@ import argparse
 import os, sys
 from configparser import ConfigParser
 
-os.chdir('/data/user/tglauch/ML_Reco/')
-
-parser = ConfigParser()
-try:
-    parser.read('./config.cfg')
-except:
-    raise Exception('Config File is missing!!!!') 
-
-dataset_configparser = ConfigParser()
-try:
-    dataset_configparser.read('./create_dataset.cfg')
-except:
-    raise Exception('Config File is missing!!!!') 
-
-file_location = str(parser.get('Basics', 'thisfolder'))
-
-#### File paths #########
-basepath = str(dataset_configparser.get('Basics', 'MC_path'))
-geometry_file = str(dataset_configparser.get('Basics', 'geometry_file'))
-outfolder = str(dataset_configparser.get('Basics', 'out_folder'))
 
 def parseArguments():
   parser = argparse.ArgumentParser()
+  parser.add_argument("--main_config", help="main config file, user-specific",\
+                      type=str ,default='default.cfg')
+  parser.add_argument("--dataset_config", help="main config file, user-specific",\
+                      type=str ,default='default.cfg')
   parser.add_argument("--project", help="The name for the Project", type=str ,default='none')
   parser.add_argument("--num_files", help="The number of files to be read", type=str ,default=-1)
   parser.add_argument("--folder", help="neutrino-generator folder", type=str ,default='11069/00000-00999')
@@ -56,6 +40,28 @@ def parseArguments():
   args = parser.parse_args()
 
   return args
+
+#os.chdir('/data/user/tglauch/ML_Reco/')
+args = parseArguments()
+
+parser = ConfigParser()
+try:
+    parser.read(args.main_config)
+except:
+    raise Exception('Config File is missing!!!!') 
+
+dataset_configparser = ConfigParser()
+try:
+    dataset_configparser.read(args.dataset_config)
+except:
+    raise Exception('Config File is missing!!!!') 
+
+file_location = str(parser.get('Basics', 'thisfolder'))
+
+#### File paths #########
+basepath = str(dataset_configparser.get('Basics', 'MC_path'))
+geometry_file = str(dataset_configparser.get('Basics', 'geometry_file'))
+outfolder = str(dataset_configparser.get('Basics', 'out_folder'))
 
 def read_variables(cfg_parser):
     """Function reading a config file, defining the variables to be read from the MC files.
@@ -101,7 +107,6 @@ def make_grid_dict(input_shape, geometry):
     grid: a dictionary mapping (string, om) => (grid_x, grid_y, grid_z), i.e. dom id to its index position in the cubic grid
     dom_list_ret: list of all (string, om), i.e. list of all dom ids in the geofile  (sorted(dom_list_ret)==sorted(grid.keys()))
     """
-    
     
     dom_6_pos = geometry[icetray.OMKey(6,1)].position
     dom_1_pos = geometry[icetray.OMKey(1,1)].position
@@ -179,7 +184,6 @@ def calc_depositedE(physics_frame):
 if __name__ == "__main__":
 
     # Raw print arguments
-    args = parseArguments()
     print"\n ############################################"
     print("You are running the script with arguments: ")
     for a in args.__dict__:
@@ -219,7 +223,6 @@ if __name__ == "__main__":
             title = "Timestamp Distribution")
         reco_vals = tables.Table(h5file.root, 'reco_vals', description = dtype)
         h5file.root._v_attrs.shape = input_shape 
-    
         print('Created a new HDF File with the Settings:')
         print(h5file)
 
@@ -264,7 +267,6 @@ if __name__ == "__main__":
 
                     if not len(reco_arr) == dtype_len:
                         continue
-                            
                     charge_arr = np.zeros((1, input_shape[0],input_shape[1],input_shape[2], 1))
                     time_arr = np.full((1, input_shape[0],input_shape[1],input_shape[2], 1), np.inf)
 
