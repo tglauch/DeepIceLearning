@@ -26,6 +26,16 @@ import tables
 import resource
 #from memory_profiler import profile
 
+
+def gpu_memory():
+    out = os.popen("nvidia-smi").read()
+    ret = '0MiB'
+    for item in out.split("\n"):
+        if str(os.getpid()) in item and 'python' in item:
+            ret = item.strip().split(' ')[-2]
+    return float(ret[:-3])
+
+
 def read_input_len_shapes(file_location, input_files, virtual_len=-1):
 
   """Read length and shape attribute form datasets and assert that all files have been processed with 
@@ -234,9 +244,6 @@ def base_model(model_def, shapes, shape_names):
               if not 'input_shape' in kwargs and input_layer==True:
                 ind = shape_names.index(cur_model_name)
                 kwargs['input_shape']=shapes[ind]
-              print layer
-              print args
-              print kwargs
               add_layer(cur_model, layer, args,kwargs)
           else:
               merge_layer_names = [name.strip() for name in kwargs['layers'][1:-1].split(',')]
@@ -281,6 +288,8 @@ def generator(batch_size, file_location, file_list, inds,
 
   """
 
+  print inds
+  print file_list
   batch_input = [np.zeros((batch_size,)+i) for i in inp_shape]
   batch_out = np.zeros((batch_size,len(out_variables)))
   cur_file = 0
@@ -292,6 +301,9 @@ def generator(batch_size, file_location, file_list, inds,
   temp_in = []
   while True:
     loop_counter+=1
+    if (loop_counter%500)==1:
+      print(' \n CPU RAM Usage {:.2f} GB \n \n'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
+      print(' \n GPU MEM : {:.2f} GB \n'.format(gpu_memory()/1e3))
     for j, var_array in enumerate(inp_variables):
       for k, var in enumerate(var_array):
         temp_cur_file = cur_file
@@ -308,13 +320,14 @@ def generator(batch_size, file_location, file_list, inds,
             cur_len += fill_batch
             temp_cur_event_id += fill_batch
           else:
+            print('\n Caution!!!!!! [{},{}]\n'.format(temp_cur_event_id,temp_up_to))
             temp_in.extend(eval('cur_file_handler.root.{}'.format(var))[temp_cur_event_id:temp_up_to])
             if j==0 and k==0:
               temp_out.extend(cur_file_handler.root.reco_vals.cols[temp_cur_event_id:temp_up_to])
             cur_len += temp_up_to-temp_cur_event_id
             temp_cur_file+=1
             cur_file_handler.close()
-            if temp_cur_file == len(inds):
+            if temp_cur_file == len(file_list):
               break
             else:
               temp_cur_event_id = inds[temp_cur_file][0]
@@ -347,5 +360,6 @@ def generator(batch_size, file_location, file_list, inds,
       cur_event_id = temp_cur_event_id
       up_to = temp_up_to    
     if (loop_counter%500)==1:
-      print(' \n RAM Usage {:.2f} GB \n \n'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
+      print(' \n CPU RAM Usage {:.2f} GB \n \n'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
+      print(' \n GPU MEM : {:.2f} GB \n'.format(gpu_memory()/1e3))
     yield (batch_input, batch_out)

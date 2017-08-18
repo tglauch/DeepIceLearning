@@ -67,9 +67,9 @@ import math
 import time
 import shelve
 import shutil
-if backend == 'tensorflow':
-  from keras_exp.multigpu import get_available_gpus
-  from keras_exp.multigpu import make_parallel
+# if backend == 'tensorflow':
+#   from keras_exp.multigpu import get_available_gpus
+#   from keras_exp.multigpu import make_parallel
 from functions import *   
 
 ################# Function Definitions ########################################################
@@ -144,15 +144,14 @@ if __name__ == "__main__":
       today = args.__dict__['date']
     else:
       today = datetime.date.today()
+    if 'save_path' in parser['Basics'].keys():
+      save_path =  parser.get('Basics', 'save_path')
+    else:
+      save_path = os.path.join(file_location,'train_hist/{}/{}'.format(today, project_name))
 
-    folders=['train_hist/',
-     'train_hist/{}'.format(today),
-     'train_hist/{}/{}'.format(today, project_name)]
-
-    for folder in folders:
-        if not os.path.exists('{}'.format(os.path.join(file_location,folder))):
-            os.makedirs('{}'.format(os.path.join(file_location,folder)))
-
+    if not os.path.exists(save_path):
+      os.makedirs(save_path)
+    
     train_val_test_ratio=[float(parser.get('Training_Parameters', 'training_fraction')),
     float(parser.get('Training_Parameters', 'validation_fraction')),
     float(parser.get('Training_Parameters', 'test_fraction'))] 
@@ -195,8 +194,7 @@ if __name__ == "__main__":
     os.system("nvidia-smi")  
 
     ## Save Run Information
-    shelf = shelve.open(os.path.join(file_location,
-      'train_hist/{}/{}/run_info.shlf'.format(today, project_name)))
+    shelf = shelve.open(os.path.join(save_path,'run_info.shlf'))
     shelf['Project'] = project_name
     shelf['Files'] = args.__dict__['input']
     shelf['Train_Inds'] = train_inds
@@ -210,7 +208,7 @@ if __name__ == "__main__":
 #################### Train the Model #########################################################
 
   CSV_log = keras.callbacks.CSVLogger( \
-    os.path.join(file_location,'train_hist/{}/{}/loss_logger.csv'.format(today, project_name)), 
+    os.path.join(save_path, 'loss_logger.csv'), 
     append=True)
   
   early_stop = keras.callbacks.EarlyStopping(\
@@ -221,7 +219,7 @@ if __name__ == "__main__":
     mode = 'auto')
 
   best_model = keras.callbacks.ModelCheckpoint(\
-    os.path.join(file_location,'train_hist/{}/{}/best_val_loss.npy'.format(today, project_name)), 
+    os.path.join(save_path,'best_val_loss.npy'), 
     monitor = 'val_loss', 
     verbose = int(parser.get('Training_Parameters', 'verbose')), 
     save_best_only = True, 
@@ -243,8 +241,7 @@ if __name__ == "__main__":
 #################### Saving the Final Model and Calculation/Saving of Result for Test Dataset ######################
 
   print('\n Save the Model \n')
-  model.save(os.path.join(\
-  file_location,'train_hist/{}/{}/final_network.h5'.format(today,project_name)))  # save trained network
+  model.save(os.path.join(save_path,'final_network.h5'))  # save trained network
 
   print('\n Calculate Results... \n')
   prediction = model.predict_generator(generator(batch_size, mc_location, input_files, test_inds, shapes, inp_variables, inp_transformations, out_variables, out_transformations), 
