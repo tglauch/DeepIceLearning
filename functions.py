@@ -288,6 +288,8 @@ def generator(batch_size, file_location, file_list, inds,
 
   """
 
+  print inds
+  print file_list
   batch_input = [np.zeros((batch_size,)+i) for i in inp_shape]
   batch_out = np.zeros((batch_size,len(out_variables)))
   cur_file = 0
@@ -322,7 +324,7 @@ def generator(batch_size, file_location, file_list, inds,
             cur_len += temp_up_to-temp_cur_event_id
             temp_cur_file+=1
             cur_file_handler.close()
-            if temp_cur_file == len(inds):
+            if temp_cur_file == len(file_list):
               break
             else:
               temp_cur_event_id = inds[temp_cur_file][0]
@@ -354,7 +356,7 @@ def generator(batch_size, file_location, file_list, inds,
       cur_file = temp_cur_file
       cur_event_id = temp_cur_event_id
       up_to = temp_up_to    
-    if (loop_counter%100)==1:
+    if (loop_counter%10000)==1:
       print(' \n CPU RAM Usage {:.2f} GB \n \n'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
       print(' \n GPU MEM : {:2f} GB \n'.format(gpu_memory()/1e3))
     yield (batch_input, batch_out)
