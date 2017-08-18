@@ -356,7 +356,7 @@ def generator(batch_size, file_location, file_list, inds,
       cur_file = temp_cur_file
       cur_event_id = temp_cur_event_id
       up_to = temp_up_to    
-    if (loop_counter%10000)==1:
+    if (loop_counter%500)==1:
       print(' \n CPU RAM Usage {:.2f} GB \n \n'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
       print(' \n GPU MEM : {:2f} GB \n'.format(gpu_memory()/1e3))
     yield (batch_input, batch_out)
