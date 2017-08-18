@@ -10,6 +10,7 @@ os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=gpu,floatX=float32"
 os.environ["PATH"] += os.pathsep + '/usr/local/cuda/bin/'
 os.environ['PYTHONUNBUFFERED'] = '1'
 import sys
+import inspect
 import numpy as np
 with jkutils.suppress_stdout_stderr(): #prevents printed info from theano
     import theano
@@ -53,7 +54,7 @@ def parseArguments():
     parser.add_argument("--virtual_len", help="Use an artifical array length (for debugging only!)", type=int , default=-1)
     parser.add_argument("--continue", help="Give a folder to continue the training of the network", type=str, default = 'None')
     parser.add_argument("--date", help="Give current date to identify safe folder", type=str, default = 'None')
-    parser.add_argument("--version", action="version", version='%(prog)s - Version 1.0')
+    parser.add_argument("--version", action="version", version='%(prog)s - Version 3.0')
     parser.add_argument("--filesizes", help="Print the number of events in each file and don't do anything else.", nargs='?',
                        const=True, default=False)
     parser.add_argument("--testing", help="loads latest model and just does some testing", nargs='?', const=True, default=False)
@@ -167,7 +168,8 @@ if __name__ == "__main__":
 
 #################### Process Command Line Arguments ######################################
 
-    config_path = '/data/user/jkager/NN_Reco/johannes/updownclassification_3/config.cfg'
+    currentfile = inspect.getfile(inspect.currentframe())
+    config_path = os.path.join(os.path.dirname(os.path.abspath(currentfile)), 'config.cfg')
     parser = ConfigParser()
     parser.read(config_path)
     file_location = parser.get('Basics', 'thisfolder') # /data/user/jkager/NN_Reco/johannes/updownclassification_3/
@@ -182,10 +184,7 @@ if __name__ == "__main__":
   
     project_name = args.project
   
-    #this is now handled in train_NN_network
-    #if args.input =='all':
-        #input_files = os.listdir(os.path.join(data_location, 'training_data/'))
-    input_files = (args.input).split(':')
+    input_files = jkutils.get_filenames(args.input)
   
     
 #################### set today date and check for --filesizes #################################  
