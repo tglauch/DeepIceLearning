@@ -23,7 +23,7 @@ def parseArguments():
 
 def make_condor(request_gpus, request_memory, requirements, addpath, file_location, arguments):
 	submit_info = '\
-	executable   = ../Neural_Network.py \n \
+	executable   = Neural_Network.py \n \
 	universe     = vanilla  \n\
 	request_gpus = {0} \n\
 	request_memory = {1}GB \n\
