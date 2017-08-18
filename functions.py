@@ -297,9 +297,7 @@ def generator(batch_size, file_location, file_list, inds,
   loop_counter = 0 
   temp_out = []
   temp_in = []
-  gpu_mem = []
   while True:
-    gpu_mem.append(gpu_memory())
     loop_counter+=1
     for j, var_array in enumerate(inp_variables):
       for k, var in enumerate(var_array):
@@ -357,6 +355,6 @@ def generator(batch_size, file_location, file_list, inds,
       cur_event_id = temp_cur_event_id
       up_to = temp_up_to    
     if (loop_counter%100)==1:
-      print(' \n RAM Usage {:.2f} GB \n \n'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
-     # print(gpu_mem)
+      print(' \n CPU RAM Usage {:.2f} GB \n \n'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
+      print(' \n GPU MEM : {:2f} GB \n'.format(gpu_memory()/1e3))
     yield (batch_input, batch_out)
