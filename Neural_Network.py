@@ -67,9 +67,9 @@ import math
 import time
 import shelve
 import shutil
-# if backend == 'tensorflow':
-#   from keras_exp.multigpu import get_available_gpus
-#   from keras_exp.multigpu import make_parallel
+if backend == 'tensorflow':
+  from keras_exp.multigpu import get_available_gpus
+  from keras_exp.multigpu import make_parallel
 from functions import *   
 
 ################# Function Definitions ########################################################

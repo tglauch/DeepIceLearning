@@ -320,13 +320,14 @@ def generator(batch_size, file_location, file_list, inds,
             cur_len += fill_batch
             temp_cur_event_id += fill_batch
           else:
-            print('\n Caution!!!!!! [{},{}]\n'.format(temp_cur_event_id,temp_up_to))
             temp_in.extend(eval('cur_file_handler.root.{}'.format(var))[temp_cur_event_id:temp_up_to])
             if j==0 and k==0:
               temp_out.extend(cur_file_handler.root.reco_vals.cols[temp_cur_event_id:temp_up_to])
             cur_len += temp_up_to-temp_cur_event_id
             temp_cur_file+=1
             cur_file_handler.close()
+            print(' \n \n CPU RAM Usage {:.2f} GB'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
+            print(' GPU MEM : {:.2f} GB \n'.format(gpu_memory()/1e3))
             if temp_cur_file == len(file_list):
               break
             else:
@@ -359,7 +360,4 @@ def generator(batch_size, file_location, file_list, inds,
       cur_file = temp_cur_file
       cur_event_id = temp_cur_event_id
       up_to = temp_up_to    
-    if (loop_counter%100)==1:
-      print(' \n \n CPU RAM Usage {:.2f} GB'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
-      print(' GPU MEM : {:.2f} GB \n'.format(gpu_memory()/1e3))
     yield (batch_input, batch_out)
