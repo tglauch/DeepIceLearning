@@ -329,6 +329,11 @@ def generator(batch_size, file_location, file_list, inds,
               temp_cur_event_id = inds[temp_cur_file][0]
               temp_up_to = inds[temp_cur_file][1]
               cur_file_handler = tables.openFile(os.path.join(file_location, file_list[temp_cur_file]))
+              
+        try:
+          cur_file_handler.close()
+        except Exception:
+          pass
 
         for i in range(len(temp_in)):
           slice_ind = [slice(None)]*batch_input[j][i].ndim
