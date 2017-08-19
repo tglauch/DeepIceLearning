@@ -287,9 +287,7 @@ def generator(batch_size, file_location, file_list, inds,
   batch_out: a batch of output data
 
   """
-
   print inds
-  print file_list
   batch_input = [np.zeros((batch_size,)+i) for i in inp_shape]
   batch_out = np.zeros((batch_size,len(out_variables)))
   cur_file = 0
@@ -301,9 +299,6 @@ def generator(batch_size, file_location, file_list, inds,
   temp_in = []
   while True:
     loop_counter+=1
-    if (loop_counter%500)==1:
-      print(' \n CPU RAM Usage {:.2f} GB \n \n'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
-      print(' \n GPU MEM : {:.2f} GB \n'.format(gpu_memory()/1e3))
     for j, var_array in enumerate(inp_variables):
       for k, var in enumerate(var_array):
         temp_cur_file = cur_file
@@ -334,7 +329,6 @@ def generator(batch_size, file_location, file_list, inds,
               temp_cur_event_id = inds[temp_cur_file][0]
               temp_up_to = inds[temp_cur_file][1]
               cur_file_handler = tables.openFile(os.path.join(file_location, file_list[temp_cur_file]))
-        cur_file_handler.close()
 
         for i in range(len(temp_in)):
           slice_ind = [slice(None)]*batch_input[j][i].ndim
@@ -350,7 +344,7 @@ def generator(batch_size, file_location, file_list, inds,
         batch_out[i][j] =  eval(out_transformations[j].replace('x', 'temp_out[i][var]')) 
     temp_out=[]
 
-    if temp_cur_file == len(inds):
+    if temp_cur_file == len(file_list):
       cur_file = 0
       cur_event_id = inds[0][0]
       up_to = inds[0][1] 
