@@ -24,6 +24,8 @@ import os
 import numpy as np
 import tables
 import resource
+import h5py
+import math
 #from memory_profiler import profile
 
 
@@ -263,9 +265,9 @@ class MemoryCallback(keras.callbacks.Callback):
         os.system("nvidia-smi")
 
 #@profile ### Only from Memory Profiling
-def generator(batch_size, file_location, file_list, inds,
+def generator(batch_size, file_handlers, inds,
   inp_shape, inp_variables, inp_transformations,
-  out_variables, out_transformations):
+  out_variables, out_transformations, val_run=False):
 
   """ This function is a real braintwister and presumably really bad implemented.
   It produces all input and output data and applies the transformations
@@ -287,7 +289,7 @@ def generator(batch_size, file_location, file_list, inds,
   batch_out: a batch of output data
 
   """
-  print inds
+  print math.ceil(np.sum([k[1]-k[0] for k in inds])/batch_size)
   batch_input = [np.zeros((batch_size,)+i) for i in inp_shape]
   batch_out = np.zeros((batch_size,len(out_variables)))
   cur_file = 0
@@ -300,40 +302,37 @@ def generator(batch_size, file_location, file_list, inds,
   while True:
     loop_counter+=1
     for j, var_array in enumerate(inp_variables):
-      for k, var in enumerate(var_array):
+      for k, var in enumerate(var_array):       
         temp_cur_file = cur_file
         temp_cur_event_id = cur_event_id
         temp_up_to = up_to
         cur_len = 0
-        cur_file_handler = tables.openFile(os.path.join(file_location, file_list[cur_file]))
         while cur_len<batch_size:
           fill_batch = batch_size-cur_len
           if fill_batch < (temp_up_to-temp_cur_event_id):
-            temp_in.extend(eval('cur_file_handler.root.{}'.format(var))[temp_cur_event_id:temp_cur_event_id+fill_batch])
             if j==0 and k==0:
-              temp_out.extend(cur_file_handler.root.reco_vals.cols[temp_cur_event_id:temp_cur_event_id+fill_batch])
+            #   # temp_out.extend(cur_file_handler.root.reco_vals.cols[temp_cur_event_id:temp_cur_event_id+fill_batch])
+              temp_out.extend(file_handlers[cur_file]['reco_vals'][temp_cur_event_id:temp_cur_event_id+fill_batch])      
+            #temp_in.extend(eval('cur_file_handler.root.{}'.format(var))[temp_cur_event_id:temp_cur_event_id+fill_batch])
+            temp_in.extend(eval('file_handlers[cur_file][\'{}\']'.format(var))[temp_cur_event_id:temp_cur_event_id+fill_batch])
             cur_len += fill_batch
             temp_cur_event_id += fill_batch
           else:
-            temp_in.extend(eval('cur_file_handler.root.{}'.format(var))[temp_cur_event_id:temp_up_to])
+            # temp_in.extend(eval('cur_file_handler.root.{}'.format(var))[temp_cur_event_id:temp_up_to])
+            temp_in.extend(eval('file_handlers[cur_file][\'{}\']'.format(var))[temp_cur_event_id:temp_up_to])
             if j==0 and k==0:
-              temp_out.extend(cur_file_handler.root.reco_vals.cols[temp_cur_event_id:temp_up_to])
+              # temp_out.extend(cur_file_handler.root.reco_vals.cols[temp_cur_event_id:temp_up_to])
+              temp_out.extend(file_handlers[cur_file]['reco_vals'][temp_cur_event_id:temp_up_to])
             cur_len += temp_up_to-temp_cur_event_id
             temp_cur_file+=1
-            cur_file_handler.close()
-            print(' \n \n CPU RAM Usage {:.2f} GB'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
-            print(' GPU MEM : {:.2f} GB \n'.format(gpu_memory()/1e3))
-            if temp_cur_file == len(file_list):
+            if not val_run:
+              print(' \n \n CPU RAM Usage {:.2f} GB'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
+              print(' GPU MEM : {:.2f} GB \n'.format(gpu_memory()/1e3))
+            if temp_cur_file == len(file_handlers):
               break
             else:
               temp_cur_event_id = inds[temp_cur_file][0]
               temp_up_to = inds[temp_cur_file][1]
-              cur_file_handler = tables.openFile(os.path.join(file_location, file_list[temp_cur_file]))
-              
-        try:
-          cur_file_handler.close()
-        except Exception:
-          pass
 
         for i in range(len(temp_in)):
           slice_ind = [slice(None)]*batch_input[j][i].ndim
@@ -346,10 +345,10 @@ def generator(batch_size, file_location, file_list, inds,
 
     for j, var in enumerate(out_variables):
       for i in range(len(temp_out)):
-        batch_out[i][j] =  eval(out_transformations[j].replace('x', 'temp_out[i][var]')) 
+        batch_out[i][j] =  eval(out_transformations[j].replace('x', 'temp_out[i][var]'))
     temp_out=[]
 
-    if temp_cur_file == len(file_list):
+    if temp_cur_file == len(file_handlers):
       cur_file = 0
       cur_event_id = inds[0][0]
       up_to = inds[0][1] 

@@ -63,7 +63,6 @@ else:
 import numpy as np
 import datetime
 import argparse
-import math
 import time
 import shelve
 import shutil
@@ -151,7 +150,7 @@ if __name__ == "__main__":
 
     if not os.path.exists(save_path):
       os.makedirs(save_path)
-    
+
     train_val_test_ratio=[float(parser.get('Training_Parameters', 'training_fraction')),
     float(parser.get('Training_Parameters', 'validation_fraction')),
     float(parser.get('Training_Parameters', 'test_fraction'))] 
@@ -228,9 +227,10 @@ if __name__ == "__main__":
 
   batch_size = ngpus*int(parser.get('Training_Parameters', 'single_gpu_batch_size'))
 
-  model.fit_generator(generator(batch_size, mc_location, input_files, train_inds, shapes, inp_variables, inp_transformations, out_variables, out_transformations), 
+  file_handlers = [h5py.File(os.path.join(mc_location, file_name), 'r') for file_name in input_files]
+  model.fit_generator(generator(batch_size, file_handlers, train_inds, shapes, inp_variables, inp_transformations, out_variables, out_transformations), 
                 steps_per_epoch = math.ceil(np.sum([k[1]-k[0] for k in train_inds])/batch_size),
-                validation_data = generator(batch_size, mc_location, input_files, valid_inds, shapes, inp_variables, inp_transformations, out_variables, out_transformations),
+                validation_data = generator(batch_size, file_handlers, valid_inds, shapes, inp_variables, inp_transformations, out_variables, out_transformations, val_run = True),
                 validation_steps = math.ceil(np.sum([k[1]-k[0] for k in valid_inds])/batch_size),
                 callbacks = [CSV_log, early_stop, best_model, MemoryCallback()], 
                 epochs = int(parser.get('Training_Parameters', 'epochs')), 
