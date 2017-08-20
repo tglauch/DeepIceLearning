@@ -325,8 +325,9 @@ def generator(batch_size, file_handlers, inds,
               temp_out.extend(file_handlers[cur_file]['reco_vals'][temp_cur_event_id:temp_up_to])
             cur_len += temp_up_to-temp_cur_event_id
             temp_cur_file+=1
-            print(' \n \n CPU RAM Usage {:.2f} GB'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
-            print(' GPU MEM : {:.2f} GB \n'.format(gpu_memory()/1e3))
+            if not val_run:
+              print(' \n \n CPU RAM Usage {:.2f} GB'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
+              print(' GPU MEM : {:.2f} GB \n'.format(gpu_memory()/1e3))
             if temp_cur_file == len(file_handlers):
               break
             else:
