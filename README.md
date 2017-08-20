@@ -1,7 +1,7 @@
 # DeepIceLearning
 DeepIceLearning - An Approach to use Deep Neural Networks for the Regression and Classification of IceCube quantities
 
-Firstly: This version of the software is still in test-mode and might contain many bugs or inconsitencys. 
+Firstly: This version of the software is still in test-mode and might contain many bugs or inconsistencies. 
 As input you can use any files that are produced with the Create_Data_Files.py script in the main directory. A set of muon neutrino events can be found in my user directory under /data/user/tglauch/ML_Reco/training_data/
 
 How to train a neural network with this code?
