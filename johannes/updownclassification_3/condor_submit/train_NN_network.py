@@ -1,30 +1,57 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import os
+import os, sys
 import time
 import argparse
 from ConfigParser import ConfigParser
 import datetime
 import shutil
 import subprocess
-import itertools
 
 
 def parseArguments():
     parser = argparse.ArgumentParser()
     parser.add_argument("--project", help="The name for the Project", type=str ,default='some_NN')
-    parser.add_argument("--input", help="Name of the input files seperated by :", type=str ,default='all')
-    parser.add_argument("--using", help="charge or time", type=str, default='time')
-    parser.add_argument("--model", help="Name of the File containing the model", type=str, default='simple_FCNN.cfg')
-    parser.add_argument("--virtual_len", help="Use an artifical array length (for debugging only!)", type=int , default=-1)
     parser.add_argument("--continue", help="Give a folder to continue the training of the network", type=str, default = 'None')
-    parser.add_argument("--version", action="version", version='%(prog)s - Version 1.0')
-    args = parser.parse_args()
-    return args
+    parser.add_argument("--nosubmit", help="If this option is passed, the updownscript will be called directy on cobalt and no \
+                        submitter will be used. Forwards all other arguments.", nargs='?', const=True, default=argparse.SUPPRESS)
+    parser.add_argument("--version", action="version", version='%(prog)s - Version 3.0')
+    args = parser.parse_known_args()
+    return args[0], args[1]
 
+parsed = parseArguments()
+args = parsed[0].__dict__
+unknown = parsed[1]
 
-args = parseArguments().__dict__
+if 'nosubmit' in args and args['nosubmit']:
+	print("\n ---------")
+	print("You are running the submit script with arguments: ")
+	arguments = ''
+	for a in args:
+		print('{} : {}'.format(a, args[a]))
+		arguments += '--{} {} '.format(a, args[a])
+	print "Additional (unknown) arguments are:"
+	print ' '.join(unknown)
+	print "They will all be passed to the  updown script. No submitter used! (directly called)"
+	print("--------- \n")
+    
+	arguments = []
+	for a in filter(lambda s: 'nosubmit' not in s, args):
+		arguments.extend(["--" + a, str(args[a])]) # does not work with bool arguments! (convert them to string)
+	arguments.extend(unknown)
+	print "Passing these arguments:"
+	print arguments
+	print "Running script and waiting for it to finish. Output will then be printed."
+	process = subprocess.Popen(['../updown_network.py'] + arguments,
+                           stdout=subprocess.PIPE,
+                           stderr=subprocess.STDOUT)
+	returncode = process.wait()
+	#print('script returned {0}'.format(returncode))
+	print(process.stdout.read())
+    
+	sys.exit(0)
+    
 
 parser = ConfigParser()
 parser.read('../config.cfg')
@@ -34,30 +61,10 @@ request_memory = parser.get('GPU', 'request_memory')
 requirements = parser.get('GPU', 'requirements')
 project_name = args['project']
 
-low_files = ['11029_00000-00999.h5','11029_01000-01999.h5','11029_02000-02999.h5','11029_03000-03999.h5','11029_04000-04999.h5','11029_05000-05999.h5']
-high_files = ['11069_00000-00999.h5','11069_01000-01999.h5','11069_02000-02999.h5','11069_03000-03999.h5','11069_04000-04999.h5','11069_05000-05999.h5','11069_06000-06999.h5']
-
-if args['input'] == 'all':
-    files = ':'.join(low_files + high_files)
-elif args['input'] == 'lowE':
-	files = ':'.join(low_files)
-elif args['input'] == 'highE':
-	files = ':'.join(high_files)
-elif args['input'] == 'highE_reduced': #same as highE, but only three files
-    files = ':'.join(high_files[0:3])
-elif len(args['input']) > 0 and (args['input'][0] == 'h' or args['input'][0] == 'l') and args['input'][1].isdigit():
-    inputs = {k:v for k, v in zip(*[iter(["".join(x) for _, x in itertools.groupby(args['input'], key=str.isdigit)])]*2)}
-    files = ''
-    if 'h' in inputs:
-        files = ':'.join([high_files[i] for i in map(int, list(inputs['h']))])
-    if 'l' in inputs:
-        files = ':'.join(filter(lambda s: len(s) > 0, files.split(':')) + [low_files[i] for i in map(int, list(inputs['l']))])
-else:
-	files = args['input']
-
 
 if args['continue'] != 'None':
-	arguments = '--continue {}'.format(args['continue'])
+	arguments = '--continue {} '.format(args['continue'])
+	arguments = arguments + ' '.join(unknown)
 
 	addpath = args['continue']
 	if addpath[-1]=='/': # remove slash at the end
@@ -94,12 +101,13 @@ else:
 	arguments = ''
 	for a in args:
 		print('{} : {}'.format(a, args[a]))
-		if not a == 'input':
-			arguments += '--{} {} '.format(a, args[a])
-		else:
-			arguments += '--input {} '.format(files)
+		arguments += '--{} {} '.format(a, args[a])
+	print "Additional (unknown) arguments are:"
+	print ' '.join(unknown)
+	print "They will all be passed to the  updown script."
 	print("--------- \n")
 
+	arguments += ' '.join(unknown) + ' '
 	arguments += '--date {}'.format(today)
 	addpath = os.path.join('train_hist',today,project_name)
 	submit_info = '\
@@ -126,7 +134,11 @@ with open('submit.sub', 'w') as f:
 #os.system("condor_submit submit.sub")
 output = subprocess.check_output("condor_submit submit.sub", shell=True)
 print output
-time.sleep(3)
-with open('submit.sub', 'a') as f:
-    f.write(output)
+#time.sleep(3)
+#this would print something like:
+#	Submitting job(s).
+#	1 job(s) submitted to cluster 263196320.
+#something similar is already written to condor.log, so it is not needed anymore. (job id is necessary for killing a job or being #able to understand if it still runs)
+#with open('submit.sub', 'a') as f:
+#    f.write(output)
 shutil.copy('submit.sub', os.path.join(file_location, addpath))
