@@ -77,7 +77,7 @@ def base_model(model_def):
         for line in f:
             cur_line = line.strip()
             if cur_line == '' and layer != '':
-                add_layer(model, layer, args,kwargs)
+                add_layer(model, layer, args, kwargs)
                 args = []
                 kwargs = dict()
                 layer = ''
@@ -125,6 +125,10 @@ def generator(batch_size, input_data, out_data, inds, inf_times_as = 1):
     cur_event_id = inds[cur_file][0]
     cur_len = 0
     up_to = inds[cur_file][1]
+    print "here"
+    print out_data[0][0]["zenith"]
+    print "exiting"
+    #sys.exit(0)
     while True:
         temp_in = []
         temp_out = []
@@ -151,7 +155,7 @@ def generator(batch_size, input_data, out_data, inds, inf_times_as = 1):
                     up_to = inds[cur_file][1]
         for i in range(len(temp_in)):
             batch_input[i] = preprocess(temp_in[i], replace_with = inf_times_as)
-            batch_out[i] = zenith_to_binary(temp_out[i][zenith])
+            batch_out[i] = zenith_to_binary(temp_out[i]["zenith"])
         cur_len = 0 
         """
         from scipy.stats import describe
@@ -263,7 +267,7 @@ if __name__ == "__main__":
   
             shelf = shelve.open(os.path.join(file_location,'./train_hist/{}/{}/run_info.shlf'.format(today, project_name)))
             shelf['Project'] = project_name
-            shelf['Files'] = args.input
+            shelf['Files'] = ':'.join(input_files)
             shelf['arguments'] = str(sys.argv)
             shelf['Train_Inds'] = train_inds
             shelf['Valid_Inds'] = valid_inds
@@ -339,9 +343,17 @@ if __name__ == "__main__":
             sys.exit(-1)
         shelf = shelve.open(os.path.join(file_location, project_folder, 'run_info.shlf'))
         input_files = shelf['Files'].split(':')
-        if input_files[0] == 'all':
-            input_files = os.listdir(os.path.join(data_location, 'training_data/'))
-        print input_files
+        print "Input Files:", input_files
+        if len(input_files) == 1: #this could be something like ['h01'] (inputformat)
+            #try to decode fileinput format
+            input_files = jkutils.get_filenames(input_files[0])
+            print "decodes to: ", input_files
+        for f in input_files:
+            if not os.path.isfile(os.path.join(data_location, 'training_data/{}'.format(f))):
+                print "file not found:", f
+                print "exiting script."
+                sys.exit(1)
+        print "All files found. proceeding..."
         train_inds = shelf['Train_Inds'] 
         valid_inds = shelf['Valid_Inds']
         test_inds = shelf['Test_Inds']
@@ -375,9 +387,9 @@ if __name__ == "__main__":
         preprocess = jkutils.preprocess
     for i in range(len(input_data)):
         print('Predict Values for {}'.format(input_files[i]))
-        test_in_chunk  = np.array(map(np.ndarray.flatten, preprocess(input_data[i][test_inds[i][0]:test_inds[i][1]], 
-                                                                     replace_with = inf_times_as)))
-        test_out_chunk = zenith_to_binary(out_data[i][test_inds[i][0]:test_inds[i][1],zenith:zenith+1])
+        test_in_chunk  = preprocess(input_data[i][test_inds[i][0]:test_inds[i][1]], 
+                                    replace_with = inf_times_as)
+        test_out_chunk = zenith_to_binary(out_data[i][test_inds[i][0]:test_inds[i][1],"zenith"])
         res_chunk = model.predict(test_in_chunk, verbose=int(parser.get('Training_Parameters', 'verbose')))
         res.extend(list(res_chunk))
         test_out.extend(list(test_out_chunk))
@@ -386,7 +398,7 @@ if __name__ == "__main__":
     test_out = np.squeeze(test_out)
     np.save(os.path.join(file_location,'train_hist/{}/{}/test_results.npy'.format(today, project_name)), 
       [res, test_out])
-    correct = np.sum(res == test_out)
+    correct = np.sum(np.round(res) == test_out)
     total = len(res)
     print "{} / {} = {:6.2f}%".format(correct, total, float(correct)/total*100)
   
