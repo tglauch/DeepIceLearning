@@ -148,7 +148,7 @@ def parse_config_file(conf_file_path):
   """Function that parses the config file and returns the settings and architecture of the model
 
   Arguments:
-  conf_file_path : name of the config file in the folder ./Networks
+  conf_file_path : name of the config file in the folder 
 
   Returns: 
   settings : settings for the network. e.g. the input shapes
@@ -325,9 +325,6 @@ def generator(batch_size, file_handlers, inds,
               temp_out.extend(file_handlers[cur_file]['reco_vals'][temp_cur_event_id:temp_up_to])
             cur_len += temp_up_to-temp_cur_event_id
             temp_cur_file+=1
-            if not val_run:
-              print(' \n \n CPU RAM Usage {:.2f} GB'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
-              print(' GPU MEM : {:.2f} GB \n'.format(gpu_memory()/1e3))
             if temp_cur_file == len(file_handlers):
               break
             else:
@@ -355,6 +352,9 @@ def generator(batch_size, file_handlers, inds,
     else:
       if temp_cur_file != cur_file:
         print '\n Read File Number {} \n'.format(temp_cur_file+1) 
+        if not val_run:
+          print(' \n CPU RAM Usage {:.2f} GB'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
+          print(' GPU MEM : {:.2f} GB \n \n'.format(gpu_memory()/1e3))
       cur_file = temp_cur_file
       cur_event_id = temp_cur_event_id
       up_to = temp_up_to    
