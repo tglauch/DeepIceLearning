@@ -53,6 +53,7 @@ import h5py
 import shelve
 from functions import generator, base_model, parse_config_file, prepare_input_output_variables
 import math
+import numpy.lib.recfunctions as rfn
 
 
 
@@ -107,16 +108,19 @@ if __name__ == "__main__":
 
   file_handlers = [h5py.File(os.path.join(mc_location, file_name), 'r') for file_name in input_files]
   test_inds =   shelf['Test_Inds']
-  print(test_inds)
-  print('##########')
+  num_events = np.sum([k[1]-k[0] for k in test_inds])
   prediction = model.predict_generator(generator(args.batch_size, file_handlers, test_inds, shapes, inp_variables,\
    inp_transformations, out_variables, out_transformations), 
-                steps = math.ceil(np.sum([k[1]-k[0] for k in test_inds])/args.batch_size),
+                steps = math.ceil(num_events/args.batch_size),
                 verbose = 1,
                 max_q_size = 2
                 )
- 
-  mc_truth = [[]*len(out_variables)]
+  dtype = np.dtype([(var, np.float64) for var in out_variables])
+  prediction = np.array(prediction, dtype = dtype)[0:num_events]
+
+
+  out_variables.append('muex')
+  mc_truth = [[] for i in range(len(out_variables))]
   for i, file_handler in enumerate(file_handlers):
     down = test_inds[i][0]
     up = test_inds[i][1]
@@ -124,9 +128,6 @@ if __name__ == "__main__":
     for j, var in enumerate(out_variables):
       mc_truth[j].extend(temp_truth[var])
 
-  dtype = [(var, np.float64) for var in out_variables]
-  mc_truth = np.array(mc_truth, dtype=dtype)
-
-
-
-  np.save(os.path.join(DATA_DIR, 'test_res.npy'), [mc_truth, prediction])
+  dtype = np.dtype([(var+'_truth', np.float64) for var in out_variables])
+  mc_truth = np.array(zip(*np.array(mc_truth)), dtype=dtype)
+  np.save(os.path.join(DATA_DIR, 'test_res.npy'), rfn.merge_arrays([mc_truth, prediction], flatten = True, usemask = False))
