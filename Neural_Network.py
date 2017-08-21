@@ -1,8 +1,5 @@
-#!/usr/bin/env python
+#! /usr/bin/env python
 # coding: utf-8
-
-
-###### DeepIceLearning, a Project by Theo Glauch and Johannes Kager, 2017 #################
 
 """This file is part of DeepIceLearning
 DeepIceLearning is free software: you can redistribute it and/or modify
@@ -21,12 +18,40 @@ import os
 import sys
 from configparser import ConfigParser
 import socket
+import argparse
 
+################# Function Definitions ########################################################
+
+def parseArguments():
+
+  """Parse the command line arguments
+
+  Returns: 
+  args : Dictionary containing the command line arguments
+
+  """
+  parser = argparse.ArgumentParser()
+  parser.add_argument("--main_config", help="main config file, user-specific",\
+                      type=str ,default='default.cfg')
+  parser.add_argument("--project", help="The name for the Project", type=str ,default='some_NN')
+  parser.add_argument("--input", help="Name of the input files seperated by :", type=str ,default='all')
+  parser.add_argument("--model", help="Name of the File containing th qe model", type=str, default='simple_CNN.cfg')
+  parser.add_argument("--virtual_len", help="Use an artifical array length (for debugging only!)", type=int , default=-1)
+  parser.add_argument("--continue", help="Give a folder to continue the training of the network", type=str, default = 'None')
+  parser.add_argument("--date", help="Give current date to identify safe folder", type=str, default = 'None')
+  parser.add_argument("--ngpus", help="Number of GPUs for parallel training", type=int, default = 1)
+  parser.add_argument("--version", action="version", version='%(prog)s - Version 1.0')
+  args = parser.parse_args()
+  return args
+
+##### Read config and load keras stuff #############
 print('Running on Hostcomputer {}'.format(socket.gethostname()))
 
+args = parseArguments()
+config_file = args.main_config
 parser = ConfigParser()
 try:
-	parser.read('config.cfg')
+	parser.read(config_file)
 except:
 	raise Exception('Config File is missing!!!!')  
 
@@ -62,6 +87,7 @@ else:
 
 import numpy as np
 import datetime
+import math
 import argparse
 import time
 import shelve
@@ -69,29 +95,7 @@ import shutil
 if backend == 'tensorflow':
   from keras_exp.multigpu import get_available_gpus
   from keras_exp.multigpu import make_parallel
-from functions import *   
-
-################# Function Definitions ########################################################
-
-def parseArguments():
-
-  """Parse the command line arguments
-
-  Returns: 
-  args : Dictionary containing the command line arguments
-
-  """
-  parser = argparse.ArgumentParser()
-  parser.add_argument("--project", help="The name for the Project", type=str ,default='some_NN')
-  parser.add_argument("--input", help="Name of the input files seperated by :", type=str ,default='all')
-  parser.add_argument("--model", help="Name of the File containing th qe model", type=str, default='simple_CNN.cfg')
-  parser.add_argument("--virtual_len", help="Use an artifical array length (for debugging only!)", type=int , default=-1)
-  parser.add_argument("--continue", help="Give a folder to continue the training of the network", type=str, default = 'None')
-  parser.add_argument("--date", help="Give current date to identify safe folder", type=str, default = 'None')
-  parser.add_argument("--ngpus", help="Number of GPUs for parallel training", type=int, default = 1)
-  parser.add_argument("--version", action="version", version='%(prog)s - Version 1.0')
-  args = parser.parse_args()
-  return args
+from functions import *
 
 if __name__ == "__main__":
 
@@ -100,14 +104,14 @@ if __name__ == "__main__":
   file_location = parser.get('Basics', 'thisfolder')
   mc_location = parser.get('Basics', 'mc_path')
 
-  args = parseArguments()
   print("\n ---------")
   print("You are running the script with arguments: ")
   for a in args.__dict__:
       print('{} : {}'.format(a, args.__dict__[a]))
   print("--------- \n")
+  
+#################### Setup the Training Objects and Variables #################################
 
-#################### Setup the Training Objects and Variables #################################http://www.spiegel.de/spiegel/joachim-gauck-was-bundespraesidenten-a-d-die-steuerzahler-kosten-a-1163513.html
 
 ####### Continuing the training of a model ##############################
 
@@ -145,6 +149,8 @@ if __name__ == "__main__":
       today = datetime.date.today()
     if 'save_path' in parser['Basics'].keys():
       save_path =  parser.get('Basics', 'save_path')
+    elif 'train_folder' in parser["Basics"].keys():
+      save_path =  parser.get('Basics', 'train_folder')+'/{}/{}'.format(project_name, today)
     else:
       save_path = os.path.join(file_location,'train_hist/{}/{}'.format(today, project_name))
 
@@ -210,20 +216,20 @@ if __name__ == "__main__":
   CSV_log = keras.callbacks.CSVLogger( \
     os.path.join(save_path, 'loss_logger.csv'), 
     append=True)
-  
+
   early_stop = keras.callbacks.EarlyStopping(\
     monitor='val_loss',
-    min_delta = int(parser.get('Training_Parameters', 'delta')), 
-    patience = int(parser.get('Training_Parameters', 'patience')), 
-    verbose = int(parser.get('Training_Parameters', 'verbose')), 
+    min_delta = int(parser.get('Training_Parameters', 'delta')),
+    patience = int(parser.get('Training_Parameters', 'patience')),
+    verbose = int(parser.get('Training_Parameters', 'verbose')),
     mode = 'auto')
 
   best_model = keras.callbacks.ModelCheckpoint(\
-    os.path.join(save_path,'best_val_loss.npy'), 
-    monitor = 'val_loss', 
-    verbose = int(parser.get('Training_Parameters', 'verbose')), 
-    save_best_only = True, 
-    mode='auto', 
+    os.path.join(file_location,'train_hist/{}/{}/best_val_loss.npy'.format(today, project_name)), 
+    monitor = 'val_loss',
+    verbose = int(parser.get('Training_Parameters', 'verbose')),
+    save_best_only = True,
+    mode='auto',
     period=1)
 
   batch_size = ngpus*int(parser.get('Training_Parameters', 'single_gpu_batch_size'))
@@ -236,8 +242,9 @@ if __name__ == "__main__":
                 callbacks = [CSV_log, early_stop, best_model, MemoryCallback()], 
                 epochs = int(parser.get('Training_Parameters', 'epochs')), 
                 verbose = int(parser.get('Training_Parameters', 'verbose')),
-                max_q_size = int(parser.get('Training_Parameters', 'max_queue_size')),
-                )
+                max_q_size = int(parser.get('Training_Parameters',
+                                            'max_queue_size')))
+#                #use_multiprocessing=False
 
 #################### Saving the Final Model and Calculation/Saving of Result for Test Dataset ######################
 
