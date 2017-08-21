@@ -88,6 +88,7 @@ else:
 import numpy as np
 import datetime
 import math
+import argparse
 import time
 import shelve
 import shutil
@@ -145,14 +146,13 @@ if __name__ == "__main__":
       today = args.__dict__['date']
     else:
       today = datetime.date.today()
+    if 'save_path' in parser['Basics'].keys():
+      save_path =  parser.get('Basics', 'save_path')
+    else:
+      save_path = os.path.join(file_location,'train_hist/{}/{}'.format(today, project_name))
 
-    folders=['train_hist/',
-     'train_hist/{}'.format(today),
-     'train_hist/{}/{}'.format(today, project_name)]
-
-    for folder in folders:
-        if not os.path.exists('{}'.format(os.path.join(file_location,folder))):
-            os.makedirs('{}'.format(os.path.join(file_location,folder)))
+    if not os.path.exists(save_path):
+      os.makedirs(save_path)
 
     train_val_test_ratio=[float(parser.get('Training_Parameters', 'training_fraction')),
     float(parser.get('Training_Parameters', 'validation_fraction')),
@@ -196,8 +196,7 @@ if __name__ == "__main__":
     os.system("nvidia-smi")  
 
     ## Save Run Information
-    shelf = shelve.open(os.path.join(file_location,
-      'train_hist/{}/{}/run_info.shlf'.format(today, project_name)))
+    shelf = shelve.open(os.path.join(save_path,'run_info.shlf'))
     shelf['Project'] = project_name
     shelf['Files'] = args.__dict__['input']
     shelf['Train_Inds'] = train_inds
@@ -211,7 +210,7 @@ if __name__ == "__main__":
 #################### Train the Model #########################################################
 
   CSV_log = keras.callbacks.CSVLogger( \
-    os.path.join(file_location,'train_hist/{}/{}/loss_logger.csv'.format(today, project_name)), 
+    os.path.join(save_path, 'loss_logger.csv'), 
     append=True)
 
   early_stop = keras.callbacks.EarlyStopping(\
@@ -231,9 +230,10 @@ if __name__ == "__main__":
 
   batch_size = ngpus*int(parser.get('Training_Parameters', 'single_gpu_batch_size'))
 
-  model.fit_generator(generator(batch_size, mc_location, input_files, train_inds, shapes, inp_variables, inp_transformations, out_variables, out_transformations), 
+  file_handlers = [h5py.File(os.path.join(mc_location, file_name), 'r') for file_name in input_files]
+  model.fit_generator(generator(batch_size, file_handlers, train_inds, shapes, inp_variables, inp_transformations, out_variables, out_transformations), 
                 steps_per_epoch = math.ceil(np.sum([k[1]-k[0] for k in train_inds])/batch_size),
-                validation_data = generator(batch_size, mc_location, input_files, valid_inds, shapes, inp_variables, inp_transformations, out_variables, out_transformations),
+                validation_data = generator(batch_size, file_handlers, valid_inds, shapes, inp_variables, inp_transformations, out_variables, out_transformations, val_run = True),
                 validation_steps = math.ceil(np.sum([k[1]-k[0] for k in valid_inds])/batch_size),
                 callbacks = [CSV_log, early_stop, best_model, MemoryCallback()], 
                 epochs = int(parser.get('Training_Parameters', 'epochs')), 
@@ -241,13 +241,11 @@ if __name__ == "__main__":
                 max_q_size = int(parser.get('Training_Parameters',
                                             'max_queue_size')))
 #                #use_multiprocessing=False
-#                )
 
 #################### Saving the Final Model and Calculation/Saving of Result for Test Dataset ######################
 
   print('\n Save the Model \n')
-  model.save(os.path.join(\
-  file_location,'train_hist/{}/{}/final_network.h5'.format(today,project_name)))  # save trained network
+  model.save(os.path.join(save_path,'final_network.h5'))  # save trained network
 
   print('\n Calculate Results... \n')
   prediction = model.predict_generator(generator(batch_size, mc_location, input_files, test_inds, shapes, inp_variables, inp_transformations, out_variables, out_transformations), 

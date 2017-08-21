@@ -388,7 +388,7 @@ if __name__ == "__main__":
     test_out = np.squeeze(test_out)
     np.save(os.path.join(file_location,'train_hist/{}/{}/test_results.npy'.format(today, project_name)), 
       [res, test_out])
-    correct = np.sum(res == test_out)
+    correct = np.sum(np.round(res) == test_out)
     total = len(res)
     print "{} / {} = {:6.2f}%".format(correct, total, float(correct)/total*100)
   

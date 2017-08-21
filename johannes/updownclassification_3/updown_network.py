@@ -10,6 +10,7 @@ os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=gpu,floatX=float32"
 os.environ["PATH"] += os.pathsep + '/usr/local/cuda/bin/'
 os.environ['PYTHONUNBUFFERED'] = '1'
 import sys
+import inspect
 import numpy as np
 with jkutils.suppress_stdout_stderr(): #prevents printed info from theano
     import theano
@@ -53,7 +54,7 @@ def parseArguments():
     parser.add_argument("--virtual_len", help="Use an artifical array length (for debugging only!)", type=int , default=-1)
     parser.add_argument("--continue", help="Give a folder to continue the training of the network", type=str, default = 'None')
     parser.add_argument("--date", help="Give current date to identify safe folder", type=str, default = 'None')
-    parser.add_argument("--version", action="version", version='%(prog)s - Version 1.0')
+    parser.add_argument("--version", action="version", version='%(prog)s - Version 3.0')
     parser.add_argument("--filesizes", help="Print the number of events in each file and don't do anything else.", nargs='?',
                        const=True, default=False)
     parser.add_argument("--testing", help="loads latest model and just does some testing", nargs='?', const=True, default=False)
@@ -76,7 +77,7 @@ def base_model(model_def):
         for line in f:
             cur_line = line.strip()
             if cur_line == '' and layer != '':
-                add_layer(model, layer, args,kwargs)
+                add_layer(model, layer, args, kwargs)
                 args = []
                 kwargs = dict()
                 layer = ''
@@ -118,25 +119,28 @@ def generator(batch_size, input_data, out_data, inds, inf_times_as = 1):
     if 'args' in globals():
         if args.using == 'charge':
             preprocess = jkutils.fake_preprocess
-    batch_input = np.zeros((batch_size, 22491))
+    batch_input = np.zeros((batch_size, 20,10,60,1))
     batch_out = np.zeros((batch_size,1))
     cur_file = 0
     cur_event_id = inds[cur_file][0]
     cur_len = 0
     up_to = inds[cur_file][1]
+    print "here"
+    print out_data[0][0]["zenith"]
+    print "exiting"
+    #sys.exit(0)
     while True:
         temp_in = []
         temp_out = []
         while cur_len < batch_size:
             fill_batch = batch_size-cur_len
             if fill_batch < (up_to-cur_event_id):
-                #oder zuerst flatten und dann preprocess?
-                temp_in.extend(map(np.ndarray.flatten, input_data[cur_file][cur_event_id:cur_event_id+fill_batch]))
+                temp_in.extend(input_data[cur_file][cur_event_id:cur_event_id+fill_batch])
                 temp_out.extend(out_data[cur_file][cur_event_id:cur_event_id+fill_batch])
                 cur_len += fill_batch
                 cur_event_id += fill_batch
             else:
-                temp_in.extend(map(np.ndarray.flatten, input_data[cur_file][cur_event_id:up_to]))
+                temp_in.extend(input_data[cur_file][cur_event_id:up_to])
                 temp_out.extend(out_data[cur_file][cur_event_id:up_to])
                 cur_len += up_to-cur_event_id
                 cur_file+=1
@@ -151,8 +155,7 @@ def generator(batch_size, input_data, out_data, inds, inf_times_as = 1):
                     up_to = inds[cur_file][1]
         for i in range(len(temp_in)):
             batch_input[i] = preprocess(temp_in[i], replace_with = inf_times_as)
-            batch_out[i] = zenith_to_binary(temp_out[i][zenith])
-            #batch_out[i] = np.zeros(temp_out[i][zenith].shape)
+            batch_out[i] = zenith_to_binary(temp_out[i]["zenith"])
         cur_len = 0 
         """
         from scipy.stats import describe
@@ -161,6 +164,7 @@ def generator(batch_size, input_data, out_data, inds, inf_times_as = 1):
         print batch_out[0:50]
         sys.exit()
         """
+        #batch_input should be tuple: (samples, conv_dim1, conv_dim2, conv_dim3, channels)
         yield (batch_input, batch_out)
             
 
@@ -168,10 +172,11 @@ if __name__ == "__main__":
 
 #################### Process Command Line Arguments ######################################
 
-    config_path = '/data/user/jkager/NN_Reco/johannes/updownclassification_2/config.cfg'
+    currentfile = inspect.getfile(inspect.currentframe())
+    config_path = os.path.join(os.path.dirname(os.path.abspath(currentfile)), 'config.cfg')
     parser = ConfigParser()
     parser.read(config_path)
-    file_location = parser.get('Basics', 'thisfolder') # /data/user/jkager/NN_Reco/johannes/updownclassification_2/
+    file_location = parser.get('Basics', 'thisfolder') # /data/user/jkager/NN_Reco/johannes/updownclassification_3/
     data_location = parser.get('Basics', 'data_enc_folder')
   
     args = parseArguments()
@@ -183,10 +188,7 @@ if __name__ == "__main__":
   
     project_name = args.project
   
-    #this is now handled in train_NN_network
-    #if args.input =='all':
-        #input_files = os.listdir(os.path.join(data_location, 'training_data/'))
-    input_files = (args.input).split(':')
+    input_files = jkutils.get_filenames(args.input)
   
     
 #################### set today date and check for --filesizes #################################  
@@ -265,7 +267,7 @@ if __name__ == "__main__":
   
             shelf = shelve.open(os.path.join(file_location,'./train_hist/{}/{}/run_info.shlf'.format(today, project_name)))
             shelf['Project'] = project_name
-            shelf['Files'] = args.input
+            shelf['Files'] = ':'.join(input_files)
             shelf['arguments'] = str(sys.argv)
             shelf['Train_Inds'] = train_inds
             shelf['Valid_Inds'] = valid_inds
@@ -341,10 +343,17 @@ if __name__ == "__main__":
             sys.exit(-1)
         shelf = shelve.open(os.path.join(file_location, project_folder, 'run_info.shlf'))
         input_files = shelf['Files'].split(':')
-        print input_files
-        if input_files[0] == 'all':
-            input_files = os.listdir(os.path.join(data_location, 'training_data/'))
-            print input_files
+        print "Input Files:", input_files
+        if len(input_files) == 1: #this could be something like ['h01'] (inputformat)
+            #try to decode fileinput format
+            input_files = jkutils.get_filenames(input_files[0])
+            print "decodes to: ", input_files
+        for f in input_files:
+            if not os.path.isfile(os.path.join(data_location, 'training_data/{}'.format(f))):
+                print "file not found:", f
+                print "exiting script."
+                sys.exit(1)
+        print "All files found. proceeding..."
         train_inds = shelf['Train_Inds'] 
         valid_inds = shelf['Valid_Inds']
         test_inds = shelf['Test_Inds']
@@ -378,9 +387,9 @@ if __name__ == "__main__":
         preprocess = jkutils.preprocess
     for i in range(len(input_data)):
         print('Predict Values for {}'.format(input_files[i]))
-        test_in_chunk  = np.array(map(np.ndarray.flatten, preprocess(input_data[i][test_inds[i][0]:test_inds[i][1]], 
-                                                                     replace_with = inf_times_as)))
-        test_out_chunk = zenith_to_binary(out_data[i][test_inds[i][0]:test_inds[i][1],zenith:zenith+1])
+        test_in_chunk  = preprocess(input_data[i][test_inds[i][0]:test_inds[i][1]], 
+                                    replace_with = inf_times_as)
+        test_out_chunk = zenith_to_binary(out_data[i][test_inds[i][0]:test_inds[i][1],"zenith"])
         res_chunk = model.predict(test_in_chunk, verbose=int(parser.get('Training_Parameters', 'verbose')))
         res.extend(list(res_chunk))
         test_out.extend(list(test_out_chunk))
@@ -389,7 +398,7 @@ if __name__ == "__main__":
     test_out = np.squeeze(test_out)
     np.save(os.path.join(file_location,'train_hist/{}/{}/test_results.npy'.format(today, project_name)), 
       [res, test_out])
-    correct = np.sum(res == test_out)
+    correct = np.sum(np.round(res) == test_out)
     total = len(res)
     print "{} / {} = {:6.2f}%".format(correct, total, float(correct)/total*100)
   

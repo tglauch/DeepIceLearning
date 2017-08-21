@@ -1,6 +1,0 @@
-process id nohup2: 30422
-
-run python with option -u to set output buffering to 0, and therefore flush after every print. otherwise nohup.out will not update until the end of the run.
-
-
-run h0123, job id: 259308861. 29.07.,00:30
