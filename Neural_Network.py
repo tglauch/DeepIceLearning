@@ -112,6 +112,7 @@ if __name__ == "__main__":
   
 #################### Setup the Training Objects and Variables #################################
 
+
 ####### Continuing the training of a model ##############################
 
   if args.__dict__['continue'] != 'None':
@@ -204,10 +205,11 @@ if __name__ == "__main__":
     shelf['Train_Inds'] = train_inds
     shelf['Valid_Inds'] = valid_inds
     shelf['Test_Inds'] = test_inds
+    shelf['mc_location'] = mc_location
+
     shelf.close()
 
-    shutil.copy(conf_model_file, os.path.join(file_location,
-      'train_hist/{}/{}/model.cfg'.format(today, project_name)))
+    shutil.copy(conf_model_file, os.path.join(save_path, 'model.cfg'))
 
 #################### Train the Model #########################################################
 
@@ -250,7 +252,7 @@ if __name__ == "__main__":
   model.save(os.path.join(save_path,'final_network.h5'))  # save trained network
 
   print('\n Calculate Results... \n')
-  prediction = model.predict_generator(generator(batch_size, mc_location, input_files, test_inds, shapes, inp_variables, inp_transformations, out_variables, out_transformations), 
+  prediction = model.predict_generator(generator(batch_size, file_handlers, test_inds, shapes, inp_variables, inp_transformations, out_variables, out_transformations), 
                 steps = math.ceil(np.sum([k[1]-k[0] for k in test_inds])/batch_size),
                 verbose = int(parser.get('Training_Parameters', 'verbose')),
                 max_q_size = int(parser.get('Training_Parameters', 'max_queue_size'))
@@ -262,7 +264,7 @@ if __name__ == "__main__":
     MC_truth.extend(list(one_chunk))
 
 
-  np.save(os.path.join(file_location,'train_hist/{}/{}/test_results.npy'.format(today, project_name)), 
+  np.save(os.path.join(save_path, 'test_results.npy'), 
     [prediction, np.squeeze(MC_truth)])
 
   print(' \n Finished .... Exit.....')
