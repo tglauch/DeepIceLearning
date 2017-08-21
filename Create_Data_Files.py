@@ -201,10 +201,10 @@ if __name__ == "__main__":
     grid, DOM_list = make_grid_dict(input_shape,geo)
 
     ######### Create HDF5 File ##########
-    save_folder = os.path.join(file_location, 'training_data/{}/'.format(outfolder))
+    save_folder = outfolder+"/{}".format(args.project)
     if not os.path.exists(save_folder):
         os.makedirs(save_folder)
-
+    save_folder +="/"
     OUTFILE = os.path.join(save_folder,'{}.h5'.format(project_name))
     if os.path.exists(OUTFILE):
         os.remove(OUTFILE)
@@ -228,7 +228,7 @@ if __name__ == "__main__":
 
         np.save('grid.npy', grid)
         j=0
-        skipped_frames = 0 
+        skipped_frames = 0
         folders = args.__dict__['folder'].split(':')
         print('Start reading files...')
         for folder in folders:

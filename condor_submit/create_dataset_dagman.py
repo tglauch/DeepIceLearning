@@ -20,6 +20,8 @@ def parseArguments():
                         type=str ,default='some_NN')
     parser.add_argument("--Rescue", help="If true, run in rescue mode ", action="store_true")
     parser.add_argument("--name", help="Name for the Dagman Files", type=str ,default='create_dataset')
+    parser.add_argument("--num_files", help="number of files",\
+                        type=int, default=-1)
     args = parser.parse_args()
     return args
 
@@ -59,9 +61,7 @@ if not Resc:
         print "Created New Folder in: "+ path
     print "Write Dagman Files to: "+submitFile
     arguments = " --project $(PROJECT) --folder $(FOLDER) --main_config $(MAIN)"\
-            +" --dataset_config $(DATASET) "
-
-    ##--num-files = -1 ? 
+            +" --dataset_config $(DATASET) --num_files $(NUMFILES) " 
     submitFileContent = {"universe": "vanilla",
                       "notification": "Error",
                       "log": "$(LOGFILE).log",
@@ -78,13 +78,14 @@ if not Resc:
     print "files to be read: " , file_list
     nodes  = []
     for i, filename in enumerate(file_list): #for i, a1, a2 in enumerate(itertools.product(args1, args2))
-        logfile = path+filename.replace('/','_').replace(':','_').strip(".h5")\
-                +"_"+str(i)
+        filename = filename.strip(".h5")
+        logfile = path+filename.replace('/','_').replace(':','_')+"_"+str(i)
         dagArgs = pydag.dagman.Macros(LOGFILE=logfile,
                                   PROJECT = args.project,
                                   FOLDER = filename,
                                   MAIN = args.main_config,
-                                  DATASET = args.dataset_config)
+                                  DATASET = args.dataset_config,
+                                  NUMFILES=args.num_files)
         node = pydag.dagman.DAGManNode(i, submitFile)
         node.keywords["VARS"] = dagArgs
         nodes.append(node)
