@@ -148,6 +148,8 @@ if __name__ == "__main__":
       today = datetime.date.today()
     if 'save_path' in parser['Basics'].keys():
       save_path =  parser.get('Basics', 'save_path')
+    elif 'train_folder' in parser["Basics"].keys():
+      save_path =  parser.get('Basics', 'train_folder')+'/{}/{}'.format(today, project_name)
     else:
       save_path = os.path.join(file_location,'train_hist/{}/{}'.format(today, project_name))
 
