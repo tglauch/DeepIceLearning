@@ -109,6 +109,7 @@ if __name__ == "__main__":
   file_handlers = [h5py.File(os.path.join(mc_location, file_name), 'r') for file_name in input_files]
   test_inds =   shelf['Test_Inds']
   num_events = np.sum([k[1]-k[0] for k in test_inds])
+  print('Apply the NN to {} events'.format(num_events))
   prediction = model.predict_generator(generator(args.batch_size, file_handlers, test_inds, shapes, inp_variables,\
    inp_transformations, out_variables, out_transformations), 
                 steps = math.ceil(num_events/args.batch_size),
@@ -116,6 +117,7 @@ if __name__ == "__main__":
                 max_q_size = 2
                 )
   dtype = np.dtype([(var, np.float64) for var in out_variables])
+  print(len(prediction))
   prediction = np.array(prediction, dtype = dtype)[0:num_events]
 
 
