@@ -116,7 +116,7 @@ if __name__ == "__main__":
 ####### Continuing the training of a model ##############################
 
   if args.__dict__['continue'] != 'None':
-    shelf = shelve.open(os.path.join(file_location, 
+    shelf = shelve.open(os.path.join(file_location,
       args.__dict__['continue'], 
       'run_info.shlf'))
 
@@ -158,12 +158,12 @@ if __name__ == "__main__":
       os.makedirs(save_path)
 
     train_val_test_ratio=[float(parser.get('Training_Parameters', 'training_fraction')),
-    float(parser.get('Training_Parameters', 'validation_fraction')),
-    float(parser.get('Training_Parameters', 'test_fraction'))] 
+                          float(parser.get('Training_Parameters', 'validation_fraction')),
+                          float(parser.get('Training_Parameters', 'test_fraction'))] 
 
-    file_len = read_input_len_shapes(mc_location, 
-      input_files, 
-      virtual_len = args.__dict__['virtual_len'])
+    file_len = read_input_len_shapes(mc_location,
+                                     input_files,
+                                     virtual_len = args.__dict__['virtual_len'])
 
     train_frac  = float(train_val_test_ratio[0])/np.sum(train_val_test_ratio)
     valid_frac = float(train_val_test_ratio[1])/np.sum(train_val_test_ratio)
@@ -224,13 +224,12 @@ if __name__ == "__main__":
     verbose = int(parser.get('Training_Parameters', 'verbose')),
     mode = 'auto')
 
-  best_model = keras.callbacks.ModelCheckpoint(\
-    os.path.join(file_location,'train_hist/{}/{}/best_val_loss.npy'.format(today, project_name)), 
-    monitor = 'val_loss',
-    verbose = int(parser.get('Training_Parameters', 'verbose')),
-    save_best_only = True,
-    mode='auto',
-    period=1)
+  best_model = keras.callbacks.ModelCheckpoint(save_path+"/best_val_loss.npy",
+                                               monitor = 'val_loss',
+                                               verbose = int(parser.get('Training_Parameters', 'verbose')),
+                                               save_best_only = True,
+                                               mode='auto',
+                                               period=1)
 
   batch_size = ngpus*int(parser.get('Training_Parameters', 'single_gpu_batch_size'))
 
