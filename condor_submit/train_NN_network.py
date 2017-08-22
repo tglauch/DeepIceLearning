@@ -17,7 +17,7 @@ def parseArguments():
     parser.add_argument("--model", help="Name of the File containing the model", type=str, default='simple_CNN.cfg')
     parser.add_argument("--virtual_len", help="Use an artifical array length (for debugging only!)", type=int , default=-1)
     parser.add_argument("--continue", help="Give a folder to continue the training of the network", type=str, default = 'None')
-    #parser.add_argument("--version", action="version", version='%(prog)s - Version 1.0')
+    parser.add_argument("--version", action="version", version='%(prog)s - Version 1.0')
     args = parser.parse_args()
     return args
 
@@ -43,16 +43,23 @@ def make_condor(request_gpus, request_memory, requirements, addpath,\
 
 def make_slurm(request_gpus, request_memory, addpath, file_location,\
                arguments,thisfolder):
+##SBATCH --exclude=bigbird\n\
+ 
+  submit_info = '\
+#!/usr/bin/env bash\n\
+#SBATCH --time=24:00:00\n\
+#SBATCH --partition=gpu\n\
+#SBATCH --gres=gpu:{0}\n\
+#SBATCH --mem={1} \n\
+#SBATCH --error={2}/condor.err\n\
+#SBATCH --output={2}/condor.out\n\
+#SBATCH --workdir={3}\n\
+\n\
+python {5}/Neural_Network.py {4} \n'.\
+format(request_gpus, int(request_memory), addpath, file_location, \
+  arguments, thisfolder)
 
-  parser = argparse.ArgumentParser()
-  parser.add_argument("--project", help="The name for the Project", type=str ,default='some_NN')
-  parser.add_argument("--input", help="Name of the input files seperated by :", type=str ,default='all')
-  parser.add_argument("--model", help="Name of the File containing the model", type=str, default='simple_CNN.cfg')
-  parser.add_argument("--virtual_len", help="Use an artifical array length (for debugging only!)", type=int , default=-1)
-  parser.add_argument("--continue", help="Give a folder to continue the training of the network", type=str, default = 'None')
-  parser.add_argument("--version", action="version", version='%(prog)s - Version 1.0')
-  args = parser.parse_args()
-  return args
+  return submit_info
 
 args = parseArguments().__dict__
 parser = ConfigParser()
@@ -97,6 +104,7 @@ else:
              '{}/{}/condor/'.format(project_name, today)]
     for folder in folders:
         if not os.path.exists('{}'.format(os.path.join(file_location,folder))):
+            print('Create Folder {}'.format(os.path.join(file_location,folder)))
             os.makedirs('{}'.format(os.path.join(file_location,folder)))
 
 	arguments = ''
