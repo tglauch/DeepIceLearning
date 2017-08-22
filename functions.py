@@ -26,8 +26,6 @@ import tables
 import resource
 import h5py
 import math
-#from memory_profiler import profile
-
 
 def gpu_memory():
     out = os.popen("nvidia-smi").read()
@@ -264,7 +262,6 @@ class MemoryCallback(keras.callbacks.Callback):
         print(' \n RAM Usage {:.2f} GB \n \n'.format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
         os.system("nvidia-smi")
 
-#@profile ### Only from Memory Profiling
 def generator(batch_size, file_handlers, inds,
   inp_shape, inp_variables, inp_transformations,
   out_variables, out_transformations, val_run=False):
@@ -311,17 +308,13 @@ def generator(batch_size, file_handlers, inds,
           fill_batch = batch_size-cur_len
           if fill_batch < (temp_up_to-temp_cur_event_id):
             if j==0 and k==0:
-            #   # temp_out.extend(cur_file_handler.root.reco_vals.cols[temp_cur_event_id:temp_cur_event_id+fill_batch])
               temp_out.extend(file_handlers[cur_file]['reco_vals'][temp_cur_event_id:temp_cur_event_id+fill_batch])      
-            #temp_in.extend(eval('cur_file_handler.root.{}'.format(var))[temp_cur_event_id:temp_cur_event_id+fill_batch])
             temp_in.extend(eval('file_handlers[cur_file][\'{}\']'.format(var))[temp_cur_event_id:temp_cur_event_id+fill_batch])
             cur_len += fill_batch
             temp_cur_event_id += fill_batch
           else:
-            # temp_in.extend(eval('cur_file_handler.root.{}'.format(var))[temp_cur_event_id:temp_up_to])
             temp_in.extend(eval('file_handlers[cur_file][\'{}\']'.format(var))[temp_cur_event_id:temp_up_to])
             if j==0 and k==0:
-              # temp_out.extend(cur_file_handler.root.reco_vals.cols[temp_cur_event_id:temp_up_to])
               temp_out.extend(file_handlers[cur_file]['reco_vals'][temp_cur_event_id:temp_up_to])
             cur_len += temp_up_to-temp_cur_event_id
             temp_cur_file+=1
@@ -359,3 +352,21 @@ def generator(batch_size, file_handlers, inds,
       cur_event_id = temp_cur_event_id
       up_to = temp_up_to    
     yield (batch_input, batch_out)
+
+def read_NN_weights(args_dict, model):
+
+  if args_dict['load_weights'] != 'None':
+    print('Load Weights from {}'.format(args_dict['load_weights']))
+    model.load_weights(args_dict['load_weights'])
+
+  elif args_dict['continue'] != 'None'
+    read_from = os.path.join(args_dict['load_weights'], 'best_val_loss.npy')
+    print('Load Weights from {}'.format(read_from))
+    model.load_weights(read_from)
+
+  else:
+    print('Initalize the model without pre-trained weights')
+
+  return
+
+
