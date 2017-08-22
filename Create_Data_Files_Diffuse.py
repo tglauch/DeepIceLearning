@@ -22,7 +22,7 @@ small differences when processing data for the diffuse dataset
 from icecube import dataclasses, dataio, icetray
 import numpy as np
 import math
-import tables   
+import tables 
 import argparse
 import os, sys
 from configparser import ConfigParser
@@ -35,19 +35,14 @@ def parseArguments():
   parser.add_argument("--dataset_config", help="main config file, user-specific",\
                       type=str ,default='default.cfg')
   parser.add_argument("--project", help="The name for the Project", type=str ,default='none')
-  parser.add_argument("--num_files", help="The number of files to be read", type=str ,default=-1)
-  parser.add_argument("--folder", help="neutrino-generator folder", type=str ,default='11069/00000-00999')
-  ### relative to basepath; use ':' seperator for more then one folder
-
+  parser.add_argument("--files", help="files to be processed",
+                      type=str, nargs="+", required=True)
   parser.add_argument("--version", action="version", version='%(prog)s - Version 1.0')
-    # Parse arguments
   args = parser.parse_args()
 
   return args
 
-#os.chdir('/data/user/tglauch/ML_Reco/')
 args = parseArguments()
-
 parser = ConfigParser()
 try:
     parser.read(args.main_config)
@@ -66,6 +61,7 @@ file_location = str(parser.get('Basics', 'thisfolder'))
 basepath = str(dataset_configparser.get('Basics', 'MC_path'))
 geometry_file = str(dataset_configparser.get('Basics', 'geometry_file'))
 outfolder = str(dataset_configparser.get('Basics', 'out_folder'))
+
 
 def read_variables(cfg_parser):
     """Function reading a config file, defining the variables to be read from the MC files.
@@ -194,28 +190,27 @@ if __name__ == "__main__":
         print(str(a) + ": " + str(args.__dict__[a]))
     print"############################################\n "
 
-    if args.__dict__['project'] == 'none':
-        project_name = (args.__dict__['folder']).replace('/','_').replace(':','_')
-    else:
-        project_name = args.__dict__['project']
-
-    input_shape = eval(dataset_configparser.get('Basics', 'input_shape'))
+    project_name = args.__dict__['project']
     geometry = dataio.I3File(geometry_file)
+    input_shape = eval(dataset_configparser.get('Basics', 'input_shape'))
     geo = geometry.pop_frame()['I3Geometry'].omgeo
-    grid, DOM_list = make_grid_dict(input_shape,geo)
-
+    grid, DOM_list = make_grid_dict(input_shape, geo)
+    mc_folder = dataset_configparser.get('Basics', 'folder')
+    pulsemap_key = str(dataset_configparser.get('Basics', 'PulseSeriesMap'))
+    file_list = args.files
     ######### Create HDF5 File ##########
     save_folder = outfolder+"/{}".format(args.project)
     if not os.path.exists(save_folder):
         os.makedirs(save_folder)
     save_folder +="/"
-    OUTFILE = os.path.join(save_folder,'{}.h5'.format(project_name))
+    OUTFILE = os.path.join(save_folder,'{}_{}to{}.h5'.format(project_name,
+                                                             file_list[0],
+                                                             file_list[-1]))
     if os.path.exists(OUTFILE):
         os.remove(OUTFILE)
 
     dtype, data_source = read_variables(dataset_configparser)
     dtype_len = len(dtype)
-
     FILTERS = tables.Filters(complib='zlib', complevel=9)
     with tables.open_file(OUTFILE, mode = "w", title = "Events for training the NN", filters=FILTERS) as h5file:
 
@@ -233,73 +228,76 @@ if __name__ == "__main__":
         np.save('grid.npy', grid)
         j=0
         skipped_frames = 0
-        folders = args.__dict__['folder'].split(':')
-        print('Start reading files...')
-        for folder in folders:
-            print('Process Folder: {}'.format(os.path.join(basepath,folder)))
-            filelist = [ f_name for f_name in os.listdir(os.path.join(basepath,folder)) if f_name[-6:]=='i3.bz2']
-            for counter, in_file in enumerate(filelist):
-                if counter > int(args.__dict__['num_files']) and not int(args.__dict__['num_files'])==-1:
-                    continue
-                if counter%10 == 0 :
-                    print('Processing File {}/{}'.format(counter, len(filelist)))
-                event_file = dataio.I3File(os.path.join(basepath, folder, in_file))
-                while event_file.more():
-                    physics_event = event_file.pop_physics()
-                    reco_arr = []
-                    for k, cur_var in enumerate(data_source):
-                        if cur_var[0]=='variable':
-                            try:
-                                cur_value = eval('physics_event{}'.format(cur_var[1]))
-                            except:
-                                skipped_frames += 1
-                                print('Attribute Error occured')
-                                break
-
-                        if cur_var[0]=='function':
-                            try:
-                                cur_value = eval(cur_var[1].replace('(x)', '(physics_event)'))
-                            except:
-                                skipped_frames += 1
-                                print('The given function seems to be not implemented')
-                                break
-
-                        if cur_value<cur_var[2][0] or cur_value>cur_var[2][1]:
+        print('Process Folder: {}'.format(os.path.join(basepath,mc_folder)))
+        print 'Start reading files... : ' , file_list
+        for counter, f_name in enumerate(os.listdir(basepath+"/"+mc_folder)):
+            if not f_name[-6:]=="i3.bz2":
+                continue
+            cur_f_id = f_name
+            cur_f_id.split(mc_folder.strip("/")+".")[1].strip(".i3.bz2")
+            if cur_f_id not in file_list:
+                continue
+            if True:#counter%10 == 0 :
+                print('Processing File {}/{}'.format(counter, len(file_list)))
+            print basepath+mc_folder+f_name
+            event_file = dataio.I3File(basepath+mc_folder+f_name)
+            print "Opening succesful"
+            while event_file.more():
+                physics_event = event_file.pop_physics()
+                reco_arr = []
+                for k, cur_var in enumerate(data_source):
+                    if cur_var[0]=='variable':
+                        try:
+                            cur_value = eval('physics_event{}'.format(cur_var[1]))
+                        except:
+                            skipped_frames += 1
+                            print('Attribute Error occured')
                             break
-                        else:
-                            reco_arr.append(cur_value)
 
-                    if not len(reco_arr) == dtype_len:
-                        continue
-                    charge_arr = np.zeros((1, input_shape[0],input_shape[1],input_shape[2], 1))
-                    time_arr = np.full((1, input_shape[0],input_shape[1],input_shape[2], 1), np.inf)
+                    if cur_var[0]=='function':
+                        try:
+                            cur_value = eval(cur_var[1].replace('(x)', '(physics_event)'))
+                        except:
+                            skipped_frames += 1
+                            print('The given function seems to be not implemented')
+                            break
 
-                    ###############################################
-                    pulses = physics_event['InIceDSTPulses'].apply(physics_event)
-                    final_dict = dict()
-                    for omkey in pulses.keys():
-                            temp_time = []
-                            temp_charge = []
-                            for pulse in pulses[omkey]:
-                                temp_time.append(pulse.time)
-                                temp_charge.append(pulse.charge)
-                            final_dict[(omkey.string, omkey.om)] = (np.sum(temp_charge), np.min(temp_time))
-                    for dom in DOM_list:
-                        grid_pos = grid[dom]
-                        if dom in final_dict:
-                            charge_arr[0][grid_pos[0]][grid_pos[1]][grid_pos[2]][0] += final_dict[dom][0]
-                            time_arr[0][grid_pos[0]][grid_pos[1]][grid_pos[2]][0] = \
-                                np.minimum(time_arr[0][grid_pos[0]][grid_pos[1]][grid_pos[2]][0], final_dict[dom][1])
+                    if cur_value<cur_var[2][0] or cur_value>cur_var[2][1]:
+                        break
+                    else:
+                        reco_arr.append(cur_value)
 
-                    charge.append(np.array(charge_arr))
-                    # normalize time on [0,1]. not hit bins will still carry np.inf as time value
-                    time_np_arr = np.array(time_arr)
-                    time_np_arr_max = np.max(time_np_arr[time_np_arr != np.inf])
-                    time_np_arr_min = np.min(time_np_arr)
-                    # time.append((time_np_arr - time_np_arr_min) / (time_np_arr_max - time_np_arr_min))
-                    time.append(time_np_arr)
-                    reco_vals.append(np.array(reco_arr))
-                    j+=1
+                if not len(reco_arr) == dtype_len:
+                    continue
+                charge_arr = np.zeros((1, input_shape[0],input_shape[1],input_shape[2], 1))
+                time_arr = np.full((1, input_shape[0],input_shape[1],input_shape[2], 1), np.inf)
+
+                ###############################################
+                pulses = physics_event[pulsemap_key].apply(physics_event)
+                final_dict = dict()
+                for omkey in pulses.keys():
+                        temp_time = []
+                        temp_charge = []
+                        for pulse in pulses[omkey]:
+                            temp_time.append(pulse.time)
+                            temp_charge.append(pulse.charge)
+                        final_dict[(omkey.string, omkey.om)] = (np.sum(temp_charge), np.min(temp_time))
+                for dom in DOM_list:
+                    grid_pos = grid[dom]
+                    if dom in final_dict:
+                        charge_arr[0][grid_pos[0]][grid_pos[1]][grid_pos[2]][0] += final_dict[dom][0]
+                        time_arr[0][grid_pos[0]][grid_pos[1]][grid_pos[2]][0] = \
+                            np.minimum(time_arr[0][grid_pos[0]][grid_pos[1]][grid_pos[2]][0], final_dict[dom][1])
+
+                charge.append(np.array(charge_arr))
+                # normalize time on [0,1]. not hit bins will still carry np.inf as time value
+                time_np_arr = np.array(time_arr)
+                time_np_arr_max = np.max(time_np_arr[time_np_arr != np.inf])
+                time_np_arr_min = np.min(time_np_arr)
+                # time.append((time_np_arr - time_np_arr_min) / (time_np_arr_max - time_np_arr_min))
+                time.append(time_np_arr)
+                reco_vals.append(np.array(reco_arr))
+                j+=1
             charge.flush()
             time.flush()
             reco_vals.flush()
