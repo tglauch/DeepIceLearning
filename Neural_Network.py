@@ -258,12 +258,12 @@ if __name__ == "__main__":
                 )
 
   MC_truth = []
-  for i in range(len(input_data)):
+  for i in range(len(output_data)):
     one_chunk = np.log10(output_data[i][test_inds[i][0]:test_inds[i][1],0:1])
     MC_truth.extend(list(one_chunk))
 
 
-  np.save(os.path.join(save_path, 'test_results.npy'), 
-    [prediction, np.squeeze(MC_truth)])
+  np.save(os.path.join(save_path, 'test_results.npy'), [prediction, 
+                                                        np.squeeze(MC_truth)])
 
   print(' \n Finished .... Exit.....')
