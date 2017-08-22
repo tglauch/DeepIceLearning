@@ -33,6 +33,7 @@ print parser.get("Basics","thisfolder")
 backend = parser.get('Basics', 'keras_backend')
 os.environ["KERAS_BACKEND"] = backend
 
+#####Simply run this one on the CPUs
 '''
 if backend == 'theano':
     os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=gpu,floatX=float32" 
@@ -51,7 +52,7 @@ if cuda_path not in os.environ['LD_LIBRARY_PATH'].split(os.pathsep):
   except Exception, exc:
     print 'Failed re-exec:', exc
     sys.exit(1)
-'''
+''' 
 if backend == 'tensorflow':
   print('Run with backend Tensorflow')
   import tensorflow as tf
