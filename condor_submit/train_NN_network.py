@@ -42,8 +42,8 @@ def make_condor(request_gpus, request_memory, requirements, addpath,\
     return submit_info
 
 def make_slurm(request_gpus, request_memory, addpath, file_location,\
-               arguments,thisfolder):
-##SBATCH --exclude=bigbird\n\
+               arguments,thisfolder, exclude):
+
  
   submit_info = '\
 #!/usr/bin/env bash\n\
@@ -72,6 +72,10 @@ request_memory = parser.get('GPU', 'request_memory')
 requirements = parser.get('GPU', 'requirements')
 project_name = args['project']
 thisfolder = parser.get("Basics", "thisfolder")
+if 'exclude_node' in parser['GPU'].keys():
+  exclude = parser.get('GPU', 'exclude_node')
+else:
+  exclude = ' '
 
 if workload_manager != 'slurm' and workload_manager != 'condor':
 	raise NameError('Workload manager not defined. Should either be condor or slurm!')
@@ -91,7 +95,7 @@ if args['continue'] != 'None':
 
     if workload_manager == 'slurm':
         submit_info = make_slurm(request_gpus, float(request_memory)*1e3, \
-                                 addpath, file_location, arguments, thisfolder)
+                                 addpath, file_location, arguments, thisfolder, exclude)
     elif workload_manager == 'condor':
         submit_info = make_condor(request_gpus, request_memory, requirements,\
                             addpath, file_location, arguments, thisfolder)
@@ -99,15 +103,14 @@ if args['continue'] != 'None':
 else:
     today = str(datetime.datetime.now()).replace(" ","-").split(".")[0].\
             replace(":","-")
-    folders = ['{}'.format(project_name),
-             '{}/{}'.format(project_name, today),
-             '{}/{}/condor/'.format(project_name, today)]
-    for folder in folders:
-        if not os.path.exists('{}'.format(os.path.join(file_location,folder))):
-            print('Create Folder {}'.format(os.path.join(file_location,folder)))
-            os.makedirs('{}'.format(os.path.join(file_location,folder)))
 
-	arguments = ''
+    save_path = os.path.join(file_location,'{}/{}'.format(project_name, today))
+    condor_out_folder = os.path.join(save_path, 'condor')
+    if not os.path.exists(condor_out_folder):
+        print('Create Condor-Out Folder: \n {}'.format(condor_out_folder))
+        os.makedirs(condor_out_folder)
+
+    arguments = ''
     for a in args:
         if not a == 'input':
             arguments += '--{} {} '.format(a, args[a])
@@ -118,29 +121,20 @@ else:
 
     arguments += '--date {} '.format(today)
     arguments += '--ngpus {} '.format(request_gpus)
-    addpath = os.path.join(file_location,'{}/{}/condor/'.\
-                           format(project_name, today))
 
     if workload_manager == 'slurm':
         submit_info = make_slurm(request_gpus, float(request_memory)*1e3,\
-                                 addpath, file_location, arguments, thisfolder)
+                                 condor_out_folder , file_location, arguments, thisfolder,exclude)
     elif workload_manager == 'condor':
-		submit_info = make_condor(request_gpus, request_memory, requirements,\
-                            addpath, file_location, arguments, thisfolder)
+        submit_info = make_condor(request_gpus, request_memory, requirements,\
+                            condor_out_folder , file_location, arguments, thisfolder)
 
 print(submit_info)
-
-submitfile_full = file_location+'{}/{}/condor/submit.sub'.\
-        format(project_name, today)
+submitfile_full = os.path.join(condor_out_folder ,'submit.sub')
 with open(submitfile_full, "wc") as file:
     file.write(submit_info)
 
-os.system("cp {} {}/{}/{}/".format(args["main_config"], file_location,\
-                                  project_name, today))
-
-os.system("cp {} {}/{}/{}/".format(args["model"], file_location,\
-                                  project_name, today))
-
+os.system("cp {} {} {} ".format(args["main_config"],args["model"], save_path))
 
 if workload_manager == 'slurm':
 	os.system("sbatch {}".format(submitfile_full))
