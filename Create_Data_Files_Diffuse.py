@@ -15,6 +15,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+'''
+small differences when processing data for the diffuse dataset
+'''
+
 from icecube import dataclasses, dataio, icetray
 import numpy as np
 import math
