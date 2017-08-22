@@ -250,6 +250,7 @@ if __name__ == "__main__":
   print('\n Save the Model \n')
   model.save(os.path.join(save_path,'final_network.h5'))  # save trained network
 
+  '''
   print('\n Calculate Results... \n')
   prediction = model.predict_generator(generator(batch_size, file_handlers, test_inds, shapes, inp_variables, inp_transformations, out_variables, out_transformations), 
                 steps = math.ceil(np.sum([k[1]-k[0] for k in test_inds])/batch_size),
@@ -265,5 +266,5 @@ if __name__ == "__main__":
 
   np.save(os.path.join(save_path, 'test_results.npy'), [prediction, 
                                                         np.squeeze(MC_truth)])
-
+  '''
   print(' \n Finished .... Exit.....')
