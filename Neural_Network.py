@@ -140,7 +140,7 @@ if __name__ == "__main__":
 
     if 'save_path' in parser['Basics'].keys():
       save_path =  parser.get('Basics', 'save_path')
-    elif 'train_folder' in parser["Basics"].keys():z
+    elif 'train_folder' in parser["Basics"].keys():
       today = str(datetime.datetime.now()).replace(" ","-").split(".")[0].replace(":","-")
       project_name = args.__dict__['project']
       save_path =  parser.get('Basics', 'train_folder')+'/{}/{}'.format(project_name, today)

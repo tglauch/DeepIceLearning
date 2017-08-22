@@ -13,7 +13,7 @@ def parseArguments():
   parser.add_argument("--folder", help="The absolute path to the project file", type=str)
   parser.add_argument("--final", dest='final', action='store_true')
   parser.add_argument("--main_config", type=str, help="Config file",
-                      default="default.cfg")
+                      default="./configs/default.cfg")
   parser.add_argument("--version", action="version", version='%(prog)s - Version 1.0')
   parser.add_argument("--batch_size", dest='batch_size', type=int, default=500)
   args = parser.parse_args()
