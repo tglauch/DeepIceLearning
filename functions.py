@@ -359,7 +359,7 @@ def read_NN_weights(args_dict, model):
     print('Load Weights from {}'.format(args_dict['load_weights']))
     model.load_weights(args_dict['load_weights'])
 
-  elif args_dict['continue'] != 'None'
+  elif args_dict['continue'] != 'None':
     read_from = os.path.join(args_dict['load_weights'], 'best_val_loss.npy')
     print('Load Weights from {}'.format(read_from))
     model.load_weights(read_from)
@@ -367,6 +367,6 @@ def read_NN_weights(args_dict, model):
   else:
     print('Initalize the model without pre-trained weights')
 
-  return
+  return model
 
 

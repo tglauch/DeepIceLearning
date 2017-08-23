@@ -42,7 +42,7 @@ def make_condor(request_gpus, request_memory, requirements, addpath,\
                                 file_location, arguments, thisfolder)
     return submit_info
 
-def make_slurm(request_gpus, request_memory, addpath, file_location,\
+def make_slurm(request_gpus, request_memory, condor_folder, file_location,\
                arguments,thisfolder, exclude):
 
  
@@ -54,11 +54,9 @@ def make_slurm(request_gpus, request_memory, addpath, file_location,\
 #SBATCH --mem={1} \n\
 #SBATCH --error={2}/condor.err\n\
 #SBATCH --output={2}/condor.out\n\
-#SBATCH --workdir={3}\n\
 \n\
-python {5}/Neural_Network.py {4} \n'.\
-format(request_gpus, int(request_memory), addpath, file_location, \
-  arguments, thisfolder)
+python {4}/Neural_Network.py {3} \n'.\
+format(request_gpus, int(request_memory), condor_folder , arguments, thisfolder)
 
   return submit_info
 
@@ -69,7 +67,7 @@ if args['continue'] != 'None':
 else:
   parser.read(args["main_config"]) 
 
-file_location = parser.get('Basics', 'train_folder')
+train_location = parser.get('Basics', 'train_folder')
 workload_manager = parser.get('Basics', 'workload_manager')
 request_gpus = parser.get('GPU', 'request_gpus')
 request_memory = parser.get('GPU', 'request_memory')
@@ -99,7 +97,7 @@ else:
     today = str(datetime.datetime.now()).replace(" ","-").split(".")[0].\
             replace(":","-")
 
-    save_path = os.path.join(file_location,'{}/{}'.format(project_name, today))
+    save_path = os.path.join(train_location,'{}/{}'.format(project_name, today))
     condor_out_folder = os.path.join(save_path, 'condor')
 
     if not os.path.exists(condor_out_folder):
@@ -113,13 +111,14 @@ else:
         else:
             arguments += '--input {} '.format(files)
     arguments += '--ngpus {} '.format(request_gpus)
+    arguments += '--save_folder {} '.format(save_path)
 
 if workload_manager == 'slurm':
     submit_info = make_slurm(request_gpus, float(request_memory)*1e3,\
-                             condor_out_folder , file_location, arguments, thisfolder,exclude)
+                             condor_out_folder, train_location, arguments, thisfolder,exclude)
 elif workload_manager == 'condor':
     submit_info = make_condor(request_gpus, request_memory, requirements,\
-                        condor_out_folder , file_location, arguments, thisfolder)
+                        condor_out_folder, arguments, thisfolder)
 
 print(submit_info)
 submitfile_full = os.path.join(condor_out_folder ,'submit.sub')

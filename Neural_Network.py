@@ -41,6 +41,7 @@ def parseArguments():
   parser.add_argument("--load_weights", help="Give a path to pre-trained model weights", type=str, default = 'None')
   parser.add_argument("--ngpus", help="Number of GPUs for parallel training", type=int, default = 1)
   parser.add_argument("--version", action="version", version='%(prog)s - Version 1.0')
+  parser.add_argument("--save_folder", help="Folder for saving the output", type=str, default = 'None')
   args = parser.parse_args()
   return args
 
@@ -137,8 +138,9 @@ if __name__ == "__main__":
     else:
       input_files = (args.__dict__['input']).split(':')
 
-
-    if 'save_path' in parser['Basics'].keys():
+    if args.__dict__['save_folder']!='None':
+      save_path = args.__dict__['save_folder']
+    elif 'save_path' in parser['Basics'].keys():
       save_path =  parser.get('Basics', 'save_path')
     elif 'train_folder' in parser["Basics"].keys():
       today = str(datetime.datetime.now()).replace(" ","-").split(".")[0].replace(":","-")
@@ -177,8 +179,7 @@ if __name__ == "__main__":
     if backend == 'tensorflow':
       with tf.device('/cpu:0'):
         # define the serial model.
-        model_serial = base_model(model_def, shapes, shape_names)
-        read_NN_weights(args.__dict__)
+        model_serial = read_NN_weights(args.__dict__, base_model(model_def, shapes, shape_names))
 
       gdev_list = get_available_gpus()
       print('Using GPUs: {}'.format(gdev_list))
@@ -186,8 +187,7 @@ if __name__ == "__main__":
     else:
       raise Exception('Multi GPU can only be used with tensorflow as Backend.')
   else:
-    model = base_model(model_def, shapes, shape_names)
-    read_NN_weights(args.__dict__)
+    model = read_NN_weights(args.__dict__, base_model(model_def, shapes, shape_names))
 
   model.compile(loss='mean_squared_error', optimizer=adam, metrics=['accuracy'])
   os.system("nvidia-smi")  
