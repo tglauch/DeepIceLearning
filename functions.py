@@ -114,9 +114,9 @@ def prepare_input_output_variables(file_path, model_settings):
               else:
                   split_row = element.split('=')
                   if split_row[0].strip() == 'variables':
-                      inp_variables.append(split_row[1].strip().split(','))
+                      inp_variables.append([unstripped.strip() for unstripped in split_row[1].split(',')])
                   elif split_row[0].strip() == 'transformations':
-                      inp_transformations.append(split_row[1].strip().split(','))
+                      inp_transformations.append([unstripped.strip() for unstripped in split_row[1].split(',')])
       elif mode == 'Outputs':
         for element in block:
           split_row = element.split('=')
