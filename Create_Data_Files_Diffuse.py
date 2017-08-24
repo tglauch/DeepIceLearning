@@ -228,19 +228,20 @@ if __name__ == "__main__":
         np.save('grid.npy', grid)
         j=0
         skipped_frames = 0
-        print('Process Folder: {}'.format(os.path.join(basepath,mc_folder)))
+        print('Process Folder: {}'.format(os.path.join(basepath, mc_folder)))
         print 'Start reading files... : ' , file_list
         for counter, f_name in enumerate(os.listdir(basepath+"/"+mc_folder)):
             if not f_name[-6:]=="i3.bz2":
                 continue
-            cur_f_id = f_name
-            cur_f_id.split(mc_folder.strip("/")+".")[1].strip(".i3.bz2")
+            cur_f_id = f_name.split(mc_folder.strip("/")+".")[1].strip(".i3.bz2")
             if cur_f_id not in file_list:
                 continue
-            if True:#counter%10 == 0 :
+            print cur_f_id
+            print f_name
+            if counter%10 == 0 :
                 print('Processing File {}/{}'.format(counter, len(file_list)))
-            print basepath+mc_folder+f_name
-            event_file = dataio.I3File(basepath+mc_folder+f_name)
+            file_fullpath = str(os.path.join(basepath, mc_folder, f_name))
+            event_file = dataio.I3File(file_fullpath, "r")
             print "Opening succesful"
             while event_file.more():
                 physics_event = event_file.pop_physics()

@@ -77,7 +77,9 @@ if not Resc:
     file_list = dataset_parser.get("Basics","file_list")
     if file_list=="allinfolder":
         files = []
-        for f_name in os.listdir(basepath+"/"+mc_folder):
+        mc_basepath = dataset_parser.get("Basics","mc_path")
+        mc_folder = dataset_parser.get("Basics","folder")
+        for f_name in os.listdir(mc_basepath+"/"+mc_folder):
             if not f_name[-6:]=="i3.bz2":
                 continue
             cur_f_id = f_name.split(mc_folder.strip("/")+".")[1].strip(".i3.bz2")

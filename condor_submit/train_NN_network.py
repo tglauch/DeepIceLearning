@@ -82,8 +82,12 @@ if workload_manager != 'slurm' and workload_manager != 'condor':
 
 if args['input'] == 'lowE':
 	files = '11029_00000-00999.h5:11029_01000-01999.h5:11029_02000-02999.h5:11029_03000-03999.h5:11029_04000-04999.h5:11029_05000-05999.h5'
+    #PS sample specific
 elif args['input'] == 'highE':
+    #PS sample specific
     files = '11069_00000-00999.h5:11069_01000-01999.h5:11069_02000-02999.h5:11069_03000-03999.h5:11069_04000-04999.h5:11069_05000-05999.h5'
+elif args["input"] == "miniDiffuse":
+    files = 'testDiffuse_000874to000399.h5:testDiffuse_001876to0019.h5'
 else:
 	files = args['input']
 

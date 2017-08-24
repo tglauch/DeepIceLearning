@@ -84,12 +84,12 @@ def prepare_input_output_variables(file_path, model_settings):
   model_settings : the different settings for the model. has to include a section [Inputs] 
                    otherwise assume no transformation at all 
 
-  Returns: 
+  Returns:
   shapes : the input shapes for each branch after transformation (ordered)
-  shape_names : the names of the correspondincxg model branches (ordered)
+  shape_names : the names of the corresponding model branches (ordered)
   inp_variables : list of the input variables for the different branches
    (e.g [['charge','time'], ['charge']])
-  inp_transformation : the corresponding transformations applied before feeding the network 
+  inp_transformation : the corresponding transformations applied before feeding the network
   (e.g [['x-np.mean(x)','x'], ['np.sum(x)']])
   out_variables: list of output variables (e.g. ['energy', 'zenith'])
   out_transformation: list of output transformations (e.g. ['np.log10(x)', 'x'])

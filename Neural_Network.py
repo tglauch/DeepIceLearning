@@ -109,7 +109,7 @@ if __name__ == "__main__":
   for a in args.__dict__:
       print('{} : {}'.format(a, args.__dict__[a]))
   print("--------- \n")
-  
+ 
 #################### Setup the Training Objects and Variables #################################
 
 
@@ -136,9 +136,8 @@ if __name__ == "__main__":
     project_name = args.__dict__['project']
 
     if args.__dict__['input'] =='all':
-      input_files = [file for file in \
-      os.listdir(mc_location) \
-      if os.path.isfile(os.path.join(mc_location, file))]
+      input_files = [f for f in os.listdir(mc_location) \
+                     if os.path.isfile(os.path.join(mc_location, f))]
     else:
       input_files = (args.__dict__['input']).split(':')
 
@@ -164,7 +163,7 @@ if __name__ == "__main__":
     file_len = read_input_len_shapes(mc_location,
                                      input_files,
                                      virtual_len = args.__dict__['virtual_len'])
-
+    print file_len
     train_frac  = float(train_val_test_ratio[0])/np.sum(train_val_test_ratio)
     valid_frac = float(train_val_test_ratio[1])/np.sum(train_val_test_ratio)
     train_inds = [(0, int(tot_len*train_frac)) for tot_len in file_len] 
