@@ -99,6 +99,7 @@ else:
 if args['continue'] != 'None':
     arguments = '--continue {}'.format(args['continue'])
     condor_out_folder = os.path.join(args['continue'], 'condor')
+    save_path = args['continue']
 
 else:
     today = str(datetime.datetime.now()).replace(" ","-").split(".")[0].\
