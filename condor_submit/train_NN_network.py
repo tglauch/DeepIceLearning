@@ -23,23 +23,23 @@ def parseArguments():
     return args
 
 def make_condor(request_gpus, request_memory, requirements, addpath,\
-                file_location, arguments, thisfolder):
+                arguments, thisfolder):
     submit_info = '\
-            executable   = {6}/Neural_Network.py \n\
+            executable   = {folder}/Neural_Network.py \n\
             universe     = vanilla  \n\
-            request_gpus = {0} \n\
-            request_memory = {1}GB \n\
-            requirements = {2} \n\
-            log          = {3}/condor.log \n\
-            output       = {3}/condor.out \n\
-            error        = {3}/condor.err \n\
+            request_gpus = {gpu} \n\
+            request_memory = {mem}GB \n\
+            requirements = {req} \n\
+            log          = {addp}/condor.log \n\
+            output       = {addp}/condor.out \n\
+            error        = {addp}/condor.err \n\
             stream_output = True \n\
             getenv = True \n\
-            IWD = {4} \n\
-            arguments =  {5} \n\
-            queue 1 \n '.format(request_gpus, \
-                                request_memory, requirements, addpath,\
-                                file_location, arguments, thisfolder)
+            IWD = {folder} \n\
+            arguments =  {args} \n\
+            queue 1 \n '.format(gpu=request_gpus, \
+                                mem=request_memory, req=requirements, addp=addpath,\
+                                args=arguments, folder=thisfolder)
     return submit_info
 
 def make_slurm(request_gpus, request_memory, condor_folder, file_location,\

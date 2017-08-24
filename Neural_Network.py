@@ -151,7 +151,7 @@ if __name__ == "__main__":
     if not os.path.exists(save_path):
       os.makedirs(save_path)
 
-  train_val_test_ratio=[float(parser.get('Training_Parameters', 'training_fraction')),
+    train_val_test_ratio=[float(parser.get('Training_Parameters', 'training_fraction')),
                         float(parser.get('Training_Parameters', 'validation_fraction')),
                         float(parser.get('Training_Parameters', 'test_fraction'))] 
 
