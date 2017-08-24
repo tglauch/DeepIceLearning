@@ -196,6 +196,7 @@ if __name__ == "__main__":
     shelf = shelve.open(os.path.join(save_path,'run_info.shlf'))
     shelf['Files'] = args.__dict__['input']
     shelf['mc_location'] = mc_location
+    shelf['Test_Inds'] = test_inds
     shelf.close()
 
 #################### Train the Model #########################################################
