@@ -37,10 +37,11 @@ def parseArguments():
   parser.add_argument("--input", help="Name of the input files seperated by :", type=str ,default='all')
   parser.add_argument("--model", help="Name of the File containing th qe model", type=str, default='simple_CNN.cfg')
   parser.add_argument("--virtual_len", help="Use an artifical array length (for debugging only!)", type=int , default=-1)
-  parser.add_argument("--continue", help="Give a folder to continue the training of the network", type=str, default = 'None')
-  parser.add_argument("--date", help="Give current date to identify safe folder", type=str, default = 'None')
+  parser.add_argument("--continue", help="Absolute path to a folder to continue the training of the network", type=str, default = 'None')
+  parser.add_argument("--load_weights", help="Give a path to pre-trained model weights", type=str, default = 'None')
   parser.add_argument("--ngpus", help="Number of GPUs for parallel training", type=int, default = 1)
   parser.add_argument("--version", action="version", version='%(prog)s - Version 1.0')
+  parser.add_argument("--save_folder", help="Folder for saving the output", type=str, default = 'None')
   args = parser.parse_args()
   return args
 
@@ -91,18 +92,17 @@ import math
 import argparse
 import time
 import shelve
-import shutil
 if backend == 'tensorflow':
   from keras_exp.multigpu import get_available_gpus
   from keras_exp.multigpu import make_parallel
 from functions import *
+from keras.utils import plot_model
 
 if __name__ == "__main__":
 
 #################### Process Command Line Arguments ###########################################
 
   file_location = parser.get('Basics', 'thisfolder')
-  mc_location = parser.get('Basics', 'mc_path')
 
   print("\n ---------")
   print("You are running the script with arguments: ")
@@ -116,54 +116,48 @@ if __name__ == "__main__":
 ####### Continuing the training of a model ##############################
 
   if args.__dict__['continue'] != 'None':
-    shelf = shelve.open(os.path.join(file_location,
-      args.__dict__['continue'], 
-      'run_info.shlf'))
-
-    project_name = shelf['Project']
-    input_files = shelf['Files']
-    train_inds = shelf['Train_Inds'] 
-    valid_inds = shelf['Valid_Inds']
-    test_inds = shelf['Test_Inds']
-    model = load_model(os.path.join(file_location, args.__dict__['continue'], 'best_val_loss.npy'))
-    today = args.__dict__['continue'].split('/')[1]
-    print(today)
+    save_path =  args.__dict__['continue']
+    parser = ConfigParser()
+    parser.read(os.path.join(save_path, 'config.cfg'))
+    shelf = shelve.open(os.path.join(save_path, 'run_info.shlf'))
+    mc_location = shelf['mc_location']
+    input_files = shelf['Files'].split(':')
+    # model = load_model(os.path.join(file_location, args.__dict__['continue'], 'best_val_loss.npy'))
+    conf_model_file = os.path.join(save_path, 'model.cfg')
     shelf.close()
 
 ####### Build-up a new Model ###########################################
 
   else:
-    project_name = args.__dict__['project']
-
+    mc_location = parser.get('Basics', 'mc_path')
+    conf_model_file = os.path.join('Networks', args.__dict__['model'])
     if args.__dict__['input'] =='all':
       input_files = [f for f in os.listdir(mc_location) \
                      if os.path.isfile(os.path.join(mc_location, f))]
     else:
       input_files = (args.__dict__['input']).split(':')
 
-    ## Create Folders
-    if args.__dict__['date'] != 'None':
-      today = args.__dict__['date']
-    else:
-      today = datetime.date.today()
-    if 'save_path' in parser['Basics'].keys():
+    if args.__dict__['save_folder']!='None':
+      save_path = args.__dict__['save_folder']
+    elif 'save_path' in parser['Basics'].keys():
       save_path =  parser.get('Basics', 'save_path')
     elif 'train_folder' in parser["Basics"].keys():
+      today = str(datetime.datetime.now()).replace(" ","-").split(".")[0].replace(":","-")
+      project_name = args.__dict__['project']
       save_path =  parser.get('Basics', 'train_folder')+'/{}/{}'.format(project_name, today)
     else:
-      save_path = os.path.join(file_location,'train_hist/{}/{}'.format(today, project_name))
+      raise Exception('I have no clue where to save the training results')
 
     if not os.path.exists(save_path):
       os.makedirs(save_path)
 
-    train_val_test_ratio=[float(parser.get('Training_Parameters', 'training_fraction')),
-                          float(parser.get('Training_Parameters', 'validation_fraction')),
-                          float(parser.get('Training_Parameters', 'test_fraction'))] 
+  train_val_test_ratio=[float(parser.get('Training_Parameters', 'training_fraction')),
+                        float(parser.get('Training_Parameters', 'validation_fraction')),
+                        float(parser.get('Training_Parameters', 'test_fraction'))] 
 
     file_len = read_input_len_shapes(mc_location,
                                      input_files,
                                      virtual_len = args.__dict__['virtual_len'])
-    print file_len
     train_frac  = float(train_val_test_ratio[0])/np.sum(train_val_test_ratio)
     valid_frac = float(train_val_test_ratio[1])/np.sum(train_val_test_ratio)
     train_inds = [(0, int(tot_len*train_frac)) for tot_len in file_len] 
@@ -172,7 +166,6 @@ if __name__ == "__main__":
     print('Index ranges used for training: {}'.format(train_inds))
 
     ### Create the Model
-    conf_model_file = os.path.join('Networks', args.__dict__['model'])
     model_settings, model_def = parse_config_file(conf_model_file)
     shapes, shape_names, inp_variables, inp_transformations, out_variables, out_transformations = \
      prepare_input_output_variables(os.path.join(mc_location, input_files[0]), model_settings)
@@ -183,32 +176,27 @@ if __name__ == "__main__":
     if ngpus > 1 :
       if backend == 'tensorflow':
         with tf.device('/cpu:0'):
-          # define the serial model.
-          model_serial = base_model(model_def, shapes, shape_names)
+            # define the serial model.
+            model_serial = read_NN_weights(args.__dict__, base_model(model_def, shapes, shape_names))
 
         gdev_list = get_available_gpus()
         print('Using GPUs: {}'.format(gdev_list))
         model = make_parallel(model_serial, gdev_list)
       else:
         raise Exception('Multi GPU can only be used with tensorflow as Backend.')
+
     else:
-      model = base_model(model_def, shapes, shape_names)
+        model = read_NN_weights(args.__dict__, base_model(model_def, shapes, shape_names))
 
-    model.compile(loss='mean_squared_error', optimizer=adam, metrics=['accuracy'])
-    os.system("nvidia-smi")  
+  model.compile(loss='mean_squared_error', optimizer=adam, metrics=['accuracy'])
+  os.system("nvidia-smi")
 
-    ## Save Run Information
+  ## Save Run Information
+  if not os.path.exists(os.path.join(save_path,'run_info.shlf')):
     shelf = shelve.open(os.path.join(save_path,'run_info.shlf'))
-    shelf['Project'] = project_name
     shelf['Files'] = args.__dict__['input']
-    shelf['Train_Inds'] = train_inds
-    shelf['Valid_Inds'] = valid_inds
-    shelf['Test_Inds'] = test_inds
     shelf['mc_location'] = mc_location
-
     shelf.close()
-
-    shutil.copy(conf_model_file, os.path.join(save_path, 'model.cfg'))
 
 #################### Train the Model #########################################################
 
@@ -233,16 +221,19 @@ if __name__ == "__main__":
   batch_size = ngpus*int(parser.get('Training_Parameters', 'single_gpu_batch_size'))
 
   file_handlers = [h5py.File(os.path.join(mc_location, file_name), 'r') for file_name in input_files]
-  model.fit_generator(generator(batch_size, file_handlers, train_inds, shapes, inp_variables, inp_transformations, out_variables, out_transformations), 
-                steps_per_epoch = math.ceil(np.sum([k[1]-k[0] for k in train_inds])/batch_size),
-                validation_data = generator(batch_size, file_handlers, valid_inds, shapes, inp_variables, inp_transformations, out_variables, out_transformations, val_run = True),
-                validation_steps = math.ceil(np.sum([k[1]-k[0] for k in valid_inds])/batch_size),
-                callbacks = [CSV_log, early_stop, best_model, MemoryCallback()], 
-                epochs = int(parser.get('Training_Parameters', 'epochs')), 
-                verbose = int(parser.get('Training_Parameters', 'verbose')),
-                max_q_size = int(parser.get('Training_Parameters',
-                                            'max_queue_size')))
-#                #use_multiprocessing=False
+
+  model.fit_generator(
+    generator(batch_size, file_handlers, train_inds, shapes, \
+      inp_variables, inp_transformations, out_variables, out_transformations), 
+    steps_per_epoch = math.ceil(np.sum([k[1]-k[0] for k in train_inds])/batch_size),
+    validation_data = generator(batch_size, file_handlers, valid_inds, shapes,\
+     inp_variables, inp_transformations, out_variables, out_transformations, val_run = True),
+    validation_steps = math.ceil(np.sum([k[1]-k[0] for k in valid_inds])/batch_size),
+    callbacks = [CSV_log, early_stop, best_model, MemoryCallback()], 
+    epochs = int(parser.get('Training_Parameters', 'epochs')), 
+    verbose = int(parser.get('Training_Parameters', 'verbose')),
+    max_q_size = int(parser.get('Training_Parameters','max_queue_size'))
+    )
 
 #################### Saving the Final Model and Calculation/Saving of Result for Test Dataset ######################
 
