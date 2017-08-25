@@ -360,7 +360,7 @@ def read_NN_weights(args_dict, model):
     model.load_weights(args_dict['load_weights'])
 
   elif args_dict['continue'] != 'None':
-    read_from = os.path.join(args_dict['load_weights'], 'best_val_loss.npy')
+    read_from = os.path.join(args_dict['continue'], 'best_val_loss.npy')
     print('Load Weights from {}'.format(read_from))
     model.load_weights(read_from)
 

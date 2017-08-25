@@ -89,10 +89,18 @@ elif args['input'] == 'highE':
 else:
 	files = args['input']
 
-if args['continue'] != 'None':
-    arguments = '--continue {}'.format(args['continue'])
-    condor_out_folder = os.path.join(args['continue'], 'condor')
+arguments = ''
+for a in args:
+    if not a == 'input':
+        arguments += '--{} {} '.format(a, args[a])
+    else:
+        arguments += '--input {} '.format(files)
 
+if args['continue'] != 'None':
+    arguments += '--continue {}'.format(args['continue'])
+    save_path = args['continue']
+    condor_out_folder = os.path.join(args['continue'], 'condor')
+    args["model"] = os.path.join(args['continue'], 'model.cfg')
 else:
     today = str(datetime.datetime.now()).replace(" ","-").split(".")[0].\
             replace(":","-")
@@ -104,12 +112,6 @@ else:
         print('Create Condor-Out Folder: \n {}'.format(condor_out_folder))
         os.makedirs(condor_out_folder)
 
-    arguments = ''
-    for a in args:
-        if not a == 'input':
-            arguments += '--{} {} '.format(a, args[a])
-        else:
-            arguments += '--input {} '.format(files)
     arguments += '--ngpus {} '.format(request_gpus)
     arguments += '--save_folder {} '.format(save_path)
 
