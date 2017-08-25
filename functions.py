@@ -142,6 +142,16 @@ def prepare_input_output_variables(file_path, model_settings):
   return shapes, shape_names, inp_variables, inp_transformations, out_variables, out_transformations
 
 
+def calc_depositedE(physics_frame):
+    I3Tree = physics_frame['I3MCTree']
+    truncated_energy = 0
+    for i in I3Tree:
+        interaction_type = str(i.type)
+        if interaction_type in ['DeltaE','PairProd','Brems','EMinus']:
+            truncated_energy += i.energy
+    return truncated_energy
+
+
 def parse_config_file(conf_file_path):
   """Function that parses the config file and returns the settings and architecture of the model
 
@@ -360,7 +370,7 @@ def read_NN_weights(args_dict, model):
     model.load_weights(args_dict['load_weights'])
 
   elif args_dict['continue'] != 'None':
-    read_from = os.path.join(args_dict['load_weights'], 'best_val_loss.npy')
+    read_from = os.path.join(args_dict['continue'], 'best_val_loss.npy')
     print('Load Weights from {}'.format(read_from))
     model.load_weights(read_from)
 

@@ -97,7 +97,7 @@ if __name__ == "__main__":
   if shelf['Files']=='all':
       input_files = os.listdir(os.path.join(file_location, 'training_data/'))
   else:
-      input_files = (shelf['Files']).split(':')
+      input_files = shelf['Files']
 
   model_settings, model_def = parse_config_file(os.path.join(DATA_DIR, 'model.cfg'))
   shapes, shape_names, inp_variables, inp_transformations, out_variables, out_transformations = \
