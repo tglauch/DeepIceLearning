@@ -34,7 +34,7 @@ backend = parser.get('Basics', 'keras_backend')
 os.environ["KERAS_BACKEND"] = backend
 
 #####Simply run this one on the CPUs
-'''
+
 if backend == 'theano':
     os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=gpu,floatX=float32" 
 
@@ -52,7 +52,7 @@ if cuda_path not in os.environ['LD_LIBRARY_PATH'].split(os.pathsep):
   except Exception, exc:
     print 'Failed re-exec:', exc
     sys.exit(1)
-''' 
+
 if backend == 'tensorflow':
   print('Run with backend Tensorflow')
   import tensorflow as tf
@@ -69,7 +69,7 @@ from keras.models import Sequential, load_model
 from configparser import ConfigParser
 import h5py
 import shelve
-from functions import generator, base_model, parse_config_file, prepare_input_output_variables
+from functions import generator, base_model, parse_config_file, prepare_input_output_variables, read_input_len_shapes
 import math
 import numpy.lib.recfunctions as rfn
 
@@ -110,10 +110,22 @@ if __name__ == "__main__":
   res = []
   test_out = []
 
-  file_handlers = [h5py.File(os.path.join(mc_location, file_name), 'r') for file_name in input_files]
-  test_inds =   shelf['Test_Inds']
+
+  train_val_test_ratio=[float(parser.get('Training_Parameters', 'training_fraction')),
+                        float(parser.get('Training_Parameters', 'validation_fraction')),
+                        float(parser.get('Training_Parameters', 'test_fraction'))] 
+
+  file_len = read_input_len_shapes(mc_location,
+                                   input_files)
+
+  train_frac  = float(train_val_test_ratio[0])/np.sum(train_val_test_ratio)
+  valid_frac = float(train_val_test_ratio[1])/np.sum(train_val_test_ratio)
+  test_inds = [(int(tot_len*(train_frac+valid_frac)), tot_len-1) for tot_len in file_len] 
+
+  #test_inds =   shelf['Test_Inds']
   num_events = np.sum([k[1]-k[0] for k in test_inds])
   print('Apply the NN to {} events'.format(num_events))
+  file_handlers = [h5py.File(os.path.join(mc_location, file_name), 'r') for file_name in input_files]
   prediction = model.predict_generator(generator(args.batch_size, file_handlers, test_inds, shapes, inp_variables,\
    inp_transformations, out_variables, out_transformations), 
                 steps = math.ceil(num_events/args.batch_size),
