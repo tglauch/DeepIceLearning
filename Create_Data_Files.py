@@ -126,10 +126,10 @@ def make_grid_dict(input_shape, geometry):
     
     xmin, xmax = np.min(xpos), np.max(xpos)
     delta_x = (xmax - xmin)/(input_shape[0]-1)
-    xmin, xmaz = xmin - delta_x/2, xmax + delta_x/2
+    xmin, xmax = xmin - delta_x/2, xmax + delta_x/2
     ymin, ymax = np.min(ypos), np.max(ypos)
     delta_y = (ymax - ymin)/(input_shape[1]-1)
-    ymin, ymaz = ymin - delta_y/2, ymax + delta_y/2
+    ymin, ymax = ymin - delta_y/2, ymax + delta_y/2
     zmin, zmax = np.min(zpos), np.max(zpos)
     delta_z = (zmax - zmin)/(input_shape[2]-1)
     zmin, zmax = zmin - delta_z/2, zmax + delta_z/2
