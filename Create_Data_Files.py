@@ -104,8 +104,8 @@ def make_grid_dict(input_shape, geometry):
     geometry : Geometry file containing the positions of the DOMs in the Detector
     
     Returns:
-    grid: a dictionary mapping (string, om) => (grid_x, grid_y, grid_z), i.e. dom id to its index position in the cubic grid
-    dom_list_ret: list of all (string, om), i.e. list of all dom ids in the geofile  (sorted(dom_list_ret)==sorted(grid.keys()))
+    grid: a dictionary mapping (string, om) => (grid_x, grid_y, grid_z), i.e. dom id to its index position in the cuboid grid
+    dom_list_ret: list of all (string, om), i.e. list of all dom ids in the geofile (dom_list_ret==sorted(grid.keys()))
     """
     
     dom_6_pos = geometry[icetray.OMKey(6,1)].position
@@ -115,8 +115,8 @@ def make_grid_dict(input_shape, geometry):
     rot_mat = np.matrix([[c, -s], [s, c]])
     
     grid = dict()
-    DOM_List = [i for i in geometry.keys() if  i.om < 61                      # om > 60 are icetops
-                                           and i.string not in range(79,87)]  # exclude deep core strings
+    DOM_List = sorted([i for i in geometry.keys() if  i.om < 61                       # om > 60 are icetops
+                                                  and i.string not in range(79,87)])  # exclude deep core strings
     xpos=[geometry[i].position.x for i in DOM_List]
     ypos=[geometry[i].position.y for i in DOM_List]
     zpos=[geometry[i].position.z for i in DOM_List]
