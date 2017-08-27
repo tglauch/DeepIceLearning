@@ -93,11 +93,6 @@ elif args["input"] == "allDiffuse":
             +'testDiffuse_000050to000099.h5:testDiffuse_000200to000249.h5:testDiffuse_000350to000399.h5:'\
             +'testDiffuse_000500to000549.h5:testDiffuse_000100to000149.h5:testDiffuse_000250to000299.h5:'\
             +'testDiffuse_000400to000449.h5:testDiffuse_000550to000599.h5'
-elif args["input"] == "allDiffuseB":
-    files =  'testDiffuseB_000000to000049.h5:testDiffuseB_000150to000199.h5:testDiffuseB_000300to000349.h5:testDiffuseB_000450to000499.h5:'\
-            +'testDiffuseB_000050to000099.h5:testDiffuseB_000350to000399.h5:'\
-            +'testDiffuseB_000500to000549.h5:testDiffuseB_000100to000149.h5:testDiffuseB_000250to000299.h5:'\
-            +'testDiffuseB_000400to000449.h5:testDiffuseB_000550to000599.h5'
 else:
 	files = args['input']
 

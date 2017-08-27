@@ -126,10 +126,13 @@ if __name__ == "__main__":
     shelf = shelve.open(os.path.join(save_path, 'run_info.shlf'))
     mc_location = shelf['mc_location']
     input_files = shelf['Files']
+    if input_files =="['all']":
+        input_files = os.listdir(mc_location)
     #model = load_model(os.path.join(save_path, 'best_val_loss.npy'))
     conf_model_file = os.path.join(save_path, 'model.cfg')
+    print "Continuing training. Loaded shelf : ", shelf
+    print "Input files: ", input_files
     shelf.close()
-
 ####### Build-up a new Model ###########################################
 
   else:
@@ -194,9 +197,10 @@ if __name__ == "__main__":
   os.system("nvidia-smi")
 
   ## Save Run Information
-  if not os.path.exists(os.path.join(save_path,'run_info.shlf')):
+  #if not os.path.exists(os.path.join(save_path,'run_info.shlf')):
+  if args.__dict__['continue'] == 'None':
     shelf = shelve.open(os.path.join(save_path,'run_info.shlf'))
-    shelf['Files'] = args.__dict__['input'].split(":")
+    shelf['Files'] = input_files
     shelf['mc_location'] = mc_location
     shelf['Test_Inds'] = test_inds
     shelf.close()

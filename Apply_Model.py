@@ -34,7 +34,7 @@ backend = parser.get('Basics', 'keras_backend')
 os.environ["KERAS_BACKEND"] = backend
 
 #####Simply run this one on the CPUs
-
+'''
 if backend == 'theano':
     os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=gpu,floatX=float32" 
 
@@ -61,7 +61,7 @@ elif backend == 'theano':
   import theano
 else:
   raise NameError('Choose tensorflow or theano as keras backend')
-
+'''
 import numpy as np
 import theano
 import keras
@@ -87,16 +87,18 @@ if __name__ == "__main__":
   for a in args.__dict__:
       print(str(a) + ": " + str(args.__dict__[a]))
   print"############################################\n "
-  
+
 #################### Load and Split the Datasets ######################################  
 
   DATA_DIR = args.__dict__['folder']
   print('Make prediction for model in {}'.format(DATA_DIR))
   shelf = shelve.open(os.path.join(DATA_DIR, 'run_info.shlf'))
 
-  if shelf['Files']=='all':
-      input_files = os.listdir(os.path.join(file_location, 'training_data/'))
+  if shelf['Files']==['all']:
+      print "Check1"
+      input_files = os.listdir(mc_location)
   else:
+      print "Check2"
       input_files = shelf['Files']
 
   model_settings, model_def = parse_config_file(os.path.join(DATA_DIR, 'model.cfg'))
