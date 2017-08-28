@@ -382,11 +382,11 @@ if __name__ == "__main__":
                 charge.append(np.array(charge_arr))
                 charge_first.append(np.array(charge_first_arr))
                 time_spread.append(np.array(time_spread_arr))
-                # normalize time on [0,1]. not hit bins will still carry np.inf as time value
                 time_np_arr = np.array(time_first_arr)
-                time_np_arr_max = np.max(time_np_arr[time_np_arr != np.inf])
-                time_np_arr_min = np.min(time_np_arr)
-                # time.append((time_np_arr - time_np_arr_min) / (time_np_arr_max - time_np_arr_min))
+                #time_np_arr_max = np.max(time_np_arr[time_np_arr != np.inf])
+                #time_np_arr_min = np.min(time_np_arr)
+                #normalize time on [0,1]. not hit bins will still carry np.inf as time value
+                #time.append((time_np_arr - time_np_arr_min) / (time_np_arr_max - time_np_arr_min))
                 time_first.append(time_np_arr)
                 reco_vals.append(np.array(reco_arr))
                 j+=1
