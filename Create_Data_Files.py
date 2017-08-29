@@ -22,6 +22,7 @@ import tables
 import argparse
 import os, sys
 from configparser import ConfigParser
+from reco_quantities import *
 
 
 def parseArguments():
@@ -171,15 +172,6 @@ def analyze_grid(grid):
         print c
         for index, strings in enumerate(dims[i]):
             print index, strings
-
-def calc_depositedE(physics_frame):
-    I3Tree = physics_frame['I3MCTree']
-    truncated_energy = 0
-    for i in I3Tree:
-        interaction_type = str(i.type)
-        if interaction_type in ['DeltaE','PairProd','Brems','EMinus']:
-            truncated_energy += i.energy
-    return truncated_energy
 
 if __name__ == "__main__":
 
