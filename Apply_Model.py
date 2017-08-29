@@ -128,15 +128,14 @@ if __name__ == "__main__":
   file_handlers = [h5py.File(os.path.join(mc_location, file_name), 'r') for file_name in input_files]
   prediction = model.predict_generator(generator(args.batch_size, file_handlers, test_inds, shapes, inp_variables,\
    inp_transformations, out_variables, out_transformations), 
-                steps = math.ceil(num_events/args.batch_size),
+                steps = math.ceil(num_events/args.batch_size)+1,
                 verbose = 1,
                 max_q_size = 2
                 )
 
   dtype = np.dtype([(var, np.float64) for var in out_variables])
-  print(len(prediction))
-  prediction = np.array(prediction, dtype = dtype)[0:num_events]
-
+  prediction = np.array(zip(*[np.concatenate(prediction[:,i:i+1]) \
+    for i in range(np.shape(prediction)[-1])]), dtype=dtype)[0:num_events]
 
   out_variables.append('muex')
   mc_truth = [[] for i in range(len(out_variables))]
