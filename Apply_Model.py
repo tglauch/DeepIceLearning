@@ -95,10 +95,8 @@ if __name__ == "__main__":
   shelf = shelve.open(os.path.join(DATA_DIR, 'run_info.shlf'))
 
   if shelf['Files']==['all']:
-      print "Check1"
       input_files = os.listdir(mc_location)
   else:
-      print "Check2"
       input_files = shelf['Files']
 
   model_settings, model_def = parse_config_file(os.path.join(DATA_DIR, 'model.cfg'))
