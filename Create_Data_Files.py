@@ -22,6 +22,7 @@ import tables
 import argparse
 import os, sys
 from configparser import ConfigParser
+from reco_quantities import *
 
 
 def parseArguments():
@@ -104,8 +105,8 @@ def make_grid_dict(input_shape, geometry):
     geometry : Geometry file containing the positions of the DOMs in the Detector
     
     Returns:
-    grid: a dictionary mapping (string, om) => (grid_x, grid_y, grid_z), i.e. dom id to its index position in the cubic grid
-    dom_list_ret: list of all (string, om), i.e. list of all dom ids in the geofile  (sorted(dom_list_ret)==sorted(grid.keys()))
+    grid: a dictionary mapping (string, om) => (grid_x, grid_y, grid_z), i.e. dom id to its index position in the cuboid grid
+    dom_list_ret: list of all (string, om), i.e. list of all dom ids in the geofile (dom_list_ret==sorted(grid.keys()))
     """
     
     dom_6_pos = geometry[icetray.OMKey(6,1)].position
@@ -115,8 +116,8 @@ def make_grid_dict(input_shape, geometry):
     rot_mat = np.matrix([[c, -s], [s, c]])
     
     grid = dict()
-    DOM_List = [i for i in geometry.keys() if  i.om < 61                      # om > 60 are icetops
-                                           and i.string not in range(79,87)]  # exclude deep core strings
+    DOM_List = sorted([i for i in geometry.keys() if  i.om < 61                       # om > 60 are icetops
+                                                  and i.string not in range(79,87)])  # exclude deep core strings
     xpos=[geometry[i].position.x for i in DOM_List]
     ypos=[geometry[i].position.y for i in DOM_List]
     zpos=[geometry[i].position.z for i in DOM_List]
@@ -126,10 +127,10 @@ def make_grid_dict(input_shape, geometry):
     
     xmin, xmax = np.min(xpos), np.max(xpos)
     delta_x = (xmax - xmin)/(input_shape[0]-1)
-    xmin, xmaz = xmin - delta_x/2, xmax + delta_x/2
+    xmin, xmax = xmin - delta_x/2, xmax + delta_x/2
     ymin, ymax = np.min(ypos), np.max(ypos)
     delta_y = (ymax - ymin)/(input_shape[1]-1)
-    ymin, ymaz = ymin - delta_y/2, ymax + delta_y/2
+    ymin, ymax = ymin - delta_y/2, ymax + delta_y/2
     zmin, zmax = np.min(zpos), np.max(zpos)
     delta_z = (zmax - zmin)/(input_shape[2]-1)
     zmin, zmax = zmin - delta_z/2, zmax + delta_z/2
@@ -171,15 +172,6 @@ def analyze_grid(grid):
         print c
         for index, strings in enumerate(dims[i]):
             print index, strings
-
-def calc_depositedE(physics_frame):
-    I3Tree = physics_frame['I3MCTree']
-    truncated_energy = 0
-    for i in I3Tree:
-        interaction_type = str(i.type)
-        if interaction_type in ['DeltaE','PairProd','Brems','EMinus']:
-            truncated_energy += i.energy
-    return truncated_energy
 
 if __name__ == "__main__":
 
