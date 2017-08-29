@@ -49,12 +49,16 @@ def parseArguments():
 print('Running on Hostcomputer {}'.format(socket.gethostname()))
 
 args = parseArguments()
-config_file = args.main_config
 parser = ConfigParser()
+if args.__dict__['continue'] != 'None':
+    save_path =  args.__dict__['continue']
+    config_file = os.path.join(save_path, 'config.cfg')
+else:
+    config_file = args.main_config
 try:
 	parser.read(config_file)
 except:
-	raise Exception('Config File is missing!!!!')  
+	raise Exception('Config File is missing!!!!')
 
 backend = parser.get('Basics', 'keras_backend')
 os.environ["KERAS_BACKEND"] = backend
@@ -109,7 +113,7 @@ if __name__ == "__main__":
   for a in args.__dict__:
       print('{} : {}'.format(a, args.__dict__[a]))
   print("--------- \n")
-  
+ 
 #################### Setup the Training Objects and Variables #################################
 
 
@@ -117,24 +121,26 @@ if __name__ == "__main__":
 
   if args.__dict__['continue'] != 'None':
     save_path =  args.__dict__['continue']
-    parser = ConfigParser()
-    parser.read(os.path.join(save_path, 'config.cfg'))
+    #parser = ConfigParser()
+    #parser.read(os.path.join(save_path, 'config.cfg'))
     shelf = shelve.open(os.path.join(save_path, 'run_info.shlf'))
     mc_location = shelf['mc_location']
-    input_files = shelf['Files'].split(':')
-    # model = load_model(os.path.join(file_location, args.__dict__['continue'], 'best_val_loss.npy'))
+    input_files = shelf['Files']
+    if input_files =="['all']":
+        input_files = os.listdir(mc_location)
+    #model = load_model(os.path.join(save_path, 'best_val_loss.npy'))
     conf_model_file = os.path.join(save_path, 'model.cfg')
+    print "Continuing training. Loaded shelf : ", shelf
+    print "Input files: ", input_files
     shelf.close()
-
 ####### Build-up a new Model ###########################################
 
   else:
     mc_location = parser.get('Basics', 'mc_path')
     conf_model_file = os.path.join('Networks', args.__dict__['model'])
     if args.__dict__['input'] =='all':
-      input_files = [file for file in \
-      os.listdir(mc_location) \
-      if os.path.isfile(os.path.join(mc_location, file))]
+      input_files = [f for f in os.listdir(mc_location) \
+                     if os.path.isfile(os.path.join(mc_location, f))]
     else:
       input_files = (args.__dict__['input']).split(':')
 
@@ -154,56 +160,56 @@ if __name__ == "__main__":
 
   train_val_test_ratio=[float(parser.get('Training_Parameters', 'training_fraction')),
                         float(parser.get('Training_Parameters', 'validation_fraction')),
-                        float(parser.get('Training_Parameters', 'test_fraction'))] 
+                        float(parser.get('Training_Parameters', 'test_fraction'))]
 
   file_len = read_input_len_shapes(mc_location,
-                                   input_files,
-                                   virtual_len = args.__dict__['virtual_len'])
-
+                                     input_files,
+                                     virtual_len = args.__dict__['virtual_len'])
   train_frac  = float(train_val_test_ratio[0])/np.sum(train_val_test_ratio)
   valid_frac = float(train_val_test_ratio[1])/np.sum(train_val_test_ratio)
-  train_inds = [(0, int(tot_len*train_frac)) for tot_len in file_len] 
-  valid_inds = [(int(tot_len*train_frac), int(tot_len*(train_frac+valid_frac))) for tot_len in file_len] 
-  test_inds = [(int(tot_len*(train_frac+valid_frac)), tot_len-1) for tot_len in file_len] 
+  train_inds = [(0, int(tot_len*train_frac)) for tot_len in file_len]
+  valid_inds = [(int(tot_len*train_frac), int(tot_len*(train_frac+valid_frac))) for tot_len in file_len]
+  test_inds = [(int(tot_len*(train_frac+valid_frac)), tot_len-1) for tot_len in file_len]
   print('Index ranges used for training: {}'.format(train_inds))
-  
+
   ### Create the Model
   model_settings, model_def = parse_config_file(conf_model_file)
   shapes, shape_names, inp_variables, inp_transformations, out_variables, out_transformations = \
-   prepare_input_output_variables(os.path.join(mc_location, input_files[0]), model_settings)
+  prepare_input_output_variables(os.path.join(mc_location, input_files[0]), model_settings)
 
   ngpus = args.__dict__['ngpus']
-  adam = keras.optimizers.Adam(lr=float(parser.get('Training_Parameters', 'learning_rate')))
-
   if ngpus > 1 :
-    if backend == 'tensorflow':
-      with tf.device('/cpu:0'):
-        # define the serial model.
-        model_serial = read_NN_weights(args.__dict__, base_model(model_def, shapes, shape_names))
+      if backend == 'tensorflow':
+        with tf.device('/cpu:0'):
+            # define the serial model.
+            model_serial = read_NN_weights(args.__dict__, base_model(model_def, shapes, shape_names))
+        gdev_list = get_available_gpus()
+        print('Using GPUs: {}'.format(gdev_list))
+        model = make_parallel(model_serial, gdev_list)
+      else:
+        raise Exception('Multi GPU can only be used with tensorflow as Backend.')
 
-      gdev_list = get_available_gpus()
-      print('Using GPUs: {}'.format(gdev_list))
-      model = make_parallel(model_serial, gdev_list)
-    else:
-      raise Exception('Multi GPU can only be used with tensorflow as Backend.')
   else:
-    model = read_NN_weights(args.__dict__, base_model(model_def, shapes, shape_names))
+      model = read_NN_weights(args.__dict__, base_model(model_def, shapes, shape_names))
 
+  adam = keras.optimizers.Adam(lr=float(parser.get('Training_Parameters', 'learning_rate')))
   model.compile(loss='mean_squared_error', optimizer=adam, metrics=['accuracy'])
-  os.system("nvidia-smi")  
+  os.system("nvidia-smi")
 
   ## Save Run Information
-  if not os.path.exists(os.path.join(save_path,'run_info.shlf')):
+  #if not os.path.exists(os.path.join(save_path,'run_info.shlf')):
+  if args.__dict__['continue'] == 'None':
     shelf = shelve.open(os.path.join(save_path,'run_info.shlf'))
-    shelf['Files'] = args.__dict__['input']
+    shelf['Files'] = input_files
     shelf['mc_location'] = mc_location
+    shelf['Test_Inds'] = test_inds
     shelf.close()
 
 #################### Train the Model #########################################################
 
-  CSV_log = keras.callbacks.CSVLogger( \
-    os.path.join(save_path, 'loss_logger.csv'), 
-    append=True)
+  CSV_log = keras.callbacks.CSVLogger(os.path.join(save_path,
+                                                   'loss_logger.csv'),\
+                                      append=True)
 
   early_stop = keras.callbacks.EarlyStopping(\
     monitor='val_loss',
@@ -219,19 +225,19 @@ if __name__ == "__main__":
                                                mode='auto',
                                                period=1)
 
-  batch_size = ngpus*int(parser.get('Training_Parameters', 'single_gpu_batch_size'))
+  batch_size = int(parser.get("GPU","request_gpus"))*int(parser.get('Training_Parameters', 'single_gpu_batch_size'))
 
   file_handlers = [h5py.File(os.path.join(mc_location, file_name), 'r') for file_name in input_files]
 
   model.fit_generator(
     generator(batch_size, file_handlers, train_inds, shapes, \
-      inp_variables, inp_transformations, out_variables, out_transformations), 
+      inp_variables, inp_transformations, out_variables, out_transformations),
     steps_per_epoch = math.ceil(np.sum([k[1]-k[0] for k in train_inds])/batch_size),
     validation_data = generator(batch_size, file_handlers, valid_inds, shapes,\
      inp_variables, inp_transformations, out_variables, out_transformations, val_run = True),
     validation_steps = math.ceil(np.sum([k[1]-k[0] for k in valid_inds])/batch_size),
-    callbacks = [CSV_log, early_stop, best_model, MemoryCallback()], 
-    epochs = int(parser.get('Training_Parameters', 'epochs')), 
+    callbacks = [CSV_log, early_stop, best_model, MemoryCallback()],
+    epochs = int(parser.get('Training_Parameters', 'epochs')),
     verbose = int(parser.get('Training_Parameters', 'verbose')),
     max_q_size = int(parser.get('Training_Parameters','max_queue_size'))
     )
@@ -241,6 +247,7 @@ if __name__ == "__main__":
   print('\n Save the Model \n')
   model.save(os.path.join(save_path,'final_network.h5'))  # save trained network
 
+  '''
   print('\n Calculate Results... \n')
   prediction = model.predict_generator(generator(batch_size, file_handlers, test_inds, shapes, inp_variables, inp_transformations, out_variables, out_transformations), 
                 steps = math.ceil(np.sum([k[1]-k[0] for k in test_inds])/batch_size),
@@ -249,12 +256,12 @@ if __name__ == "__main__":
                 )
 
   MC_truth = []
-  for i in range(len(input_data)):
+  for i in range(len(output_data)):
     one_chunk = np.log10(output_data[i][test_inds[i][0]:test_inds[i][1],0:1])
     MC_truth.extend(list(one_chunk))
 
 
-  np.save(os.path.join(save_path, 'test_results.npy'), 
-    [prediction, np.squeeze(MC_truth)])
-
+  np.save(os.path.join(save_path, 'test_results.npy'), [prediction, 
+                                                        np.squeeze(MC_truth)])
+  '''
   print(' \n Finished .... Exit.....')

@@ -19,9 +19,9 @@ def parseArguments():
     parser.add_argument("--project", help="The name for the Project",\
                         type=str ,default='some_NN')
     parser.add_argument("--Rescue", help="If true, run in rescue mode ", action="store_true")
+    parser.add_argument("--filesperJob", help="n files per job ", default=5,\
+                        type=int)
     parser.add_argument("--name", help="Name for the Dagman Files", type=str ,default='create_dataset')
-    parser.add_argument("--num_files", help="number of files",\
-                        type=int, default=-1)
     args = parser.parse_args()
     return args
 
@@ -40,7 +40,6 @@ if __name__ == '__main__':
     print"############################################\n "
 
 Resc=args.__dict__["Rescue"]
-
 PROCESS_DIR = dataset_parser.get("Basics","dagman_folder")
 if not os.path.exists(PROCESS_DIR):
     os.makedirs(PROCESS_DIR)
@@ -55,13 +54,13 @@ if not Resc:
     if not os.path.exists(WORKDIR):
         os.makedirs(WORKDIR)
         print "Created New Folder in: "+ WORKDIR
-    path=PROCESS_DIR+"/logs/{}/".format(dag_name)
-    if not os.path.exists(path):
-        os.makedirs(path)
-        print "Created New Folder in: "+ path
+    log_path=PROCESS_DIR+"/logs/{}/".format(dag_name)
+    if not os.path.exists(log_path):
+        os.makedirs(log_path)
+        print "Created New Folder in: "+ log_path
     print "Write Dagman Files to: "+submitFile
-    arguments = " --project $(PROJECT) --folder $(FOLDER) --main_config $(MAIN)"\
-            +" --dataset_config $(DATASET) --num_files $(NUMFILES) " 
+    arguments = " --project $(PROJECT) --files $(FILES) --main_config $(MAIN)"\
+            +" --dataset_config $(DATASET) "
     submitFileContent = {"universe": "vanilla",
                       "notification": "Error",
                       "log": "$(LOGFILE).log",
@@ -74,18 +73,42 @@ if not Resc:
                                                script,
                                                **submitFileContent)
     submitFile.dump()
-    file_list = dataset_parser.get("Basics","file_list").split(":")
-    print "files to be read: " , file_list
+
+    file_list = dataset_parser.get("Basics","file_list")
+    if file_list=="allinfolder":
+        files = []
+        mc_basepath = dataset_parser.get("Basics","mc_path")
+        mc_folder = dataset_parser.get("Basics","folder")
+        for f_name in os.listdir(mc_basepath+"/"+mc_folder):
+            if not f_name[-6:]=="i3.bz2":
+                continue
+            cur_f_id = f_name.split(mc_folder.strip("/")+".")[1].strip(".i3.bz2")
+            files.append(cur_f_id)
+    elif "-" in file_list:
+        files = []
+        low, up = file_list.split("-")
+        for f_id in range(int(low), int(up)):
+            files.append('{0:06d}'.format(f_id))
+    elif ":" in file_list:
+        files = file_list.split(":")
+    else:
+        print "file_list in dataset_config not understood. Have a look at the\
+        options there!"
     nodes  = []
-    for i, filename in enumerate(file_list): #for i, a1, a2 in enumerate(itertools.product(args1, args2))
-        filename = filename.strip(".h5")
-        logfile = path+filename.replace('/','_').replace(':','_')+"_"+str(i)
+    filesperJob = args.filesperJob*1. if len(files)>args.filesperJob else 1.
+    file_bunches = list(np.array_split(files,
+                                       int(len(files)/filesperJob)))
+    for i, bunch in enumerate(file_bunches): #for i, a1, a2 in enumerate(itertools.product(args1, args2))
+        logfile = log_path+bunch[0]
+        bunch_str = " "
+        for s in bunch:
+            bunch_str +=" {}".format(s)
+        print "files in this job: ", bunch_str
         dagArgs = pydag.dagman.Macros(LOGFILE=logfile,
-                                  PROJECT = args.project,
-                                  FOLDER = filename,
-                                  MAIN = args.main_config,
-                                  DATASET = args.dataset_config,
-                                  NUMFILES=args.num_files)
+                                      PROJECT = args.project,
+                                      FILES = bunch_str,
+                                      MAIN = args.main_config,
+                                      DATASET = args.dataset_config)
         node = pydag.dagman.DAGManNode(i, submitFile)
         node.keywords["VARS"] = dagArgs
         nodes.append(node)

@@ -23,23 +23,23 @@ def parseArguments():
     return args
 
 def make_condor(request_gpus, request_memory, requirements, addpath,\
-                file_location, arguments, thisfolder):
+                arguments, thisfolder):
     submit_info = '\
-            executable   = {6}/Neural_Network.py \n\
+            executable   = {folder}/Neural_Network.py \n\
             universe     = vanilla  \n\
-            request_gpus = {0} \n\
-            request_memory = {1}GB \n\
-            requirements = {2} \n\
-            log          = {3}/condor.log \n\
-            output       = {3}/condor.out \n\
-            error        = {3}/condor.err \n\
+            request_gpus = {gpu} \n\
+            request_memory = {mem}GB \n\
+            requirements = {req} \n\
+            log          = {addp}/condor.log \n\
+            output       = {addp}/condor.out \n\
+            error        = {addp}/condor.err \n\
             stream_output = True \n\
             getenv = True \n\
-            IWD = {4} \n\
-            arguments =  {5} \n\
-            queue 1 \n '.format(request_gpus, \
-                                request_memory, requirements, addpath,\
-                                file_location, arguments, thisfolder)
+            IWD = {folder} \n\
+            arguments =  {args} \n\
+            queue 1 \n '.format(gpu=request_gpus, \
+                                mem=request_memory, req=requirements, addp=addpath,\
+                                args=arguments, folder=thisfolder)
     return submit_info
 
 def make_slurm(request_gpus, request_memory, condor_folder, file_location,\
@@ -84,8 +84,15 @@ if workload_manager != 'slurm' and workload_manager != 'condor':
 
 if args['input'] == 'lowE':
 	files = '11029_00000-00999.h5:11029_01000-01999.h5:11029_02000-02999.h5:11029_03000-03999.h5:11029_04000-04999.h5:11029_05000-05999.h5'
+    #PS sample specific
 elif args['input'] == 'highE':
+    #PS sample specific
     files = '11069_00000-00999.h5:11069_01000-01999.h5:11069_02000-02999.h5:11069_03000-03999.h5:11069_04000-04999.h5:11069_05000-05999.h5'
+elif args["input"] == "allDiffuse":
+    files =  'testDiffuse_000000to000049.h5:testDiffuse_000150to000199.h5:testDiffuse_000300to000349.h5:testDiffuse_000450to000499.h5:'\
+            +'testDiffuse_000050to000099.h5:testDiffuse_000200to000249.h5:testDiffuse_000350to000399.h5:'\
+            +'testDiffuse_000500to000549.h5:testDiffuse_000100to000149.h5:testDiffuse_000250to000299.h5:'\
+            +'testDiffuse_000400to000449.h5:testDiffuse_000550to000599.h5'
 else:
 	files = args['input']
 

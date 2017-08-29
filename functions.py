@@ -61,7 +61,7 @@ def read_input_len_shapes(file_location, input_files, virtual_len=-1):
       if file_handler.root._v_attrs.shape != test_shape:
         raise Exception('The input files charges and times do not have the same shape')
     if virtual_len == -1:
-      data_len = file_handler.root._v_attrs.len  
+      data_len = file_handler.root._v_attrs.len
     else:
       data_len = virtual_len
       print('Only use the first {} Monte Carlo Events'.format(data_len))
@@ -82,12 +82,12 @@ def prepare_input_output_variables(file_path, model_settings):
   model_settings : the different settings for the model. has to include a section [Inputs] 
                    otherwise assume no transformation at all 
 
-  Returns: 
+  Returns:
   shapes : the input shapes for each branch after transformation (ordered)
-  shape_names : the names of the correspondincxg model branches (ordered)
+  shape_names : the names of the corresponding model branches (ordered)
   inp_variables : list of the input variables for the different branches
    (e.g [['charge','time'], ['charge']])
-  inp_transformation : the corresponding transformations applied before feeding the network 
+  inp_transformation : the corresponding transformations applied before feeding the network
   (e.g [['x-np.mean(x)','x'], ['np.sum(x)']])
   out_variables: list of output variables (e.g. ['energy', 'zenith'])
   out_transformation: list of output transformations (e.g. ['np.log10(x)', 'x'])
@@ -140,6 +140,16 @@ def prepare_input_output_variables(file_path, model_settings):
         raise Exception('The transformations that you have applied do not results in the same shape!!!!')
   cur_file_handler.close()
   return shapes, shape_names, inp_variables, inp_transformations, out_variables, out_transformations
+
+
+def calc_depositedE(physics_frame):
+    I3Tree = physics_frame['I3MCTree']
+    truncated_energy = 0
+    for i in I3Tree:
+        interaction_type = str(i.type)
+        if interaction_type in ['DeltaE','PairProd','Brems','EMinus']:
+            truncated_energy += i.energy
+    return truncated_energy
 
 
 def parse_config_file(conf_file_path):
