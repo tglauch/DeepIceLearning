@@ -26,11 +26,12 @@ import tables
 import argparse
 import os, sys
 from configparser import ConfigParser
-from reco_quantities import *
 
 
 def parseArguments():
   parser = argparse.ArgumentParser()
+  parser.add_argument("--main_config", help="main config file, user-specific",\
+                      type=str ,default='default.cfg')
   parser.add_argument("--dataset_config", help="main config file, user-specific",\
                       type=str ,default='default.cfg')
   parser.add_argument("--project", help="The name for the Project", type=str ,default='none')
@@ -42,13 +43,21 @@ def parseArguments():
   return args
 
 args = parseArguments()
+parser = ConfigParser()
+try:
+    parser.read(args.main_config)
+except:
+    raise Exception('Config File is missing!!!!') 
+
 dataset_configparser = ConfigParser()
 try:
     dataset_configparser.read(args.dataset_config)
 except:
     raise Exception('Config File is missing!!!!') 
 
+file_location = str(parser.get('Basics', 'thisfolder'))
 
+#### File paths #########
 basepath = str(dataset_configparser.get('Basics', 'MC_path'))
 geometry_file = str(dataset_configparser.get('Basics', 'geometry_file'))
 outfolder = str(dataset_configparser.get('Basics', 'out_folder'))
