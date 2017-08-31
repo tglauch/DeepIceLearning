@@ -174,8 +174,9 @@ if __name__ == "__main__":
 
   ### Create the Model
   model_settings, model_def = parse_config_file(conf_model_file)
+  # use one example file and the model_settings to get the shapes right
   shapes, shape_names, inp_variables, inp_transformations, out_variables, out_transformations = \
-  prepare_input_output_variables(os.path.join(mc_location, input_files[0]), model_settings)
+          prepare_input_output_variables(os.path.join(mc_location, input_files[0]), model_settings)
 
   ngpus = args.__dict__['ngpus']
   if ngpus > 1 :
