@@ -16,8 +16,6 @@ def parseArguments():
                         type=str ,default='default.cfg')
     parser.add_argument("--dataset_config", help="dataset config ",\
                         type=str ,default='create_dataset.cfg')
-    parser.add_argument("--project", help="The name for the Project",\
-                        type=str ,default='some_NN')
     parser.add_argument("--Rescue", help="If true, run in rescue mode ", action="store_true")
     parser.add_argument("--filesperJob", help="n files per job ", default=-1,\
                         type=int)
@@ -44,11 +42,11 @@ PROCESS_DIR = dataset_parser.get("Basics","dagman_folder")
 if not os.path.exists(PROCESS_DIR):
     os.makedirs(PROCESS_DIR)
 
-WORKDIR = PROCESS_DIR+"/jobs/"
+WORKDIR = os.path.join(PROCESS_DIR, "jobs/")
 script = os.path.join(main_parser.get("Basics","thisfolder"),"Create_Data_Files.py")
 dag_name = args.__dict__["name"]
-dagFile = WORKDIR+"job_{}.dag".format(dag_name)
-submitFile = WORKDIR+"job_{}.sub".format(dag_name)
+dagFile = os.path.join(WORKDIR,"job_{}.dag".format(dag_name))
+submitFile = os.path.join(WORKDIR, "job_{}.sub".format(dag_name))
 
 if not Resc:
     if not os.path.exists(WORKDIR):
@@ -59,8 +57,7 @@ if not Resc:
         os.makedirs(log_path)
         print "Created New Folder in: "+ log_path
     print "Write Dagman Files to: "+submitFile
-    arguments = " --project $(PROJECT) --filelist $(PATH) "\
-            +" --dataset_config $(DATASET) "
+    arguments = " --filelist $(PATH) --dataset_config $(DATASET) "
     submitFileContent = {"universe": "vanilla",
                       "notification": "Error",
                       "log": "$(LOGFILE).log",
@@ -74,10 +71,14 @@ if not Resc:
                                                **submitFileContent)
     submitFile.dump()
 
+
     folderlist = dataset_parser.get("Basics","folder_list")
+    basepath = dataset_parser.get("Basics","MC_path") 
     filelist = dataset_parser.get("Basics","file_list")
     filesperjob = args.filesperJob
     outfolder = dataset_parser.get('Basics', 'out_folder')
+    if not os.path.exists(outfolder):
+        os.makedirs(outfolder)
     file_bunches= []
     
     if folderlist == 'allinmcpath':

@@ -30,42 +30,30 @@ from configparser import ConfigParser
 
 def parseArguments():
   parser = argparse.ArgumentParser()
-  parser.add_argument("--main_config", help="main config file, user-specific",\
-                      type=str ,default='default.cfg')
   parser.add_argument("--dataset_config", help="main config file, user-specific",\
                       type=str ,default='default.cfg')
   parser.add_argument("--files", help="files to be processed",
                       type=str, nargs="+", required=False)
-  parser.add_argument("--filelist", help="Path to filelists to be processed",
-                      type=str, nargs="+", required=False)
+  parser.add_argument("--filelist", help="Path to a filelist to be processed",
+                      type=str, required=False)
   parser.add_argument("--version", action="version", version='%(prog)s - Version 1.0')
   args = parser.parse_args()
 
   return args
 
-args = parseArguments()
-parser = ConfigParser()
-try:
-    parser.read(args.main_config)
-except:
-    raise Exception('Config File is missing!!!!') 
+args = parseArguments().__dict__
 
 dataset_configparser = ConfigParser()
 try:
-    dataset_configparser.read(args.dataset_config)
+    dataset_configparser.read(args['dataset_config'])
 except:
     raise Exception('Config File is missing!!!!') 
-
-file_location = str(parser.get('Basics', 'thisfolder'))
 
 #### File paths #########
 basepath = str(dataset_configparser.get('Basics', 'MC_path'))
 geometry_file = str(dataset_configparser.get('Basics', 'geometry_file'))
 outfolder = str(dataset_configparser.get('Basics', 'out_folder'))
-mc_folder = dataset_configparser.get('Basics', 'folder')
 pulsemap_key = str(dataset_configparser.get('Basics', 'PulseSeriesMap'))
-file_list = args.files
-
 
 def read_variables(cfg_parser):
     """Function reading a config file, defining the variables to be read from the MC files.
@@ -254,8 +242,8 @@ if __name__ == "__main__":
     # Raw print arguments
     print"\n ############################################"
     print("You are running the script with arguments: ")
-    for a in args.__dict__:
-        print(str(a) + ": " + str(args.__dict__[a]))
+    for a in args.keys():
+        print(str(a) + ": " + str(args[a]))
     print"############################################\n "
 
     geo = dataio.I3File(geometry_file).pop_frame()['I3Geometry'].omgeo
@@ -285,13 +273,13 @@ if __name__ == "__main__":
     else:
         raise Exception('No input files given')
 
-    if os.path.exists(OUTFILE):
-        os.remove(OUTFILE)
+    if os.path.exists(outfile):
+        os.remove(outfile)
 
     dtype, data_source = read_variables(dataset_configparser)
     dtype_len = len(dtype)
     FILTERS = tables.Filters(complib='zlib', complevel=9)
-    with tables.open_file(OUTFILE, mode = "w", title = "Events for training the NN", filters=FILTERS) as h5file:
+    with tables.open_file(outfile, mode = "w", title = "Events for training the NN", filters=FILTERS) as h5file:
 
         charge = h5file.create_earray(h5file.root, 'charge',
             tables.Float64Atom(), (0, input_shape[0],input_shape[1],input_shape[2],1),
@@ -315,7 +303,7 @@ if __name__ == "__main__":
         skipped_frames = 0
         for counter, f_name in enumerate(filelist):
             if counter%10 == 0 :
-                print('Processing File {}/{}'.format(counter, len(file_list)))
+                print('Processing File {}/{}'.format(counter, len(filelist)))
             event_file = dataio.I3File(f_name, "r")
             print "Opening succesful"
             while event_file.more():
