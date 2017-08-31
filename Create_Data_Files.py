@@ -26,11 +26,12 @@ import tables
 import argparse
 import os, sys
 from configparser import ConfigParser
-from reco_quantities import *
 
 
 def parseArguments():
   parser = argparse.ArgumentParser()
+  parser.add_argument("--main_config", help="main config file, user-specific",\
+                      type=str ,default='default.cfg')
   parser.add_argument("--dataset_config", help="main config file, user-specific",\
                       type=str ,default='default.cfg')
   parser.add_argument("--files", help="files to be processed",
@@ -43,13 +44,21 @@ def parseArguments():
   return args
 
 args = parseArguments()
+parser = ConfigParser()
+try:
+    parser.read(args.main_config)
+except:
+    raise Exception('Config File is missing!!!!') 
+
 dataset_configparser = ConfigParser()
 try:
     dataset_configparser.read(args.dataset_config)
 except:
     raise Exception('Config File is missing!!!!') 
 
+file_location = str(parser.get('Basics', 'thisfolder'))
 
+#### File paths #########
 basepath = str(dataset_configparser.get('Basics', 'MC_path'))
 geometry_file = str(dataset_configparser.get('Basics', 'geometry_file'))
 outfolder = str(dataset_configparser.get('Basics', 'out_folder'))
@@ -98,8 +107,8 @@ def preprocess_grid(geometry):
     c, s = np.cos(theta), np.sin(theta)
     rot_mat = np.matrix([[c, -s], [s, c]])
 
-    DOM_List = [i for i in geometry.keys() if  i.om < 61                      # om > 60 are icetops
-                                           and i.string not in range(79,87)]  # exclude deep core strings
+    DOM_List = sorted([i for i in geometry.keys() if  i.om < 61                       # om > 60 are icetops
+                                                  and i.string not in range(79,87)])  # exclude deep core strings
     xpos=[geometry[i].position.x for i in DOM_List]
     ypos=[geometry[i].position.y for i in DOM_List]
     zpos=[geometry[i].position.z for i in DOM_List]
@@ -109,7 +118,7 @@ def preprocess_grid(geometry):
     return xpos, ypos, zpos, DOM_List
 
 def make_grid_dict(input_shape, geometry):
-    """Put the Icecube Geometry in a cubic grid. For each DOM calculate the corresponding grid position. Rotates the x-y-plane
+    """Put the Icecube Geometry in a cuboid grid. For each DOM calculate the corresponding grid position. Rotates the x-y-plane
     in order to make icecube better fit into a grid.
 
     Arguments:
@@ -117,36 +126,34 @@ def make_grid_dict(input_shape, geometry):
     geometry : Geometry file containing the positions of the DOMs in the Detector
 
     Returns:
-    grid: a dictionary mapping (string, om) => (grid_x, grid_y, grid_z), i.e. dom id to its index position in the cubic grid
-    dom_list_ret: list of all (string, om), i.e. list of all dom ids in the geofile  (sorted(dom_list_ret)==sorted(grid.keys()))
+    grid: a dictionary mapping (string, om) => (grid_x, grid_y, grid_z), i.e. dom id to its index position in the cuboid grid
+    dom_list_ret: list of all (string, om), i.e. list of all dom ids in the geofile  (dom_list_ret==sorted(grid.keys()))
     """ 
     grid = dict()
     xpos, ypos, zpos, DOM_List = preprocess_grid(geometry)
 
     xmin, xmax = np.min(xpos), np.max(xpos)
     delta_x = (xmax - xmin)/(input_shape[0]-1)
-    xmin, xmaz = xmin - delta_x/2, xmax + delta_x/2
+    xmin, xmax = xmin - delta_x/2, xmax + delta_x/2
     ymin, ymax = np.min(ypos), np.max(ypos)
     delta_y = (ymax - ymin)/(input_shape[1]-1)
-    ymin, ymaz = ymin - delta_y/2, ymax + delta_y/2
-    zmin, zmax = np.min(zpos), np.max(zpos)
+    ymin, ymax = ymin - delta_y/2, ymax + delta_y/2
+    zpos_reshaped = np.array(zpos).reshape(78,60)
+    zmin, zmax = np.median(map(np.min,zpos_reshaped)), np.median(map(np.max,zpos_reshaped))
     delta_z = (zmax - zmin)/(input_shape[2]-1)
     zmin, zmax = zmin - delta_z/2, zmax + delta_z/2
     dom_list_ret = []
     for i, odom in enumerate(DOM_List):
         dom_list_ret.append((odom.string, odom.om))
         # for all x,y,z-positions the according grid position is calculated and stored.
-        # the last items (i.e. xmax, ymax, zmax) are put in the last bin. i.e. grid["om with x=xmax"]=(input_shape[0]-1,...)
-        grid[(odom.string, odom.om)] = (min(int(math.floor((xpos[i]-xmin)/delta_x)),
-                                            input_shape[0]-1
-                                           ),
-                                        min(int(math.floor((ypos[i]-ymin)/delta_y)),
-                                            input_shape[1]-1
-                                           ),
+        # the doms that lie outside the z-range are put in to the closest bin (see: https://www.dropbox.com/s/fsjuxrua28dz2fi/zbinning.png)
+        # z coordinates count from bottom to top (righthanded coordinate system)
+        grid[(odom.string, odom.om)] = (int(math.floor((xpos[i]-xmin)/delta_x)),
+                                        int(math.floor((ypos[i]-ymin)/delta_y)),
                                         input_shape[2] - 1 -
-                                            min(int(math.floor((zpos[i]-zmin)/delta_z)),
-                                                input_shape[2]-1
-                                           ) # so that z coordinates count from bottom to top (righthanded coordinate system)
+                                            max(min(int(math.floor((zpos[i]-zmin)/delta_z)),
+                                                input_shape[2]-1),0
+                                            )
                                        )
     return grid, dom_list_ret
 
