@@ -33,9 +33,10 @@ def parseArguments():
   parser = argparse.ArgumentParser()
   parser.add_argument("--dataset_config", help="main config file, user-specific",\
                       type=str ,default='default.cfg')
-  parser.add_argument("--project", help="The name for the Project", type=str ,default='none')
   parser.add_argument("--files", help="files to be processed",
-                      type=str, nargs="+", required=True)
+                      type=str, nargs="+", required=False)
+  parser.add_argument("--filelist", help="Path to filelists to be processed",
+                      type=str, nargs="+", required=False)
   parser.add_argument("--version", action="version", version='%(prog)s - Version 1.0')
   args = parser.parse_args()
 
@@ -52,6 +53,9 @@ except:
 basepath = str(dataset_configparser.get('Basics', 'MC_path'))
 geometry_file = str(dataset_configparser.get('Basics', 'geometry_file'))
 outfolder = str(dataset_configparser.get('Basics', 'out_folder'))
+mc_folder = dataset_configparser.get('Basics', 'folder')
+pulsemap_key = str(dataset_configparser.get('Basics', 'PulseSeriesMap'))
+file_list = args.files
 
 
 def read_variables(cfg_parser):
@@ -247,9 +251,7 @@ if __name__ == "__main__":
         print(str(a) + ": " + str(args.__dict__[a]))
     print"############################################\n "
 
-    project_name = args.__dict__['project']
-    geometry = dataio.I3File(geometry_file)
-    geo = geometry.pop_frame()['I3Geometry'].omgeo
+    geo = dataio.I3File(geometry_file).pop_frame()['I3Geometry'].omgeo
     
     input_shape_par = dataset_configparser.get('Basics', 'input_shape')
     if input_shape_par != "auto":
@@ -259,17 +261,23 @@ if __name__ == "__main__":
         input_shape = [12,11,61]
         grid, DOM_list = make_autoHexGrid(geo)
 
-    mc_folder = dataset_configparser.get('Basics', 'folder')
-    pulsemap_key = str(dataset_configparser.get('Basics', 'PulseSeriesMap'))
-    file_list = args.files
     ######### Create HDF5 File ##########
-    save_folder = outfolder+"/{}".format(args.project)
-    if not os.path.exists(save_folder):
-        os.makedirs(save_folder)
-    save_folder +="/"
-    OUTFILE = os.path.join(save_folder,'{}_{}to{}.h5'.format(project_name,
-                                                             file_list[0],
-                                                             file_list[-1]))
+
+    if not os.path.exists(outfolder):
+        os.makedirs(outfolder)
+
+    if 'filelist' in args.keys():
+        filelist = []
+        with open(args['filelist'], 'r') as f:
+            for line in f.readlines():
+                filelist.append(line[:-2])
+        outfile = args['filelist'].replace('.txt', '.npy') 
+    elif 'files' in args.keys():
+        filelist = args['files']
+        outfile = filelist[0].replace('.i3.bz2', '.npy') 
+    else:
+        raise Exception('No input files given')
+
     if os.path.exists(OUTFILE):
         os.remove(OUTFILE)
 
@@ -298,20 +306,10 @@ if __name__ == "__main__":
         np.save('grid.npy', grid)
         j=0
         skipped_frames = 0
-        print('Process Folder: {}'.format(os.path.join(basepath, mc_folder)))
-        print 'Start reading files... : ' , file_list
-        for counter, f_name in enumerate(os.listdir(basepath+"/"+mc_folder)):
-            if not f_name[-6:]=="i3.bz2":
-                continue
-            cur_f_id = f_name.split(mc_folder.strip("/")+".")[1].strip(".i3.bz2")
-            if cur_f_id not in file_list:
-                continue
-            print cur_f_id
-            print f_name
+        for counter, f_name in enumerate(filelist):
             if counter%10 == 0 :
                 print('Processing File {}/{}'.format(counter, len(file_list)))
-            file_fullpath = str(os.path.join(basepath, mc_folder, f_name))
-            event_file = dataio.I3File(file_fullpath, "r")
+            event_file = dataio.I3File(f_name, "r")
             print "Opening succesful"
             while event_file.more():
                 physics_event = event_file.pop_physics()
