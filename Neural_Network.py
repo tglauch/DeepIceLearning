@@ -163,26 +163,26 @@ if __name__ == "__main__":
     else:
         mc_location = parser.get('Basics', 'mc_path')
         conf_model_file = os.path.join('Networks', args.__dict__['model'])
-    if args.__dict__['input'] == 'all':
-        input_files = [f for f in os.listdir(mc_location)
-                       if os.path.isfile(os.path.join(mc_location, f))]
-    else:
-        input_files = (args.__dict__['input']).split(':')
+        if args.__dict__['input'] == 'all':
+            input_files = [f for f in os.listdir(mc_location)
+                           if os.path.isfile(
+                           os.path.join(mc_location, f)) and f[-4:] == '.npy']
+        else:
+            input_files = (args.__dict__['input']).split(':')
 
-    if args.__dict__['save_folder'] != 'None':
-        save_path = args.__dict__['save_folder']
-    elif 'save_path' in parser['Basics'].keys():
-        save_path = parser.get('Basics', 'save_path')
-    elif 'train_folder' in parser["Basics"].keys():
-        today = str(datetime.datetime.now()).\
-            replace(" ", "-").split(".")[0].replace(":", "-")
-
-        project_name = args.__dict__['project']
-        save_path = os.path.join(
-            parser.get('Basics', 'train_folder'),
-            '{}/{}'.format(project_name, today))
-    else:
-        raise Exception('I have no clue where to save the training results')
+        if args.__dict__['save_folder'] != 'None':
+            save_path = args.__dict__['save_folder']
+        elif 'save_path' in parser['Basics'].keys():
+            save_path = parser.get('Basics', 'save_path')
+        elif 'train_folder' in parser["Basics"].keys():
+            today = str(datetime.datetime.now()).\
+                replace(" ", "-").split(".")[0].replace(":", "-")
+            project_name = args.__dict__['project']
+            save_path = os.path.join(
+                parser.get('Basics', 'train_folder'),
+                '{}/{}'.format(project_name, today))
+        else:
+            raise Exception('I have no clue where to save the training results')
 
     if not os.path.exists(save_path):
         os.makedirs(save_path)
