@@ -69,8 +69,6 @@ def read_input_len_shapes(file_location, input_files, virtual_len=-1):
     file_handler.close()
   return file_len
 
-def identity(*args):
-    return args
 
 def prepare_input_output_variables(file_path, model_settings):
 

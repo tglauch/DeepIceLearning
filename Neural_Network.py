@@ -167,7 +167,7 @@ if __name__ == "__main__":
             print os.listdir(mc_location)
             input_files = [f for f in os.listdir(mc_location)
                            if os.path.isfile(
-                           os.path.join(mc_location, f)) and f[-4:] == '.npy']
+                           os.path.join(mc_location, f)) and f[-3:] == '.h5']
             print input_files
         else:
             input_files = (args.__dict__['input']).split(':')
@@ -196,7 +196,7 @@ if __name__ == "__main__":
 
     file_len = read_input_len_shapes(mc_location,
                                      input_files,
-                                    virtual_len=args.__dict__['virtual_len'])
+                                     virtual_len=args.__dict__['virtual_len'])
     train_frac = float(
         train_val_test_ratio[0]) / np.sum(train_val_test_ratio)
     valid_frac = float(
@@ -230,7 +230,6 @@ if __name__ == "__main__":
         else:
             raise Exception(
                 'Multi GPU can only be used with tensorflow as Backend.')
->>>>>>> master
 
     else:
         model = read_NN_weights(
