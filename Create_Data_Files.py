@@ -28,31 +28,32 @@ import os, sys
 from configparser import ConfigParser
 from reco_quantities import *
 
-
 def parseArguments():
   parser = argparse.ArgumentParser()
   parser.add_argument("--dataset_config", help="main config file, user-specific",\
                       type=str ,default='default.cfg')
-  parser.add_argument("--project", help="The name for the Project", type=str ,default='none')
   parser.add_argument("--files", help="files to be processed",
-                      type=str, nargs="+", required=True)
+                      type=str, nargs="+", required=False)
+  parser.add_argument("--filelist", help="Path to a filelist to be processed",
+                      type=str, required=False)
   parser.add_argument("--version", action="version", version='%(prog)s - Version 1.0')
   args = parser.parse_args()
 
   return args
 
-args = parseArguments()
+args = parseArguments().__dict__
+
 dataset_configparser = ConfigParser()
 try:
-    dataset_configparser.read(args.dataset_config)
+    dataset_configparser.read(args['dataset_config'])
 except:
     raise Exception('Config File is missing!!!!') 
 
-
+#### File paths #########
 basepath = str(dataset_configparser.get('Basics', 'MC_path'))
 geometry_file = str(dataset_configparser.get('Basics', 'geometry_file'))
 outfolder = str(dataset_configparser.get('Basics', 'out_folder'))
-
+pulsemap_key = str(dataset_configparser.get('Basics', 'PulseSeriesMap'))
 
 def read_variables(cfg_parser):
     """Function reading a config file, defining the variables to be read from the MC files.
@@ -94,8 +95,8 @@ def preprocess_grid(geometry):
     c, s = np.cos(theta), np.sin(theta)
     rot_mat = np.matrix([[c, -s], [s, c]])
 
-    DOM_List = [i for i in geometry.keys() if  i.om < 61                      # om > 60 are icetops
-                                           and i.string not in range(79,87)]  # exclude deep core strings
+    DOM_List = sorted([i for i in geometry.keys() if  i.om < 61                       # om > 60 are icetops
+                                                  and i.string not in range(79,87)])  # exclude deep core strings
     xpos=[geometry[i].position.x for i in DOM_List]
     ypos=[geometry[i].position.y for i in DOM_List]
     zpos=[geometry[i].position.z for i in DOM_List]
@@ -105,7 +106,7 @@ def preprocess_grid(geometry):
     return xpos, ypos, zpos, DOM_List
 
 def make_grid_dict(input_shape, geometry):
-    """Put the Icecube Geometry in a cubic grid. For each DOM calculate the corresponding grid position. Rotates the x-y-plane
+    """Put the Icecube Geometry in a cuboid grid. For each DOM calculate the corresponding grid position. Rotates the x-y-plane
     in order to make icecube better fit into a grid.
 
     Arguments:
@@ -113,36 +114,34 @@ def make_grid_dict(input_shape, geometry):
     geometry : Geometry file containing the positions of the DOMs in the Detector
 
     Returns:
-    grid: a dictionary mapping (string, om) => (grid_x, grid_y, grid_z), i.e. dom id to its index position in the cubic grid
-    dom_list_ret: list of all (string, om), i.e. list of all dom ids in the geofile  (sorted(dom_list_ret)==sorted(grid.keys()))
+    grid: a dictionary mapping (string, om) => (grid_x, grid_y, grid_z), i.e. dom id to its index position in the cuboid grid
+    dom_list_ret: list of all (string, om), i.e. list of all dom ids in the geofile  (dom_list_ret==sorted(grid.keys()))
     """ 
     grid = dict()
     xpos, ypos, zpos, DOM_List = preprocess_grid(geometry)
 
     xmin, xmax = np.min(xpos), np.max(xpos)
     delta_x = (xmax - xmin)/(input_shape[0]-1)
-    xmin, xmaz = xmin - delta_x/2, xmax + delta_x/2
+    xmin, xmax = xmin - delta_x/2, xmax + delta_x/2
     ymin, ymax = np.min(ypos), np.max(ypos)
     delta_y = (ymax - ymin)/(input_shape[1]-1)
-    ymin, ymaz = ymin - delta_y/2, ymax + delta_y/2
-    zmin, zmax = np.min(zpos), np.max(zpos)
+    ymin, ymax = ymin - delta_y/2, ymax + delta_y/2
+    zpos_reshaped = np.array(zpos).reshape(78,60)
+    zmin, zmax = np.median(map(np.min,zpos_reshaped)), np.median(map(np.max,zpos_reshaped))
     delta_z = (zmax - zmin)/(input_shape[2]-1)
     zmin, zmax = zmin - delta_z/2, zmax + delta_z/2
     dom_list_ret = []
     for i, odom in enumerate(DOM_List):
         dom_list_ret.append((odom.string, odom.om))
         # for all x,y,z-positions the according grid position is calculated and stored.
-        # the last items (i.e. xmax, ymax, zmax) are put in the last bin. i.e. grid["om with x=xmax"]=(input_shape[0]-1,...)
-        grid[(odom.string, odom.om)] = (min(int(math.floor((xpos[i]-xmin)/delta_x)),
-                                            input_shape[0]-1
-                                           ),
-                                        min(int(math.floor((ypos[i]-ymin)/delta_y)),
-                                            input_shape[1]-1
-                                           ),
+        # the doms that lie outside the z-range are put in to the closest bin (see: https://www.dropbox.com/s/fsjuxrua28dz2fi/zbinning.png)
+        # z coordinates count from bottom to top (righthanded coordinate system)
+        grid[(odom.string, odom.om)] = (int(math.floor((xpos[i]-xmin)/delta_x)),
+                                        int(math.floor((ypos[i]-ymin)/delta_y)),
                                         input_shape[2] - 1 -
-                                            min(int(math.floor((zpos[i]-zmin)/delta_z)),
-                                                input_shape[2]-1
-                                           ) # so that z coordinates count from bottom to top (righthanded coordinate system)
+                                            max(min(int(math.floor((zpos[i]-zmin)/delta_z)),
+                                                input_shape[2]-1),0
+                                            )
                                        )
     return grid, dom_list_ret
 
@@ -243,13 +242,11 @@ if __name__ == "__main__":
     # Raw print arguments
     print"\n ############################################"
     print("You are running the script with arguments: ")
-    for a in args.__dict__:
-        print(str(a) + ": " + str(args.__dict__[a]))
+    for a in args.keys():
+        print(str(a) + ": " + str(args[a]))
     print"############################################\n "
 
-    project_name = args.__dict__['project']
-    geometry = dataio.I3File(geometry_file)
-    geo = geometry.pop_frame()['I3Geometry'].omgeo
+    geo = dataio.I3File(geometry_file).pop_frame()['I3Geometry'].omgeo
     
     input_shape_par = dataset_configparser.get('Basics', 'input_shape')
     if input_shape_par != "auto":
@@ -259,24 +256,30 @@ if __name__ == "__main__":
         input_shape = [12,11,61]
         grid, DOM_list = make_autoHexGrid(geo)
 
-    mc_folder = dataset_configparser.get('Basics', 'folder')
-    pulsemap_key = str(dataset_configparser.get('Basics', 'PulseSeriesMap'))
-    file_list = args.files
     ######### Create HDF5 File ##########
-    save_folder = outfolder+"/{}".format(args.project)
-    if not os.path.exists(save_folder):
-        os.makedirs(save_folder)
-    save_folder +="/"
-    OUTFILE = os.path.join(save_folder,'{}_{}to{}.h5'.format(project_name,
-                                                             file_list[0],
-                                                             file_list[-1]))
-    if os.path.exists(OUTFILE):
-        os.remove(OUTFILE)
+
+    if not os.path.exists(outfolder):
+        os.makedirs(outfolder)
+
+    if 'filelist' in args.keys():
+        filelist = []
+        with open(args['filelist'], 'r') as f:
+            for line in f.readlines():
+                filelist.append(line[:-2])
+        outfile = args['filelist'].replace('.txt', '.npy') 
+    elif 'files' in args.keys():
+        filelist = args['files']
+        outfile = filelist[0].replace('.i3.bz2', '.npy') 
+    else:
+        raise Exception('No input files given')
+
+    if os.path.exists(outfile):
+        os.remove(outfile)
 
     dtype, data_source = read_variables(dataset_configparser)
     dtype_len = len(dtype)
     FILTERS = tables.Filters(complib='zlib', complevel=9)
-    with tables.open_file(OUTFILE, mode = "w", title = "Events for training the NN", filters=FILTERS) as h5file:
+    with tables.open_file(outfile, mode = "w", title = "Events for training the NN", filters=FILTERS) as h5file:
 
         charge = h5file.create_earray(h5file.root, 'charge',
             tables.Float64Atom(), (0, input_shape[0],input_shape[1],input_shape[2],1),
@@ -298,20 +301,10 @@ if __name__ == "__main__":
         np.save('grid.npy', grid)
         j=0
         skipped_frames = 0
-        print('Process Folder: {}'.format(os.path.join(basepath, mc_folder)))
-        print 'Start reading files... : ' , file_list
-        for counter, f_name in enumerate(os.listdir(basepath+"/"+mc_folder)):
-            if not f_name[-6:]=="i3.bz2":
-                continue
-            cur_f_id = f_name.split(mc_folder.strip("/")+".")[1].strip(".i3.bz2")
-            if cur_f_id not in file_list:
-                continue
-            print cur_f_id
-            print f_name
+        for counter, f_name in enumerate(filelist):
             if counter%10 == 0 :
-                print('Processing File {}/{}'.format(counter, len(file_list)))
-            file_fullpath = str(os.path.join(basepath, mc_folder, f_name))
-            event_file = dataio.I3File(file_fullpath, "r")
+                print('Processing File {}/{}'.format(counter, len(filelist)))
+            event_file = dataio.I3File(f_name, "r")
             print "Opening succesful"
             while event_file.more():
                 physics_event = event_file.pop_physics()
