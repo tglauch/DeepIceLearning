@@ -399,16 +399,18 @@ if __name__ == "__main__":
                          np.max(temp_time) - np.min(temp_time),
                          temp_charge[0])
                 for dom in DOM_list:
-                    grid_pos = grid[dom]
+                    gpos = grid[dom]
                     if dom in final_dict:
-                        charge_arr[0][grid_pos[0]][grid_pos[1]][grid_pos[2]][0] += \
-                                final_dict[dom][0]
-                        charge_first_arr[0][grid_pos[0]][grid_pos[1]][grid_pos[2]][0]+=\
-                                final_dict[dom][3]
-                        charge_arr[0][grid_pos[0]][grid_pos[1]][grid_pos[2]][0]+=\
-                                final_dict[dom][2]
-                        time_first_arr[0][grid_pos[0]][grid_pos[1]][grid_pos[2]][0] = \
-                            np.minimum(time_first_arr[0][grid_pos[0]][grid_pos[1]][grid_pos[2]][0], final_dict[dom][1])
+                        charge_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
+                            final_dict[dom][0]
+                        charge_first_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
+                            final_dict[dom][3]
+                        time_spread_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
+                            final_dict[dom][2]
+                        time_first_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                            np.minimum(
+                                time_first_arr[0][gpos[0]][gpos[1]][gpos[2]][0],
+                                final_dict[dom][1])
 
                 charge.append(np.array(charge_arr))
                 charge_first.append(np.array(charge_first_arr))
