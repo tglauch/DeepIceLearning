@@ -184,7 +184,8 @@ if __name__ == "__main__":
                 parser.get('Basics', 'train_folder'),
                 '{}/{}'.format(project_name, today))
         else:
-            raise Exception('I have no clue where to save the training results')
+            raise Exception(
+                'I have no clue where to save the training results')
 
     if not os.path.exists(save_path):
         os.makedirs(save_path)
@@ -211,7 +212,8 @@ if __name__ == "__main__":
 
     # Create the Model
     model_settings, model_def = parse_config_file(conf_model_file)
-    shapes, shape_names, inp_variables, inp_transformations, out_variables, out_transformations = \
+    shapes, shape_names, inp_variables,\
+        inp_transformations, out_variables, out_transformations = \
         prepare_input_output_variables(
             os.path.join(mc_location, input_files[0]), model_settings)
 
