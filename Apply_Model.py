@@ -95,12 +95,9 @@ if __name__ == "__main__":
   shelf = shelve.open(os.path.join(DATA_DIR, 'run_info.shlf'))
 
   if shelf['Files']==['all']:
-      print "Check1"
       input_files = os.listdir(mc_location)
   else:
-      print "Check2"
       input_files = shelf['Files'].split(':')
-      print input_files
 
   model_settings, model_def = parse_config_file(os.path.join(DATA_DIR, 'model.cfg'))
   shapes, shape_names, inp_variables, inp_transformations, out_variables, out_transformations = \
