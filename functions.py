@@ -159,8 +159,8 @@ def prepare_input_output_variables(file_path, model_settings):
                 'The transformations that you have applied do not results\
                  in the same shape!!!!')
     cur_file_handler.close()
-    return shapes, shape_names, inp_variables,
-    inp_transformations, out_variables, out_transformations
+    return shapes, shape_names, inp_variables,\
+        inp_transformations, out_variables, out_transformations
 
 
 def calc_depositedE(physics_frame):
@@ -249,7 +249,7 @@ def base_model(model_def, shapes, shape_names):
     cur_model_name = ''
     for block in model_def:
         if block[0][0] == '{' and block[0][-1] == '}' or cur_model is None:
-            if cur_model is None:
+            if cur_model is not None:
                 print(cur_model.summary())
                 models[cur_model_name] = cur_model
             cur_model = Sequential()

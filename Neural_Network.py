@@ -19,6 +19,7 @@ import sys
 from configparser import ConfigParser
 import socket
 import argparse
+import h5py
 
 # Function Definitions #####################
 
@@ -164,11 +165,11 @@ if __name__ == "__main__":
         mc_location = parser.get('Basics', 'mc_path')
         conf_model_file = os.path.join('Networks', args.__dict__['model'])
         if args.__dict__['input'] == 'all':
-            print os.listdir(mc_location)
             input_files = [f for f in os.listdir(mc_location)
                            if os.path.isfile(
                            os.path.join(mc_location, f)) and f[-3:] == '.h5']
-            print input_files
+            print('Use the following input files for training: {}'.
+                  format(input_files))
         else:
             input_files = (args.__dict__['input']).split(':')
 
