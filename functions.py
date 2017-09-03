@@ -147,8 +147,8 @@ def prepare_input_output_variables(file_path, model_settings):
     for i in range(len(shape_names)):
         temp_shape_arr = []
         for j in range(len(inp_variables[i])):
-            # test_array = eval(
-            #     'cur_file_handler.root.{}'.format(inp_variables[i][j]))[0]
+            test_array = eval(
+                'cur_file_handler.root.{}'.format(inp_variables[i][j]))[0]
             temp_shape_arr.append(
                 np.shape(eval(
                     inp_transformations[i][j].replace('x', 'test_array'))))
