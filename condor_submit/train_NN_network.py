@@ -67,20 +67,23 @@ def make_condor(request_gpus, request_memory, requirements, addpath,
 
 
 def make_slurm(request_gpus, request_memory, condor_folder, file_location,
-               arguments, thisfolder, exclude):
+               arguments, thisfolder, exclude=''):
 
-    submit_info = '\
-        #!/usr/bin/env bash\n\
-        #SBATCH --time=48:00:00\n\
-        #SBATCH --partition=gpu\n\
-        #SBATCH --gres=gpu:{0}\n\
-        #SBATCH --mem={1} \n\
-        #SBATCH --error={2}/condor.err\n\
-        #SBATCH --output={2}/condor.out\n\
-        \n\
-        python {4}/Neural_Network.py {3} \n'.format(
+    if exclude != '':
+        exclude_node = '#SBATCH --exclude {} \n'.format(exclude)
+
+    submit_info = '#!/usr/bin/env bash\n\
+#SBATCH --time=48:00:00\n\
+#SBATCH --partition=gpu\n\
+#SBATCH --gres=gpu:{0}\n\
+#SBATCH --mem={1} \n\
+#SBATCH --error={2}/condor.err\n\
+#SBATCH --output={2}/condor.out\n\
+{5}\
+\n\
+python {4}/Neural_Network.py {3} \n'.format(
         request_gpus, int(request_memory),
-        condor_folder, arguments, thisfolder)
+        condor_folder, arguments, thisfolder, exclude_node)
 
     return submit_info
 
