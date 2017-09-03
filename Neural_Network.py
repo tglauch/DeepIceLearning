@@ -212,8 +212,7 @@ if __name__ == "__main__":
 
     # Create the Model
     model_settings, model_def = parse_config_file(conf_model_file)
-    shapes, shape_names, inp_variables,\
-        inp_transformations, out_variables, out_transformations = \
+    shapes, shape_names, inp_variables, inp_transformations, out_variables, out_transformations = \
         prepare_input_output_variables(
             os.path.join(mc_location, input_files[0]), model_settings)
 
@@ -277,7 +276,6 @@ if __name__ == "__main__":
     batch_size = int(
         parser.get("GPU", "request_gpus")) * int(parser.get(
             'Training_Parameters', 'single_gpu_batch_size'))
-
     file_handlers = [h5py.File(os.path.join(mc_location, file_name), 'r')
                      for file_name in input_files]
 
