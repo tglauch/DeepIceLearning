@@ -30,7 +30,8 @@ def prepare_io_shapes(inputs, outputs, exp_file):
     for br in inputs.keys():
         inp_shapes[br] = {}
         for var, tr in zip(inputs[br]["variables"], inputs[br]["transformations"]):
-            test_arr = eval("inp_file.root.{}".format(var))[0]
+            test_arr = np.array(inp_file.getNode("/"+var)[0])
+            #eval("inp_file.root.{}".format(var))[0]
             res_shape = np.shape(tr(test_arr))
             inp_shapes[br][var] = res_shape
         inp_shapes[br]["general"] = res_shape
@@ -38,7 +39,8 @@ def prepare_io_shapes(inputs, outputs, exp_file):
     for br in outputs.keys():
         out_shapes[br] = {}
         for var, tr in zip(outputs[br]["variables"], outputs[br]["transformations"]):
-            test_arr = np.array(eval("inp_file.root.reco_vals.cols.{}".format(var))[0])
+            test_arr = np.array(inp_file.getNode("/reco_vals").col(var)[0])
+                #eval("inp_file.root.reco_vals.cols.{}".format(var))[0])
             tr_applied = tr(test_arr)
             res_shape = tr_applied.shape if not isinstance(tr_applied, np.float) else 1
             out_shapes[br][var] = res_shape
