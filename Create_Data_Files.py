@@ -27,7 +27,7 @@ import argparse
 import os, sys
 from configparser import ConfigParser
 from reco_quantities import *
-
+import cPickle as pickle
 
 def parseArguments():
     parser = argparse.ArgumentParser()
@@ -294,14 +294,11 @@ if __name__ == "__main__":
         os.makedirs(outfolder)
 
     if 'filelist' in args.keys():
-        filelist = []
-        with open(args['filelist'], 'r') as f:
-            for line in f.readlines():
-                filelist.append(line[:-2])
-        outfile = args['filelist'].replace('.txt', '.npy')
+        filelist = pickle.load(open(args['filelist'], 'r'))
+        outfile = args['filelist'].replace('.pickle', '.h5')
     elif 'files' in args.keys():
         filelist = args['files']
-        outfile = filelist[0].replace('.i3.bz2', '.npy')
+        outfile = filelist[0].replace('.i3.bz2', '.h5')
     else:
         raise Exception('No input files given')
 
@@ -343,7 +340,7 @@ if __name__ == "__main__":
         for counter, f_name in enumerate(filelist):
             if counter % 10 == 0:
                 print('Processing File {}/{}'.format(counter, len(filelist)))
-            event_file = dataio.I3File(f_name, "r")
+            event_file = dataio.I3File(str(f_name), "r")
             print "Opening succesful"
             while event_file.more():
                 physics_event = event_file.pop_physics()

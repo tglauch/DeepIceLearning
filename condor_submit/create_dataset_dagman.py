@@ -7,7 +7,7 @@ import time
 import numpy as np
 from configparser import ConfigParser
 import fnmatch
-
+import cPickle as pickle
 
 def parseArguments():
     # Create argument parser
@@ -122,9 +122,8 @@ if not Resc:
                                      for single_file in i3_files])
         if filesperjob == -1:
             with open(os.path.join(outfolder,
-                                   'File_{}.txt'.format(i)), 'w+') as f:
-                for line in run_filelist:
-                    f.write("%s \n" % line)
+                                   'File_{}.pickle'.format(i)), 'w+') as f:
+                pickle.dump(run_filelist, f)
             file_bunches.append('File_{}'.format(i))
             run_filelist = []
     if filesperjob != -1:
@@ -134,16 +133,15 @@ if not Resc:
                             0, len(run_filelist), filesperjob)]
         for i, single_filelist in enumerate(run_filelist):
             with open(os.path.join(outfolder,
-                                   'File_{}.txt'.format(i)), 'w+') as f:
-                for line in run_filelist:
-                    f.write("%s \n" % line)
+                                   'File_{}.pickle'.format(i)), 'w+') as f:
+                pickle.dump(run_filelist[0], f)
             file_bunches.append('File_{}'.format(i))
     nodes = []
     for i, bunch in enumerate(file_bunches):
         logfile = log_path + bunch
         dagArgs = pydag.dagman.Macros(LOGFILE=logfile,
                                       PATH=os.path.join(outfolder,
-                                                        '{}.txt'.format(bunch)
+                                                        '{}.pickle'.format(bunch)
                                                         ),
                                       DATASET=args.dataset_config)
         node = pydag.dagman.DAGManNode(i, submitFile)
