@@ -43,7 +43,7 @@ backend = parser.get('Basics', 'keras_backend')
 os.environ["KERAS_BACKEND"] = backend
 
 # Simply run this one on the CPUs
-
+'''
 if backend == 'theano':
     os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=gpu,floatX=float32"
 
@@ -70,7 +70,7 @@ elif backend == 'theano':
     import theano
 else:
     raise NameError('Choose tensorflow or theano as keras backend')
-
+'''
 import numpy as np
 import theano
 import keras
@@ -105,6 +105,8 @@ if __name__ == "__main__":
 
     if shelf['Files'] == ['all']:
         input_files = os.listdir(mc_location)
+    elif isinstance(shelf["Files"],list):
+        input_files = shelf['Files']
     else:
         input_files = shelf['Files'].split(':')
 
