@@ -20,6 +20,7 @@ from configparser import ConfigParser
 import socket
 import argparse
 import h5py
+import model_parse
 
 # Function Definitions #####################
 
@@ -91,6 +92,7 @@ except Exception:
     raise Exception('Config File is missing!!!!')
 
 backend = parser.get('Basics', 'keras_backend')
+'''
 os.environ["KERAS_BACKEND"] = backend
 if backend == 'theano':
     os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=gpu,floatX=float32"
@@ -119,7 +121,7 @@ elif backend == 'theano':
 else:
     raise NameError('Choose tensorflow or theano as keras backend')
 
-
+'''
 import numpy as np
 import datetime
 import math
@@ -163,7 +165,8 @@ if __name__ == "__main__":
 
     else:
         mc_location = parser.get('Basics', 'mc_path')
-        conf_model_file = os.path.join('Networks', args.__dict__['model'])
+        conf_model_file = args.__dict__['model']
+        #conf_model_file = os.path.join('Networks', args.__dict__['model'])
         if args.__dict__['input'] == 'all':
             input_files = [f for f in os.listdir(mc_location)
                            if os.path.isfile(
@@ -211,37 +214,37 @@ if __name__ == "__main__":
                  for tot_len in file_len]
     print('Index ranges used for training: {}'.format(train_inds))
 
-    # Create the Model
-    model_settings, model_def = parse_config_file(conf_model_file)
-    shapes, shape_names, inp_variables, inp_transformations, out_variables, out_transformations = \
-        prepare_input_output_variables(
-            os.path.join(mc_location, input_files[0]), model_settings)
+    # create model (new implementation, functional API of Keras)
+    base_model, inp_shapes, inp_transformations, out_shapes, out_transformations = \
+            model_parse.parse_functional_model(
+                conf_model_file,\
+                os.path.join(mc_location, input_files[0])\
+            )
+                #give absolute path to model + example file
+    model_serial = read_NN_weights(args.__dict__, base_model)
+
 
     ngpus = args.__dict__['ngpus']
     if ngpus > 1:
         if backend == 'tensorflow':
             with tf.device('/cpu:0'):
-                # define the serial model.
-                model_serial = read_NN_weights(
-                    args.__dict__, base_model(
-                        model_def,
-                        shapes, shape_names))
-            gdev_list = get_available_gpus()
-            print('Using GPUs: {}'.format(gdev_list))
-            model = make_parallel(model_serial, gdev_list)
+                gdev_list = get_available_gpus()
+                print('Using GPUs: {}'.format(gdev_list))
+                model = make_parallel(model_serial, gdev_list)
         else:
             raise Exception(
                 'Multi GPU can only be used with tensorflow as Backend.')
-
     else:
-        model = read_NN_weights(
-            args.__dict__, base_model(model_def, shapes, shape_names))
+        model = model_serial
 
     adam = keras.optimizers.Adam(
         lr=float(parser.get('Training_Parameters', 'learning_rate')))
     model.compile(
         loss='mean_squared_error', optimizer=adam, metrics=['accuracy'])
+'''
     os.system("nvidia-smi")
+
+
 
     # Save Run Information
     # if not os.path.exists(os.path.join(save_path,'run_info.shlf')):
@@ -306,3 +309,4 @@ if __name__ == "__main__":
                             'final_network.h5'))  # save trained network
 
     print(' \n Finished .... Exit.....')
+'''
