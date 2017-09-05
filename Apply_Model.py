@@ -43,7 +43,6 @@ backend = parser.get('Basics', 'keras_backend')
 os.environ["KERAS_BACKEND"] = backend
 
 # Simply run this one on the CPUs
-'''
 if backend == 'theano':
     os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=gpu,floatX=float32"
 
@@ -70,7 +69,7 @@ elif backend == 'theano':
     import theano
 else:
     raise NameError('Choose tensorflow or theano as keras backend')
-'''
+
 import numpy as np
 import theano
 import keras

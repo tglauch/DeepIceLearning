@@ -9,33 +9,33 @@ from keras.layers import *
 import sys
 sys.path.append("..")
 import transformations as tr
-#transformations import identity, centralize
 
-#*Settings*
+# transformations import identity, centralize
 
-#define inputs for each branch
+# *Settings*
+
+# define inputs for each branch
 inputs = dict()
-inputs["Branch1"] = { "variables": ["charge","time"],
-                     "transformations" : [tr.identity, tr.centralize]
-                    }
+inputs["Branch1"] = {"variables": ["charge", "time"],
+                     "transformations": [tr.identity, tr.centralize]}
 
-#define outputs for each branch
+# define outputs for each branch
 outputs = dict()
-outputs["Out1"] = { "variables": ["energy"],
-                     "transformations" : [np.log10]
-                  }
+outputs["Out1"] = {"variables": ["energy"],
+                   "transformations": [np.log10]}
 
 
-#*Model*
+# *Model*
 
 def model(input_shapes, output_shapes):
 
     kwargs = dict(activation='relu', kernel_initializer='he_normal')
-    input_b1 = Input(shape=input_shapes["Branch1"]["general"], name="Input-Branch1")
+    input_b1 = Input(shape=input_shapes["Branch1"]["general"],
+                     name="Input-Branch1")
 
-    z = Conv3D(8, (2,2,3), **kwargs)(input_b1)
-    
-    z = MaxPooling3D(pool_size = (3,3,3))(z)
+    z = Conv3D(8, (2, 2, 3), **kwargs)(input_b1)
+
+    z = MaxPooling3D(pool_size=(3, 3, 3))(z)
 
     z = Flatten()(z)
     z = Dense(512)(z)

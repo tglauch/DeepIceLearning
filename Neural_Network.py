@@ -15,7 +15,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import os
-import sys
 from configparser import ConfigParser
 import socket
 import argparse
@@ -166,7 +165,7 @@ if __name__ == "__main__":
     else:
         mc_location = parser.get('Basics', 'mc_path')
         conf_model_file = args.__dict__['model']
-        #conf_model_file = os.path.join('Networks', args.__dict__['model'])
+        # conf_model_file = os.path.join('Networks', args.__dict__['model'])
         if args.__dict__['input'] == 'all':
             input_files = [f for f in os.listdir(mc_location)
                            if os.path.isfile(
@@ -227,7 +226,7 @@ if __name__ == "__main__":
     print inp_transformations
     print out_shapes
     print out_transformations
-    
+  
     model_serial = read_NN_weights(args.__dict__, base_model)
 
     ngpus = args.__dict__['ngpus']
