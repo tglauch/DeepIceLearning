@@ -221,8 +221,14 @@ if __name__ == "__main__":
                 os.path.join(mc_location, input_files[0])\
             )
                 #give absolute path to model + example file
-    model_serial = read_NN_weights(args.__dict__, base_model)
 
+    print base_model
+    print inp_shapes
+    print inp_transformations
+    print out_shapes
+    print out_transformations
+    
+    model_serial = read_NN_weights(args.__dict__, base_model)
 
     ngpus = args.__dict__['ngpus']
     if ngpus > 1:

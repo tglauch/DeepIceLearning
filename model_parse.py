@@ -67,7 +67,7 @@ def parse_functional_model(cfg_file, exp_file):
     return model, input_shapes, input_transformations, output_shapes, output_transformations
 
 
-example_f = "/data/user/jstettner/DeepIce/trainData/Datasets/DiffuseReproc/File_43.h5"
-#model_file = "Networks/test_functional" 
-model_file = "/data/user/jstettner/DeepIce/NN_Reco/Networks/test_functional.py" 
-ret_model = parse_functional_model(model_file, example_f)
+# example_f = "/data/user/jstettner/DeepIce/trainData/Datasets/DiffuseReproc/File_43.h5"
+# #model_file = "Networks/test_functional" 
+# model_file = "/data/user/jstettner/DeepIce/NN_Reco/Networks/test_functional.py" 
+# ret_model = parse_functional_model(model_file, example_f)
