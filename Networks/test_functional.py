@@ -9,7 +9,6 @@ from keras.layers import *
 import sys
 sys.path.append("..")
 import transformations as tr
-
 # transformations import identity, centralize
 
 # *Settings*

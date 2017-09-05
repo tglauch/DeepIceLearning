@@ -136,10 +136,9 @@ else:
     if not os.path.exists(condor_out_folder):
         print('Create Condor-Out Folder: \n {}'.format(condor_out_folder))
         os.makedirs(condor_out_folder)
+    arguments += ' --save_folder {} '.format(save_path)
 
-    arguments += '--ngpus {} '.format(request_gpus)
-    arguments += '--save_folder {} '.format(save_path)
-
+arguments += ' --ngpus {} '.format(request_gpus)
 if workload_manager == 'slurm':
     submit_info = make_slurm(request_gpus, float(request_memory) * 1e3,
                              condor_out_folder, train_location, arguments,

@@ -26,23 +26,24 @@ def prepare_io_shapes(inputs, outputs, exp_file):
     inp_shapes = {}
     out_transformations = {}
     out_shapes = {}
-    print inputs
-    print outputs
     # open example file
     inp_file = tables.open_file(exp_file)
 
     for br in inputs.keys():
         inp_shapes[br] = {}
+        inp_transformations[br] = {}
         for var, tr in zip(inputs[br]["variables"],
                            inputs[br]["transformations"]):
             test_arr = np.array(inp_file.getNode("/" + var)[0])
             # eval("inp_file.root.{}".format(var))[0]
             res_shape = np.shape(tr(test_arr))
             inp_shapes[br][var] = res_shape
-        inp_shapes[br]["general"] = res_shape
+            inp_transformations[br][var] = tr
+        inp_shapes[br]["general"] = res_shape[:-1] + (len(inputs[br]["variables"]),)
 
     for br in outputs.keys():
         out_shapes[br] = {}
+        out_transformations[br] = {}
         for var, tr in zip(outputs[br]["variables"],
                            outputs[br]["transformations"]):
             test_arr = np.array(inp_file.getNode("/reco_vals").col(var)[0])
@@ -51,7 +52,11 @@ def prepare_io_shapes(inputs, outputs, exp_file):
             res_shape = tr_applied.shape if not isinstance(tr_applied,
                                                            np.float) else 1
             out_shapes[br][var] = res_shape
-        out_shapes[br]["general"] = res_shape
+            out_transformations[br][var] = tr
+        if isinstance(res_shape, tuple):
+            out_shapes[br]["general"] = res_shape[:-1] + (len(outputs[br]["variables"]),)
+        else:
+            out_shapes[br]["general"] = len(outputs[br]["variables"])
     return inp_shapes, inp_transformations, out_shapes, out_transformations
 
 
@@ -67,13 +72,7 @@ def parse_functional_model(cfg_file, exp_file):
     inputs = func_model_def.inputs
     outputs = func_model_def.outputs
 
-    input_shapes, input_transformations, output_shapes, output_transformations = \
-            prepare_io_shapes(inputs, outputs, exp_file)
-    model = func_model_def.model(input_shapes, output_shapes)
-    return model, input_shapes, input_transformations,output_shapes, output_transformations
-
-
-# example_f = "/data/user/jstettner/DeepIce/trainData/Datasets/DiffuseReproc/File_43.h5"
-# #model_file = "Networks/test_functional" 
-# model_file = "/data/user/jstettner/DeepIce/NN_Reco/Networks/test_functional.py" 
-# ret_model = parse_functional_model(model_file, example_f)
+    in_shapes, in_trans, out_shapes, out_trans = \
+        prepare_io_shapes(inputs, outputs, exp_file)
+    model = func_model_def.model(in_shapes, out_shapes) 
+    return model, in_shapes, in_trans, out_shapes, out_trans
