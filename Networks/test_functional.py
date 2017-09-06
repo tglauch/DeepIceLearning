@@ -17,12 +17,14 @@ import transformations as tr
 inputs = dict()
 inputs["Branch1"] = {"variables": ["charge", "time"],
                      "transformations": [tr.identity, tr.centralize]}
-
+inputs["Branch2"] = {"variables": ["charge"],
+                     "transformations": [np.sum]}
 # define outputs for each branch
 outputs = dict()
 outputs["Out1"] = {"variables": ["energy"],
                    "transformations": [np.log10]}
-
+outputs["Out2"] = {"variables": ["azimuth"],
+                   "transformations": [np.log10]}
 
 # *Model*
 

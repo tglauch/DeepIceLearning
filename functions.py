@@ -311,8 +311,8 @@ class MemoryCallback(keras.callbacks.Callback):
 
 
 def generator(batch_size, file_handlers, inds,
-              inp_shape, inp_variables, inp_transformations,
-              out_variables, out_transformations, val_run=False):
+              inp_shape_dict, inp_transformations,
+              out_shape_dict, out_transformations, val_run=False):
 
     """ This function is a real braintwister and presumably really bad implemented.
     It produces all input and output data and applies the transformations
@@ -334,8 +334,16 @@ def generator(batch_size, file_handlers, inds,
     batch_out: a batch of output data
 
     """
-    batch_input = [np.zeros((batch_size,) + i) for i in inp_shape]
-    batch_out = np.zeros((batch_size, len(out_variables)))
+    in_branches = [(branch, inp_shape_dict[branch]['general']) for branch in inp_shape_dict.keys()]
+    print in_branches
+    out_branches = [(branch, out_shape_dict[branch]['general']) for branch in out_shape_dict.keys()]
+    print out_branches
+    inp_variables = [[(i, inp_transformations[branch[0]][i]) for i in inp_transformations[branch[0]]] for branch in in_branches]
+    print inp_variables
+    out_variables = [[(i, out_transformations[branch[0]][i]) for i in out_transformations[branch[0]]] for branch in out_branches]
+    print out_variables
+    batch_input = [np.zeros((batch_size,) + branch[1]) for branch in in_branches]
+    batch_out = [np.zeros((batch_size,) + branch[1]) for branch in out_branches]
     cur_file = 0
     cur_event_id = inds[cur_file][0]
     cur_len = 0

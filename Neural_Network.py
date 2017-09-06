@@ -246,19 +246,19 @@ if __name__ == "__main__":
         lr=float(parser.get('Training_Parameters', 'learning_rate')))
     model.compile(
         loss='mean_squared_error', optimizer=adam, metrics=['accuracy'])
-'''
+
     os.system("nvidia-smi")
 
 
 
     # Save Run Information
     # if not os.path.exists(os.path.join(save_path,'run_info.shlf')):
-    if args.__dict__['continue'] == 'None':
-        shelf = shelve.open(os.path.join(save_path, 'run_info.shlf'))
-        shelf['Files'] = input_files
-        shelf['mc_location'] = mc_location
-        shelf['Test_Inds'] = test_inds
-        shelf.close()
+    # if args.__dict__['continue'] == 'None':
+    #     shelf = shelve.open(os.path.join(save_path, 'run_info.shlf'))
+    #     shelf['Files'] = input_files
+    #     shelf['mc_location'] = mc_location
+    #     shelf['Test_Inds'] = test_inds
+    #     shelf.close()
 
 # Train the Model #########################################################
 
@@ -290,14 +290,14 @@ if __name__ == "__main__":
 
     model.fit_generator(
         generator(
-            batch_size, file_handlers, train_inds, shapes,
-            inp_variables, inp_transformations, out_variables,
+            batch_size, file_handlers, train_inds, inp_shapes,
+            inp_transformations, out_shapes,
             out_transformations),
         steps_per_epoch=math.ceil(
             np.sum([k[1] - k[0] for k in train_inds]) / batch_size),
         validation_data=generator(
-            batch_size, file_handlers, valid_inds, shapes,
-            inp_variables, inp_transformations, out_variables,
+            batch_size, file_handlers, valid_inds, inp_shapes,
+            inp_transformations, out_shapes,
             out_transformations, val_run=True),
         validation_steps=math.ceil(
             np.sum([k[1] - k[0] for k in valid_inds]) / batch_size),
@@ -314,4 +314,3 @@ if __name__ == "__main__":
                             'final_network.h5'))  # save trained network
 
     print(' \n Finished .... Exit.....')
-'''
