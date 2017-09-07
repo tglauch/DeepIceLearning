@@ -25,8 +25,8 @@ inputs["Branch2"] = {"variables": ["charge"],
 # define outputs for each branch
 
 outputs = OrderedDict()
-outputs["Out1"] = {"variables": ["energy", "azimuth"],
-                   "transformations": [np.log10]}
+outputs["Out1"] = {"variables": ["energy", "azimuth", "zenith"],
+                   "transformations": [np.log10, tr.identity, tr.identity]}
 # outputs["Out2"] = {"variables": ["azimuth"],
 #                    "transformations": [np.log10]}
 
@@ -36,17 +36,19 @@ outputs["Out1"] = {"variables": ["energy", "azimuth"],
 def model(input_shapes, output_shapes):
 
     kwargs = dict(activation='relu', kernel_initializer='he_normal')
-    input_b1 = Input(shape=input_shapes["Branch1"]["general"],
-                     name="Input-Branch1")
 
-    input_b2 = Input(shape=input_shapes["Branch2"]["general"],
-                     name="Input-Branch2")
+    input_b1 = Input(shape=input_shapes["Branch1"]["general"],
+
+                     name="Input-Branch1")
 
     z = Conv3D(8, (2, 2, 3), **kwargs)(input_b1)
 
     z = MaxPooling3D(pool_size=(3, 3, 3))(z)
 
     z = Flatten()(z)
+
+    input_b2 = Input(shape=input_shapes["Branch2"]["general"],
+                     name="Input-Branch2")
 
     z = concatenate([z, input_b2])
     z = Dense(512)(z)

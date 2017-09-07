@@ -92,17 +92,17 @@ def generator(batch_size, file_handlers, inds,
     file_location: path to the folder containing the training files
     file_list: list of files used for the training
     inds: the index range used for the training set
-    inp_shape: the shapes of the input neurons
-    inp_variables: list of variables used for the input
-    inp_transformations: list of transformations for the input data
-    out_variables: variables for the output data
-    out_transformations: transformations applied to the output data
+    inp_shape_dict: A dictionary with the input shape for each branch
+    inp_transformations: Dictionary with input variable name and function
+    out_shape_dict: A dictionary with the output shape for each branch
+    out_transformations: Dictionary with out variable name and function
 
     Returns:
     batch_input : a batch of input data
     batch_out: a batch of output data
 
     """
+
     in_branches = [(branch, inp_shape_dict[branch]['general'])
                    for branch in inp_shape_dict]
     out_branches = [(branch, out_shape_dict[branch]['general'])
@@ -149,7 +149,8 @@ def generator(batch_size, file_handlers, inds,
                         temp_cur_event_id += fill_batch
                     else:
                         temp_in.extend(
-                            eval('file_handlers[cur_file][\'{}\']'.format(var[0]))
+                            eval('file_handlers[cur_file][\'{}\']'.
+                                 format(var[0]))
                             [temp_cur_event_id:temp_up_to])
                         if j == 0 and k == 0:
                             temp_out.extend(
@@ -212,3 +213,4 @@ def read_NN_weights(args_dict, model):
         print('Initalize the model without pre-trained weights')
 
     return model
+
