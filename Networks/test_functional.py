@@ -7,26 +7,29 @@ import numpy as np
 import keras
 from keras.layers import *
 import sys
+from collections import OrderedDict
 sys.path.append("..")
 import transformations as tr
 # transformations import identity, centralize
 
 # *Settings*
-
 # define inputs for each branch
-inputs = dict()
+inputs = OrderedDict()
+
 inputs["Branch1"] = {"variables": ["charge", "time"],
                      "transformations": [tr.identity, tr.centralize]}
 inputs["Branch2"] = {"variables": ["charge"],
                      "transformations": [np.sum]}
+
 # define outputs for each branch
-outputs = dict()
-outputs["Out1"] = {"variables": ["energy"],
+outputs = OrderedDict()
+outputs["Out1"] = {"variables": ["energy", "azimuth"],
                    "transformations": [np.log10]}
-outputs["Out2"] = {"variables": ["azimuth"],
-                   "transformations": [np.log10]}
+# outputs["Out2"] = {"variables": ["azimuth"],
+#                    "transformations": [np.log10]}
 
 # *Model*
+
 
 def model(input_shapes, output_shapes):
 
@@ -34,14 +37,21 @@ def model(input_shapes, output_shapes):
     input_b1 = Input(shape=input_shapes["Branch1"]["general"],
                      name="Input-Branch1")
 
+    input_b2 = Input(shape=input_shapes["Branch2"]["general"],
+                     name="Input-Branch2")
+
     z = Conv3D(8, (2, 2, 3), **kwargs)(input_b1)
 
     z = MaxPooling3D(pool_size=(3, 3, 3))(z)
 
     z = Flatten()(z)
-    z = Dense(512)(z)
-    output_layer = Dense(output_shapes["Out1"]["general"], name="Target")(z)
 
-    model = keras.models.Model(inputs=[input_b1], outputs=[output_layer])
+    z = concatenate([z, input_b2])
+    z = Dense(512)(z)
+    output_layer1 = Dense(output_shapes["Out1"]["general"], name="Target")(z)
+
+    model = keras.models.Model(
+        inputs=[input_b1, input_b2],
+        outputs=[output_layer1])
     print(model.summary())
     return model
