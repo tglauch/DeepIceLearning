@@ -153,10 +153,12 @@ submitfile_full = os.path.join(condor_out_folder, 'submit.sub')
 with open(submitfile_full, "wc") as file:
     file.write(submit_info)
 
-os.system("cp {} {} ".format(
-    args["main_config"], os.path.join(save_path, 'config.cfg')))
-os.system("cp {} {} ".format(
-    args["model"], os.path.join(save_path, 'model.cfg')))
+if not os.path.exists(os.path.join(save_path, 'config.cfg')):
+    os.system("cp {} {} ".format(
+        args["main_config"], os.path.join(save_path, 'config.cfg')))
+if not os.path.exists(os.path.join(save_path, 'model.cfg')):
+    os.system("cp {} {} ".format(
+        args["model"], os.path.join(save_path, 'model.cfg')))
 
 if workload_manager == 'slurm':
     os.system("sbatch {}".format(submitfile_full))

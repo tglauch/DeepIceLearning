@@ -225,6 +225,7 @@ if __name__ == "__main__":
     model_serial = read_NN_weights(args.__dict__, base_model)
 
     ngpus = args.__dict__['ngpus']
+    print'Use {} GPUS'.format(ngpus)
     if ngpus > 1:
         if backend == 'tensorflow':
             with tf.device('/cpu:0'):
