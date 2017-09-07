@@ -16,8 +16,8 @@ import transformations as tr
 
 inputs = OrderedDict()
 
-inputs["Branch1"] = {"variables": ["charge", "time"],
-                     "transformations": [tr.identity, tr.identity]}
+inputs["Branch1"] = {"variables": ["charge", "time", "time_spread"],
+                     "transformations": [tr.identity, tr.identity , tr.identity]}
 #tr.centralize]}
 inputs["Branch2"] = {"variables": ["charge"],
                      "transformations": [np.sum]}
@@ -38,22 +38,37 @@ def model(input_shapes, output_shapes):
 
     kwargs = dict(activation='relu', kernel_initializer='he_normal')
 
+    # branch 1
     input_b1 = Input(shape=input_shapes["Branch1"]["general"],
-
                      name="Input-Branch1")
 
-    z = Conv3D(8, (2, 2, 3), **kwargs)(input_b1)
-
-    z = MaxPooling3D(pool_size=(3, 3, 3))(z)
-
+    z = Conv3D(48, (2, 2, 3), **kwargs)(input_b1)
+    z = BatchNormalization()(z)
+    z = Conv3D(24, (2, 2, 2), **kwargs)(z)
+    z = MaxPooling3D(pool_size=(2, 1, 3))(z)
+    z = BatchNormalization()(z)
+    z = Conv3D(24, (2, 2, 2), **kwargs)(z)
     z = Flatten()(z)
 
+    # branch 2
     input_b2 = Input(shape=input_shapes["Branch2"]["general"],
                      name="Input-Branch2")
 
+    # merge
     z = concatenate([z, input_b2])
-    z = Dense(512)(z)
-    output_layer1 = Dense(output_shapes["Out1"]["general"], name="Target")(z)
+
+    z = Dense(256, **kwargs)(z)
+    z = Dropout(rate=0.2)(z)
+    z = BatchNormalization()(z)
+    z = Dense(128, **kwargs)(z)
+    z = Dropout(rate=0.2)(z)
+    z = BatchNormalization()(z)
+    z = Dense(64, **kwargs)(z)
+
+    # output
+    output_layer1 = Dense(output_shapes["Out1"]["general"],\
+                          activation="linear",\
+                          name="Target")(z)
 
     model = keras.models.Model(
         inputs=[input_b1, input_b2],
