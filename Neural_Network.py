@@ -15,7 +15,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import os
-from configparser import ConfigParser
+from six.moves import configparser
+#changed this because ConfigParser was not available on the RZ in Aachen
 import socket
 import argparse
 import h5py
@@ -80,7 +81,7 @@ def parseArguments():
 
 print('Running on Hostcomputer {}'.format(socket.gethostname()))
 args = parseArguments()
-parser = ConfigParser()
+parser = configparser.ConfigParser()
 if args.__dict__['continue'] != 'None':
     save_path = args.__dict__['continue']
     config_file = os.path.join(save_path, 'config.cfg')
@@ -91,6 +92,7 @@ try:
 except Exception:
     raise Exception('Config File is missing!!!!')
 
+parser_dict = {s:dict(parser.items(s)) for s in parser.sections()}
 backend = parser.get('Basics', 'keras_backend')
 
 os.environ["KERAS_BACKEND"] = backend
@@ -178,9 +180,9 @@ if __name__ == "__main__":
 
         if args.__dict__['save_folder'] != 'None':
             save_path = args.__dict__['save_folder']
-        elif 'save_path' in parser['Basics'].keys():
+        elif 'save_path' in parser_dict['Basics'].keys():
             save_path = parser.get('Basics', 'save_path')
-        elif 'train_folder' in parser["Basics"].keys():
+        elif 'train_folder' in parser_dict["Basics"].keys():
             today = str(datetime.datetime.now()).\
                 replace(" ", "-").split(".")[0].replace(":", "-")
             project_name = args.__dict__['project']

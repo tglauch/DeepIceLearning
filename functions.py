@@ -55,7 +55,7 @@ def read_input_len_shapes(file_location, input_files, virtual_len=-1):
     file_len = []
     for run, input_file in enumerate(input_files):
         data_file = os.path.join(file_location, '{}'.format(input_file))
-        file_handler = tables.openFile(data_file, 'r')
+        file_handler = tables.open_file(data_file, 'r')
         if run == 0:
             test_shape = file_handler.root._v_attrs.shape
         else:

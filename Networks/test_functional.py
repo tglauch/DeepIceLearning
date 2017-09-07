@@ -10,7 +10,6 @@ import sys
 from collections import OrderedDict
 sys.path.append("..")
 import transformations as tr
-# transformations import identity, centralize
 
 # *Settings*
 # define inputs for each branch
@@ -25,7 +24,7 @@ inputs["Branch2"] = {"variables": ["charge"],
 # define outputs for each branch
 
 outputs = OrderedDict()
-outputs["Out1"] = {"variables": ["energy", "azimuth"],
+outputs["Out1"] = {"variables": ["energy"], #, "azimuth"],
                    "transformations": [np.log10]}
 # outputs["Out2"] = {"variables": ["azimuth"],
 #                    "transformations": [np.log10]}
