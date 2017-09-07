@@ -20,6 +20,7 @@ import socket
 import argparse
 import h5py
 import model_parse
+import sys
 
 # Function Definitions #####################
 
@@ -91,7 +92,7 @@ except Exception:
     raise Exception('Config File is missing!!!!')
 
 backend = parser.get('Basics', 'keras_backend')
-'''
+
 os.environ["KERAS_BACKEND"] = backend
 if backend == 'theano':
     os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=gpu,floatX=float32"
@@ -120,7 +121,7 @@ elif backend == 'theano':
 else:
     raise NameError('Choose tensorflow or theano as keras backend')
 
-'''
+
 import numpy as np
 import datetime
 import math
@@ -221,12 +222,6 @@ if __name__ == "__main__":
             )
                 #give absolute path to model + example file
 
-    # print base_model
-    # print inp_shapes
-    # print inp_transformations
-    # print out_shapes
-    # print out_transformations
-  
     model_serial = read_NN_weights(args.__dict__, base_model)
 
     ngpus = args.__dict__['ngpus']
@@ -249,16 +244,14 @@ if __name__ == "__main__":
 
     os.system("nvidia-smi")
 
-
-
     # Save Run Information
-    # if not os.path.exists(os.path.join(save_path,'run_info.shlf')):
-    # if args.__dict__['continue'] == 'None':
-    #     shelf = shelve.open(os.path.join(save_path, 'run_info.shlf'))
-    #     shelf['Files'] = input_files
-    #     shelf['mc_location'] = mc_location
-    #     shelf['Test_Inds'] = test_inds
-    #     shelf.close()
+    if not os.path.exists(os.path.join(save_path, 'run_info.shlf')):
+        if args.__dict__['continue'] == 'None':
+            shelf = shelve.open(os.path.join(save_path, 'run_info.shlf'))
+            shelf['Files'] = input_files
+            shelf['mc_location'] = mc_location
+            shelf['Test_Inds'] = test_inds
+            shelf.close()
 
 # Train the Model #########################################################
 

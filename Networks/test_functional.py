@@ -14,6 +14,7 @@ import transformations as tr
 
 # *Settings*
 # define inputs for each branch
+
 inputs = OrderedDict()
 
 inputs["Branch1"] = {"variables": ["charge", "time"],
@@ -22,14 +23,15 @@ inputs["Branch2"] = {"variables": ["charge"],
                      "transformations": [np.sum]}
 
 # define outputs for each branch
+
 outputs = OrderedDict()
 outputs["Out1"] = {"variables": ["energy", "azimuth"],
                    "transformations": [np.log10]}
 # outputs["Out2"] = {"variables": ["azimuth"],
 #                    "transformations": [np.log10]}
 
-# *Model*
 
+# *Model*
 
 def model(input_shapes, output_shapes):
 
