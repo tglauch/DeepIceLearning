@@ -19,17 +19,18 @@ import numpy as np
 import importlib
 import os
 import sys
+from collections import OrderedDict
 
 
 def prepare_io_shapes(inputs, outputs, exp_file):
-    inp_transformations = {}
-    inp_shapes = {}
-    out_transformations = {}
-    out_shapes = {}
+    inp_transformations = OrderedDict()
+    inp_shapes = OrderedDict()
+    out_transformations = OrderedDict()
+    out_shapes = OrderedDict()
     # open example file
     inp_file = tables.open_file(exp_file)
 
-    for br in inputs.keys():
+    for br in inputs:
         inp_shapes[br] = {}
         inp_transformations[br] = {}
         for var, tr in zip(inputs[br]["variables"],
@@ -41,7 +42,7 @@ def prepare_io_shapes(inputs, outputs, exp_file):
             inp_transformations[br][var] = tr
         inp_shapes[br]["general"] = res_shape[:-1] + (len(inputs[br]["variables"]),)
 
-    for br in outputs.keys():
+    for br in outputs:
         out_shapes[br] = {}
         out_transformations[br] = {}
         for var, tr in zip(outputs[br]["variables"],

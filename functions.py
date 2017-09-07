@@ -334,16 +334,26 @@ def generator(batch_size, file_handlers, inds,
     batch_out: a batch of output data
 
     """
-    in_branches = [(branch, inp_shape_dict[branch]['general']) for branch in inp_shape_dict.keys()]
+    in_branches = [(branch, inp_shape_dict[branch]['general'])
+                   for branch in inp_shape_dict]
+    out_branches = [(branch, out_shape_dict[branch]['general'])
+                    for branch in out_shape_dict]
+    inp_variables = [[(i, inp_transformations[branch[0]][i])
+                      for i in inp_transformations[branch[0]]]
+                     for branch in in_branches]
+    out_variables = [[(i, out_transformations[branch[0]][i])
+                      for i in out_transformations[branch[0]]]
+                     for branch in out_branches]
+    batch_input = [np.zeros((batch_size,) + branch[1])
+                   for branch in in_branches]
+    batch_out = [np.zeros((batch_size,) + (branch[1],))
+                 for branch in out_branches]
+
     print in_branches
-    out_branches = [(branch, out_shape_dict[branch]['general']) for branch in out_shape_dict.keys()]
     print out_branches
-    inp_variables = [[(i, inp_transformations[branch[0]][i]) for i in inp_transformations[branch[0]]] for branch in in_branches]
     print inp_variables
-    out_variables = [[(i, out_transformations[branch[0]][i]) for i in out_transformations[branch[0]]] for branch in out_branches]
     print out_variables
-    batch_input = [np.zeros((batch_size,) + branch[1]) for branch in in_branches]
-    batch_out = [np.zeros((batch_size,) + branch[1]) for branch in out_branches]
+
     cur_file = 0
     cur_event_id = inds[cur_file][0]
     cur_len = 0
@@ -369,13 +379,13 @@ def generator(batch_size, file_handlers, inds,
                                  temp_cur_event_id + fill_batch])
                         temp_in.extend(
                             eval('file_handlers[cur_file][\'{}\']'.
-                                 format(var))
+                                 format(var[0]))
                             [temp_cur_event_id:temp_cur_event_id + fill_batch])
                         cur_len += fill_batch
                         temp_cur_event_id += fill_batch
                     else:
                         temp_in.extend(
-                            eval('file_handlers[cur_file][\'{}\']'.format(var))
+                            eval('file_handlers[cur_file][\'{}\']'.format(var[0]))
                             [temp_cur_event_id:temp_up_to])
                         if j == 0 and k == 0:
                             temp_out.extend(
@@ -392,18 +402,17 @@ def generator(batch_size, file_handlers, inds,
                 for i in range(len(temp_in)):
                     slice_ind = [slice(None)] * batch_input[j][i].ndim
                     slice_ind[-1] = slice(k, k + 1, 1)
-                    pre_append = eval(
-                        inp_transformations[j][k].replace('x', 'temp_in[i]'))
+                    pre_append = var[1](temp_in[i])
                     if var == 'time':
                         pre_append[pre_append == np.inf] = -1
                     batch_input[j][i][slice_ind] = pre_append
                 temp_in = []
 
-        for j, var in enumerate(out_variables):
-            for i in range(len(temp_out)):
-                batch_out[i][j] = eval(
-                    out_transformations[j].replace('x', 'temp_out[i][var]'))
-        temp_out = []
+        for j, var_array in enumerate(out_variables):
+            for k, var in enumerate(var_array):
+                for i in range(len(temp_out)):
+                    batch_out[j][i][k] = var[1](temp_out[i][var[0]])
+            temp_out = []
 
         if temp_cur_file == len(file_handlers):
             cur_file = 0

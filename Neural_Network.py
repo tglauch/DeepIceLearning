@@ -221,11 +221,11 @@ if __name__ == "__main__":
             )
                 #give absolute path to model + example file
 
-    print base_model
-    print inp_shapes
-    print inp_transformations
-    print out_shapes
-    print out_transformations
+    # print base_model
+    # print inp_shapes
+    # print inp_transformations
+    # print out_shapes
+    # print out_transformations
   
     model_serial = read_NN_weights(args.__dict__, base_model)
 
