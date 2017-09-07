@@ -218,6 +218,7 @@ if __name__ == "__main__":
             os.path.join(mc_location, input_files[0]), model_settings)
 
     ngpus = args.__dict__['ngpus']
+    print'Use {} GPUS'.format(ngpus)
     if ngpus > 1:
         if backend == 'tensorflow':
             with tf.device('/cpu:0'):
