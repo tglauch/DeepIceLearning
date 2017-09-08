@@ -46,9 +46,10 @@ def inception_unit_pyramides(x0, **kwargs):
     x1 = conv_3pyramide(x0, [8,16,24], **kwargs)
 
     x2 = MaxPooling3D((3, 3, 3), strides=(1, 1, 1), padding='same')(x0)
-    x2 = conv_3pyramide(x0, [6,12,18], **kwargs)
+    x2 = conv_3pyramide(x0, [4,6,12], **kwargs)
 
     x3 = Convolution3D(16, (5, 5, 5), padding="same", **kwargs)(x0)
-    x3 = conv_3pyramide(x3, [6,12,18], **kwargs)
+    x3 = conv_3pyramide(x3, [4,6,12], **kwargs)
+
     return merge([x1, x2, x3], mode="concat", concat_axis=-1)
 
