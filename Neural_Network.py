@@ -223,7 +223,10 @@ if __name__ == "__main__":
                 os.path.join(mc_location, input_files[0])\
             )
                 #give absolute path to model + example file
-
+                
+    adam = keras.optimizers.Adam(
+        lr=float(parser.get('Training_Parameters', 'learning_rate')))
+    base_model.compile(loss='mean_squared_error', optimizer=adam)
     model_serial = read_NN_weights(args.__dict__, base_model)
 
     ngpus = args.__dict__['ngpus']
@@ -240,10 +243,8 @@ if __name__ == "__main__":
     else:
         model = model_serial
 
-    adam = keras.optimizers.Adam(
-        lr=float(parser.get('Training_Parameters', 'learning_rate')))
     model.compile(
-        loss='mean_squared_error', optimizer=adam, metrics=['accuracy'])
+        loss='mean_squared_error', optimizer=adam)
 
     os.system("nvidia-smi")
 

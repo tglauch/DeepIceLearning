@@ -1,5 +1,6 @@
 import os
 
+
 def make_condor(request_gpus, request_memory, requirements, addpath,
                 arguments, thisfolder):
     submit_info = '\
@@ -27,23 +28,26 @@ def make_slurm(request_gpus, request_memory, condor_folder, file_location,
     if exclude != '':
         exclude_node = '#SBATCH --exclude {} \n'.format(exclude)
 
+# Please do not ident!!!
+
     submit_info = '#!/usr/bin/env bash\n\
-            #SBATCH --time=48:00:00\n\
-            #SBATCH --partition=gpu\n\
-            #SBATCH --gres=gpu:{0}\n\
-            #SBATCH --mem={1} \n\
-            #SBATCH --error={2}/condor.err\n\
-            #SBATCH --output={2}/condor.out\n\
-            {5}\
-            \n\
-            python {4}/Neural_Network.py {3} \n'.format(
+#SBATCH --time=48:00:00\n\
+#SBATCH --partition=gpu\n\
+#SBATCH --gres=gpu:{0}\n\
+#SBATCH --mem={1} \n\
+#SBATCH --error={2}/condor.err\n\
+#SBATCH --output={2}/condor.out\n\
+{5}\
+\n\
+python {4}/Neural_Network.py {3} \n'.format(
         request_gpus, int(request_memory),
         condor_folder, arguments, thisfolder, exclude_node)
 
     return submit_info
 
+
 def make_bsub(request_memory, condor_folder, thisfolder,
-               arguments, request_cpus = 12):
+              arguments, request_cpus=12):
     submit_info = "#!/usr/bin/env zsh\n\
             #BSUB -J trainNN.job\n\
             #BSUB -W 12:00\n\

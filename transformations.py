@@ -13,3 +13,6 @@ def centralize(x):
         return ((x - np.mean(x)) / np.std(x))
     else:
         return (x - np.mean(x))
+
+def max_min_delta(x):
+    return np.max(x)-np.min(x)
