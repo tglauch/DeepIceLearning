@@ -54,10 +54,7 @@ def prepare_io_shapes(inputs, outputs, exp_file):
                                                            np.float) else 1
             out_shapes[br][var] = res_shape
             out_transformations[br][var] = tr
-        if isinstance(res_shape, tuple):
-            out_shapes[br]["general"] = res_shape[:-1] + (len(outputs[br]["variables"]),)
-        else:
-            out_shapes[br]["general"] = len(outputs[br]["variables"])
+        out_shapes[br]["general"] = len(outputs[br]["variables"])
     return inp_shapes, inp_transformations, out_shapes, out_transformations
 
 
@@ -75,5 +72,7 @@ def parse_functional_model(cfg_file, exp_file):
 
     in_shapes, in_trans, out_shapes, out_trans = \
         prepare_io_shapes(inputs, outputs, exp_file)
+    print out_shapes
+    print in_shapes
     model = func_model_def.model(in_shapes, out_shapes) 
     return model, in_shapes, in_trans, out_shapes, out_trans
