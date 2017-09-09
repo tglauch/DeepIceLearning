@@ -4,9 +4,11 @@
 import os
 import time
 import argparse
-from configparser import ConfigParser
+from six.moves import configparser
+#changed this because ConfigParser was not available on the RZ in Aachen
+#from configparser import ConfigParser
 import datetime
-
+from workload_managers import *
 
 def parseArguments():
     parser = argparse.ArgumentParser()
@@ -45,55 +47,14 @@ def parseArguments():
     return args
 
 
-def make_condor(request_gpus, request_memory, requirements, addpath,
-                arguments, thisfolder):
-    submit_info = '\
-            executable   = {folder}/Neural_Network.py \n\
-            universe     = vanilla  \n\
-            request_gpus = {gpu} \n\
-            request_memory = {mem}GB \n\
-            requirements = {req} \n\
-            log          = {addp}/condor.log \n\
-            output       = {addp}/condor.out \n\
-            error        = {addp}/condor.err \n\
-            stream_output = True \n\
-            getenv = True \n\
-            IWD = {folder} \n\
-            arguments =  {args} \n\
-            queue 1 \n '.format(gpu=request_gpus, mem=request_memory,
-                                req=requirements, addp=addpath,
-                                args=arguments, folder=thisfolder)
-    return submit_info
-
-
-def make_slurm(request_gpus, request_memory, condor_folder, file_location,
-               arguments, thisfolder, exclude=''):
-
-    if exclude != '':
-        exclude_node = '#SBATCH --exclude {} \n'.format(exclude)
-
-    submit_info = '#!/usr/bin/env bash\n\
-#SBATCH --time=48:00:00\n\
-#SBATCH --partition=gpu\n\
-#SBATCH --gres=gpu:{0}\n\
-#SBATCH --mem={1} \n\
-#SBATCH --error={2}/condor.err\n\
-#SBATCH --output={2}/condor.out\n\
-{5}\
-\n\
-python {4}/Neural_Network.py {3} \n'.format(
-        request_gpus, int(request_memory),
-        condor_folder, arguments, thisfolder, exclude_node)
-
-    return submit_info
-
 
 args = parseArguments().__dict__
-parser = ConfigParser()
+parser = configparser.ConfigParser()
 if args['continue'] != 'None':
     parser.read(os.path.join(args["continue"], 'config.cfg'))
 else:
     parser.read(args["main_config"])
+parser_dict = {s:dict(parser.items(s)) for s in parser.sections()}
 
 train_location = parser.get('Basics', 'train_folder')
 workload_manager = parser.get('Basics', 'workload_manager')
@@ -102,12 +63,12 @@ request_memory = parser.get('GPU', 'request_memory')
 requirements = parser.get('GPU', 'requirements')
 project_name = args['project']
 thisfolder = parser.get("Basics", "thisfolder")
-if 'exclude_node' in parser['GPU'].keys():
+if 'exclude_node' in parser_dict['GPU'].keys():
     exclude = parser.get('GPU', 'exclude_node')
 else:
     exclude = ' '
 
-if workload_manager != 'slurm' and workload_manager != 'condor':
+if workload_manager not in ['slurm','condor','bsub']:
     raise NameError(
         'Workload manager not defined. Should either be condor or slurm!')
 
@@ -147,6 +108,13 @@ elif workload_manager == 'condor':
     submit_info = make_condor(
         request_gpus, request_memory, requirements,
         condor_out_folder, arguments, thisfolder)
+elif workload_manager == 'bsub':
+    submit_info = make_bsub(request_memory,\
+                            condor_out_folder,\
+                            thisfolder,\
+                            arguments,\
+                            request_cpus=12)
+
 
 print(submit_info)
 submitfile_full = os.path.join(condor_out_folder, 'submit.sub')
@@ -162,7 +130,8 @@ if not os.path.exists(os.path.join(save_path, 'model.cfg')):
 
 if workload_manager == 'slurm':
     os.system("sbatch {}".format(submitfile_full))
-else:
+elif workload_manager =="condor":
     os.system("condor_submit {}".format(submitfile_full))
-
+elif workload_manager =="bsub":
+    os.system("bsub<{}".format(submitfile_full))
 time.sleep(3)

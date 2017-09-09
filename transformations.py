@@ -9,4 +9,7 @@ def identity(x):
 
 
 def centralize(x):
-    return ((x - np.mean(x)) / np.std(x))
+    if np.std(x)>0.:
+        return ((x - np.mean(x)) / np.std(x))
+    else:
+        return (x - np.mean(x))

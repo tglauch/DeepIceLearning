@@ -10,6 +10,7 @@ import sys
 from collections import OrderedDict
 sys.path.append("..")
 import transformations as tr
+import block_units
 
 # *Settings*
 # define inputs for each branch
@@ -42,12 +43,11 @@ def model(input_shapes, output_shapes):
     input_b1 = Input(shape=input_shapes["Branch1"]["general"],
                      name="Input-Branch1")
 
-    z = Conv3D(48, (2, 2, 3), **kwargs)(input_b1)
+    z = block_units.inception_unit_pyramides(input_b1, **kwargs)
     z = BatchNormalization()(z)
+    z = MaxPooling3D(pool_size=(2, 2, 4))(z)
     z = Conv3D(24, (2, 2, 2), **kwargs)(z)
-    z = MaxPooling3D(pool_size=(2, 1, 3))(z)
-    z = BatchNormalization()(z)
-    z = Conv3D(24, (2, 2, 2), **kwargs)(z)
+    z = MaxPooling3D(pool_size=(2,2,2))(z)
     z = Flatten()(z)
 
     # branch 2
@@ -58,7 +58,7 @@ def model(input_shapes, output_shapes):
     z = concatenate([z, input_b2])
 
     z = Dense(256, **kwargs)(z)
-    z = Dropout(rate=0.2)(z)
+    z = Dropout(rate=0.3)(z)
     z = BatchNormalization()(z)
     z = Dense(128, **kwargs)(z)
     z = Dropout(rate=0.2)(z)
