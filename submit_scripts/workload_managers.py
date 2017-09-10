@@ -47,29 +47,29 @@ python {4}/Neural_Network.py {3} \n'.format(
 
 
 def make_bsub(request_memory, condor_folder, thisfolder,
-              arguments, request_cpus=12):
+              arguments, request_cpus=1):
     submit_info = "#!/usr/bin/env zsh\n\
-            #BSUB -J trainNN.job\n\
-            #BSUB -W 12:00\n\
-            #BSUB -M {mem_request}\n\
-            #BSUB -n {request_cpus}\n\
-            #BSUB -o {cond_fold}/trainNN.out\n\
-            #BSUB -e {cond_fold}/trainNN.err\n\
-            #BSUB -a 'gpu openmp'\n\
-            #BSUB -R pascal\n\
-            #BSUB -P phys3b\n\
-            source /home/phys3b/Envs/keras_tf/bin/activate\n\
-            nvidia-smi\n\
-            export CUDA_VISIBLE_DEVICES=`/home/phys3b/etc/check_gpu.py 2`\n\
-            if [ '$CUDA_VISIBLE_DEVICES' = '-1' ];\n\
-            then\
-                echo '##### GPUs busy. Restart job later.' exit 1\
-            else\
-                echo 'Found free GPU devices :'\n\
-                echo 'CUDA_VISIBLE_DEVICES =  $CUDA_VISIBLE_DEVICES'\n\
-            fi\n\
-            python {NN_recofolder}/Neural_Network.py {args}\n".\
-                    format(request_cpus = request_cpus,
+#BSUB -J trainNN.job\n\
+#BSUB -W 12:00\n\
+#BSUB -M {mem_request}\n\
+#BSUB -n {request_cpus}\n\
+#BSUB -o {cond_fold}/trainNN.out\n\
+#BSUB -e {cond_fold}/trainNN.err\n\
+#BSUB -a 'gpu openmp'\n\
+#BSUB -R pascal\n\
+#BSUB -P phys3b\n\
+source /home/phys3b/Envs/keras_tf/bin/activate\n\
+nvidia-smi\n\
+export CUDA_VISIBLE_DEVICES=`/home/phys3b/etc/check_gpu.py 2`\n\
+if [ '$CUDA_VISIBLE_DEVICES' = '-1' ];\n\
+then\
+    echo '##### GPUs busy. Restart job later.' exit 1\
+else\
+    echo 'Found free GPU devices :'\n\
+    echo 'CUDA_VISIBLE_DEVICES =  $CUDA_VISIBLE_DEVICES'\n\
+fi\n\
+python {NN_recofolder}/Neural_Network.py {args}\n".\
+                format(request_cpus = request_cpus,
                            cond_fold=condor_folder,
                            args=arguments,
                            NN_recofolder=thisfolder,

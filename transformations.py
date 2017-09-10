@@ -14,5 +14,13 @@ def centralize(x):
     else:
         return (x - np.mean(x))
 
+def max(x):
+    return np.amax(x)
+
 def max_min_delta(x):
     return np.max(x)-np.min(x)
+
+def sort_input(x):
+    y = np.ndarray.flatten(x)
+    z = np.sort(y)
+    return z
