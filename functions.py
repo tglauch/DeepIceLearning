@@ -109,7 +109,6 @@ def generator(batch_size, file_handlers, inds,
     out_variables = [[(i, out_transformations[branch[0]][i])
                       for i in out_transformations[branch[0]]]
                      for branch in out_branches]
-    print in_branches
     batch_input = [np.zeros((batch_size,) + branch[1])
                    for branch in in_branches]
     print [np.shape(i) for i in batch_input]
@@ -168,10 +167,10 @@ def generator(batch_size, file_handlers, inds,
                     pre_append = var[1](temp_in[i])
                     if var == 'time':
                         pre_append[pre_append == np.inf] = -1
-                    if batch_input[j][i].ndim > 1:
+                    if len(var_array) > 1:
                         batch_input[j][i][slice_ind] = pre_append
                     else:
-                        batch_input[j][i] = pre_append
+                        batch_input[j][i] = np.squeeze(pre_append)        
                 temp_in = []
 
         for j, var_array in enumerate(out_variables):
