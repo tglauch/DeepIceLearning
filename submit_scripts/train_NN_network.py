@@ -43,6 +43,10 @@ def parseArguments():
     parser.add_argument(
         "--version", action="version",
         version='%(prog)s - Version 1.0')
+    parser.add_argument(
+        "--apply_test",
+        action="store_true",\
+        help="Apply test after training? ")
     args = parser.parse_args()
     return args
 
@@ -76,16 +80,19 @@ files = args['input']
 
 arguments = ''
 for a in args:
-    if not a == 'input':
-        arguments += '--{} {} '.format(a, args[a])
+    if a == 'input':
+        arguments += ' --input {} '.format(files)
+    elif a =="apply_test":
+        if args[a]:
+            arguments +=" --apply_test "
     else:
-        arguments += '--input {} '.format(files)
+        arguments += ' --{} {} '.format(a, args[a])
 
 if args['continue'] != 'None':
     arguments += '--continue {}'.format(args['continue'])
     save_path = args['continue']
     condor_out_folder = os.path.join(args['continue'], 'condor')
-    args["model"] = os.path.join(args['continue'], 'model.cfg')
+    args["model"] = os.path.join(args['continue'], 'model.py')
 else:
     today = str(datetime.datetime.now()).\
         replace(" ", "-").split(".")[0].replace(":", "-")
@@ -101,15 +108,25 @@ else:
 
 arguments += ' --ngpus {} '.format(request_gpus)
 if workload_manager == 'slurm':
-    submit_info = make_slurm(request_gpus, float(request_memory) * 1e3,
-                             condor_out_folder, train_location, arguments,
-                             thisfolder, exclude)
+    submit_info = make_slurm("Neural_Network.py",\
+                             request_gpus,\
+                             float(request_memory) * 1e3,\
+                             condor_out_folder,\
+                             train_location,\
+                             arguments,\
+                             thisfolder,\
+                             exclude)
 elif workload_manager == 'condor':
-    submit_info = make_condor(
-        request_gpus, request_memory, requirements,
-        condor_out_folder, arguments, thisfolder)
+    submit_info = make_condor("Neural_Network.py",\
+                              request_gpus,\
+                              request_memory,\
+                              requirements,\
+                              condor_out_folder,\
+                              arguments,\
+                              thisfolder)
 elif workload_manager == 'bsub':
-    submit_info = make_bsub(request_memory,\
+    submit_info = make_bsub("Neural_Network.py",\
+                            request_memory,\
                             condor_out_folder,\
                             thisfolder,\
                             arguments,\
@@ -124,9 +141,9 @@ with open(submitfile_full, "wc") as file:
 if not os.path.exists(os.path.join(save_path, 'config.cfg')):
     os.system("cp {} {} ".format(
         args["main_config"], os.path.join(save_path, 'config.cfg')))
-if not os.path.exists(os.path.join(save_path, 'model.cfg')):
+if not os.path.exists(os.path.join(save_path, 'model.py')):
     os.system("cp {} {} ".format(
-        args["model"], os.path.join(save_path, 'model.cfg')))
+        args["model"], os.path.join(save_path, 'model.py')))
 
 if workload_manager == 'slurm':
     os.system("sbatch {}".format(submitfile_full))

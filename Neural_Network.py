@@ -22,6 +22,7 @@ import argparse
 import h5py
 import model_parse
 import sys
+import numpy.lib.recfunctions as rfn
 
 # Function Definitions #####################
 
@@ -73,6 +74,10 @@ def parseArguments():
         "--save_folder",
         help="Folder for saving the output",
         type=str, default='None')
+    parser.add_argument(
+        "--apply_test",
+        help="Apply the model to the test data in the end?",
+        action="store_true")
     args = parser.parse_args()
     return args
 
@@ -159,7 +164,7 @@ if __name__ == "__main__":
         input_files = shelf['Files']
         if input_files == "['all']":
             input_files = os.listdir(mc_location)
-        conf_model_file = os.path.join(save_path, 'model.cfg')
+        conf_model_file = os.path.join(save_path, 'model.py')
         print "Continuing training. Loaded shelf : ", shelf
         print "Input files: ", input_files
         shelf.close()
@@ -304,5 +309,52 @@ if __name__ == "__main__":
     print('\n Save the Model \n')
     model.save(os.path.join(save_path,
                             'final_network.h5'))  # save trained network
+    if args.__dict__["apply_test"]:
+        num_events = np.sum([k[1] - k[0] for k in test_inds])
+        print('Apply the NN to {} events'.format(num_events))
+        file_handlers = [h5py.File(os.path.join(mc_location, file_name), 'r')\
+                         for file_name in input_files]
+        steps_per_epoch = np.sum([k[1] - k[0] for k in train_inds]) / batch_size
+        prediction = model.predict_generator(
+                     generator(batch_size,\
+                               file_handlers,\
+                               test_inds,\
+                               inp_shapes,\
+                               inp_trans,\
+                               out_shapes,\
+                               out_trans),
+                    steps = steps_per_epoch,\
+                    verbose=1,\
+                    max_q_size=2)
+
+        dtype = np.dtype([(var, np.float64) for br in out_shapes.keys()\
+                          for var in out_shapes[br].keys() if var!='general'])
+        prediction = np.array(zip(*[np.concatenate(prediction[:, i:i + 1])
+                          for i in range(np.shape(prediction)[-1])]),
+                          dtype=dtype)[0:num_events]
+
+        #out_variables.append('muex')
+        mc_truth = [[] for br in out_shapes.keys()\
+                    for var in out_shapes[br].keys()\
+                    if var!='general']
+        for i, file_handler in enumerate(file_handlers):
+            down = test_inds[i][0]
+            up = test_inds[i][1]
+            temp_truth = file_handler['reco_vals'][down:up]
+            for j, var in enumerate([var for br in out_shapes.keys() \
+                                    for var in out_shapes[br].keys()\
+                                    if var!='general']):
+                mc_truth[j].extend(temp_truth[var])
+
+        dtype = np.dtype([(var + '_truth', np.float64)\
+                          for br in out_shapes.keys() \
+                          for var in out_shapes[br].keys()\
+                          if var!='general'])
+        mc_truth = np.array(zip(*np.array(mc_truth)), dtype=dtype)
+        np.save(os.path.join(save_path, 'test_res.npy'),
+            rfn.merge_arrays([mc_truth, prediction],
+            flatten=True,
+            usemask=False))
+
 
     print(' \n Finished .... Exit.....')
