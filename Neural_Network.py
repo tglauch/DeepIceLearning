@@ -217,30 +217,28 @@ if __name__ == "__main__":
     print('Index ranges used for training: {}'.format(train_inds))
 
     # create model (new implementation, functional API of Keras)
-    base_model, inp_shapes, inp_transformations, out_shapes, out_transformations = \
-            model_parse.parse_functional_model(
-                conf_model_file,\
-                os.path.join(mc_location, input_files[0])\
-            )
-                #give absolute path to model + example file
+    base_model, inp_shapes, inp_trans, out_shapes, out_trans = \
+        model_parse.parse_functional_model(
+            conf_model_file,
+            os.path.join(mc_location, input_files[0]))
 
     adam = keras.optimizers.Adam(
         lr=float(parser.get('Training_Parameters', 'learning_rate')))
-    model_serial = read_NN_weights(args.__dict__, base_model)
 
     ngpus = args.__dict__['ngpus']
     print'Use {} GPUS'.format(ngpus)
     if ngpus > 1:
         if backend == 'tensorflow':
             with tf.device('/cpu:0'):
-                gdev_list = get_available_gpus()
-                print('Using GPUs: {}'.format(gdev_list))
-                model = make_parallel(model_serial, gdev_list)
+                model_serial = read_NN_weights(args.__dict__, base_model)
+            gdev_list = get_available_gpus()
+            print('Using GPUs: {}'.format(gdev_list))
+            model = make_parallel(model_serial, gdev_list)
         else:
             raise Exception(
                 'Multi GPU can only be used with tensorflow as Backend.')
     else:
-        model = model_serial
+        model = read_NN_weights(args.__dict__, base_model)
 
     model.compile(
         loss='mean_squared_error', optimizer=adam)
@@ -287,14 +285,12 @@ if __name__ == "__main__":
     model.fit_generator(
         generator(
             batch_size, file_handlers, train_inds, inp_shapes,
-            inp_transformations, out_shapes,
-            out_transformations),
+            inp_trans, out_shapes, out_trans),
         steps_per_epoch=math.ceil(
             np.sum([k[1] - k[0] for k in train_inds]) / batch_size),
         validation_data=generator(
             batch_size, file_handlers, valid_inds, inp_shapes,
-            inp_transformations, out_shapes,
-            out_transformations, val_run=True),
+            inp_trans, out_shapes, out_trans, val_run=True),
         validation_steps=math.ceil(
             np.sum([k[1] - k[0] for k in valid_inds]) / batch_size),
         callbacks=[CSV_log, early_stop, best_model, MemoryCallback()],
