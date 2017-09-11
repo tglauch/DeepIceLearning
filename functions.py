@@ -111,7 +111,6 @@ def generator(batch_size, file_handlers, inds,
                      for branch in out_branches]
     batch_input = [np.zeros((batch_size,) + branch[1])
                    for branch in in_branches]
-    print [np.shape(i) for i in batch_input]
     batch_out = [np.zeros((batch_size,) + (branch[1],))
                  for branch in out_branches]
 
