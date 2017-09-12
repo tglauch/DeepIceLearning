@@ -245,8 +245,12 @@ if __name__ == "__main__":
     else:
         model = read_NN_weights(args.__dict__, base_model)
 
+    loss_func = 'mean_squared_error'
+    if parser.has_option('Training_Parameters', 'loss_function'):
+       loss_func = parser.get('Training_Parameters', 'loss_function')
+    
     model.compile(
-        loss='mean_squared_error', optimizer=adam)
+        loss=loss_func, optimizer=adam)
 
     os.system("nvidia-smi")
 
