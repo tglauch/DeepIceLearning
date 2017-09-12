@@ -247,10 +247,10 @@ if __name__ == "__main__":
 
     loss_func = 'mean_squared_error'
     if parser.has_option('Training_Parameters', 'loss_function'):
-       loss_func = parser.get('Training_Parameters', 'loss_function')
-    
+        loss_func = parser.get('Training_Parameters', 'loss_function')
+
     model.compile(
-        loss=loss_func, optimizer=adam)
+        loss=loss_func, optimizer=adam, metrics=['accuracy'])
 
     os.system("nvidia-smi")
 
