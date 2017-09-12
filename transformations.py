@@ -22,3 +22,6 @@ def max_min_delta(x):
 
 def sort_input(x):
     return np.sort(np.ndarray.flatten(x))
+
+def sort_input_and_top20(x):
+    return np.sort(np.ndarray.flatten(x))[-20:]
