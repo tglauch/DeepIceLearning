@@ -352,7 +352,8 @@ if __name__ == "__main__":
                                 'physics_event{}'.format(cur_var[1]))
                         except Exception:
                             skipped_frames += 1
-                            print('Attribute Error occured')
+                            print('Attribute Error occured :{}'.\
+                                  format(cur_var[1]))
                             break
 
                     if cur_var[0] == 'function':
