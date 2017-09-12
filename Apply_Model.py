@@ -132,7 +132,7 @@ if __name__ == "__main__":
         model = read_NN_weights(args.__dict__, base_model)
 
     os.system("nvidia-smi")
-
+    
     # Saving the Final Model and Calculation/Saving of Result for Test Dataset ####
 
     num_events = np.sum([k[1] - k[0] for k in test_inds])
@@ -141,6 +141,8 @@ if __name__ == "__main__":
                      for file_name in input_files]
     steps_per_epoch = math.ceil(np.sum([k[1] - k[0] for k in\
                                         test_inds])/args.batch_size)
+
+
     prediction = model.predict_generator(
                  generator(args.batch_size,\
                            file_handlers,\
@@ -159,7 +161,14 @@ if __name__ == "__main__":
                       for i in range(np.shape(prediction)[-1])]),
                       dtype=dtype)[0:num_events]
 
-    #out_variables.append('muex')
+    ## write out muex etc for comparison later
+    reference_outputs = model_parse.parse_reference_output(conf_model_file)
+    print('Reference output-vars: ', reference_outputs)
+    ## add to arbitrary out-branch:
+    outbranch0 = out_shapes.keys()[0]
+    for ref_out in reference_outputs:
+        out_shapes[outbranch0][ref_out] = 1
+    print(out_shapes)
     mc_truth = [[] for br in out_shapes.keys()\
                 for var in out_shapes[br].keys()\
                 if var!='general']
@@ -181,7 +190,6 @@ if __name__ == "__main__":
         rfn.merge_arrays([mc_truth, prediction],
         flatten=True,
         usemask=False))
-
 
     print(' \n Finished .... Exit.....')
 

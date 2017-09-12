@@ -31,6 +31,7 @@ outputs["Out1"] = {"variables": ["energy"],#, "azimuth", "zenith"],
 # outputs["Out2"] = {"variables": ["azimuth"],
 #                    "transformations": [np.log10]}
 
+reference_outputs = ['muex']
 
 # *Model*
 

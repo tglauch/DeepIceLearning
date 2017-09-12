@@ -87,7 +87,7 @@ def parseArguments():
 print('Running on Hostcomputer {}'.format(socket.gethostname()))
 args = parseArguments()
 parser = configparser.ConfigParser()
-if args.__dict__['continue'] != 'None':
+if args.__dict__['continue'] != 'None' and args.main_config=='None':
     save_path = args.__dict__['continue']
     config_file = os.path.join(save_path, 'config.cfg')
 else:
@@ -310,55 +310,15 @@ if __name__ == "__main__":
 
 # Saving the Final Model and Calculation/Saving of Result for Test Dataset ####
 
-    print('\n Save the Model \n')
     model.save(os.path.join(save_path,
                             'final_network.h5'))  # save trained network
+    print('\n Saved the Model \n')
     if args.__dict__["apply_test"]:
-        num_events = np.sum([k[1] - k[0] for k in test_inds])
-        print('Apply the NN to {} events'.format(num_events))
-        file_handlers = [h5py.File(os.path.join(mc_location, file_name), 'r')\
-                         for file_name in input_files]
-        steps_per_epoch = np.sum([k[1] - k[0] for k in train_inds]) / batch_size
-        prediction = model.predict_generator(
-                     generator(batch_size,\
-                               file_handlers,\
-                               test_inds,\
-                               inp_shapes,\
-                               inp_trans,\
-                               out_shapes,\
-                               out_trans),
-                    steps = steps_per_epoch,\
-                    verbose=1,\
-                    max_q_size=2)
-
-        dtype = np.dtype([(var, np.float64) for br in out_shapes.keys()\
-                          for var in out_shapes[br].keys() if var!='general'])
-        prediction = np.array(zip(*[np.concatenate(prediction[:, i:i + 1])
-                          for i in range(np.shape(prediction)[-1])]),
-                          dtype=dtype)[0:num_events]
-
-        #out_variables.append('muex')
-        mc_truth = [[] for br in out_shapes.keys()\
-                    for var in out_shapes[br].keys()\
-                    if var!='general']
-        for i, file_handler in enumerate(file_handlers):
-            down = test_inds[i][0]
-            up = test_inds[i][1]
-            temp_truth = file_handler['reco_vals'][down:up]
-            for j, var in enumerate([var for br in out_shapes.keys() \
-                                    for var in out_shapes[br].keys()\
-                                    if var!='general']):
-                mc_truth[j].extend(temp_truth[var])
-
-        dtype = np.dtype([(var + '_truth', np.float64)\
-                          for br in out_shapes.keys() \
-                          for var in out_shapes[br].keys()\
-                          if var!='general'])
-        mc_truth = np.array(zip(*np.array(mc_truth)), dtype=dtype)
-        np.save(os.path.join(save_path, 'test_res.npy'),
-            rfn.merge_arrays([mc_truth, prediction],
-            flatten=True,
-            usemask=False))
-
-
+        print('Not implemented...Just calling Apply_Model failed on GPUs.')
+        #os.system('python {this_fold}/Apply_Model.py --main_config {cfg}\
+        #          --folder {save_fold} '.format(\
+        #                                        this_fold = file_location,\
+        #                                        cfg = args.main_config,\
+        #                                       save_fold = save_path)
+        #        )
     print(' \n Finished .... Exit.....')

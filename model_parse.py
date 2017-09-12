@@ -61,6 +61,17 @@ def prepare_io_shapes(inputs, outputs, exp_file):
         out_shapes[br]["general"] = len(outputs[br]["variables"])
     return inp_shapes, inp_transformations, out_shapes, out_transformations
 
+def parse_reference_output(cfg_file):
+    try:
+        # fancy relative imports..
+        sys.path.append(os.path.dirname(cfg_file))
+        mname = os.path.splitext(os.path.basename(cfg_file))[0]
+        func_model_def = importlib.import_module(mname)
+        sys.path.pop()
+    except Exception:
+        raise Exception('Import of model.py failed: {}'.format(cfg_file))
+    ref_outputs = func_model_def.reference_outputs
+    return ref_outputs
 
 def parse_functional_model(cfg_file, exp_file):
     try:

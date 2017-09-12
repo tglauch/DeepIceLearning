@@ -23,7 +23,7 @@ inputs["Branch1"] = {"variables": ["charge", "time"],#, "time_spread"],
                      "transformations": [tr.identity, tr.identity]}# , tr.identity]}
 #tr.centralize]}
 inputs["Branch2"] = {"variables": ["charge"],
-                     "transformations": [np.sum]}
+                     "transformations": [tr.identity]}
 
 inputs["Branch3"] = {"variables": ["charge"],
                      "transformations": [tr.sort_input]}
@@ -80,7 +80,7 @@ def model(input_shapes, output_shapes):
     z3 = input_b3 #Dense(24, **kwargs)(input_b3)
 
     # merge
-    z = concatenate([z, input_b2, z3])
+    z = concatenate([z, Flatten()(input_b2), z3])
 
     z = Dense(256,\
               **kwargs)(z)
