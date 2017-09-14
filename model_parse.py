@@ -36,34 +36,42 @@ def prepare_io_shapes(inputs, outputs, exp_file):
         for var, tr in zip(inputs[br]["variables"],
                            inputs[br]["transformations"]):
             test_arr = np.array(inp_file._get_node("/" + var)[0])
-            res_shape = np.shape(np.squeeze(tr(test_arr)))
-            if res_shape == ():
-                res_shape = (1,)
+            res_shape = np.shape(np.squeeze(tr(test_arr))) if not \
+                    isinstance(tr(test_arr), np.float) else (1,)
+            print(br,var,res_shape)
             inp_shapes[br][var] = res_shape
             inp_transformations[br][var] = tr
         if len(inputs[br]["variables"]) > 1:
             inp_shapes[br]["general"] = \
-                res_shape + (len(inputs[br]["variables"]),)
+                    res_shape + (len(inputs[br]["variables"]),)
         else:
-            inp_shapes[br]["general"] = res_shape
-
+            if len(res_shape) >1:
+                inp_shapes[br]["general"] = res_shape + (1,)
+            else:
+                inp_shapes[br]["general"] = res_shape
     for br in outputs:
         out_shapes[br] = {}
         out_transformations[br] = {}
         for var, tr in zip(outputs[br]["variables"],
                            outputs[br]["transformations"]):
             test_arr = np.array(inp_file._get_node("/reco_vals").col(var)[0])
-            tr_applied = tr(test_arr)
-            res_shape = tr_applied.shape if not isinstance(tr_applied,
-                                                           np.float) else 1
+            res_shape = np.shape(np.squeeze(tr(test_arr))) if not \
+                    isinstance(tr(test_arr), np.float) else (1,)
             out_shapes[br][var] = res_shape
             out_transformations[br][var] = tr
-        out_shapes[br]["general"] = len(outputs[br]["variables"])
+        if len(outputs[br]["variables"]) > 1:
+            out_shapes[br]["general"] = \
+                res_shape + (len(outputs[br]["variables"]),)
+        else:
+            if len(res_shape) >1:
+                out_shapes[br]["general"] = res_shape + (1,)
+            else:
+                out_shapes[br]["general"] = res_shape
+
     return inp_shapes, inp_transformations, out_shapes, out_transformations
 
 def parse_reference_output(cfg_file):
     try:
-        # fancy relative imports..
         sys.path.append(os.path.dirname(cfg_file))
         mname = os.path.splitext(os.path.basename(cfg_file))[0]
         func_model_def = importlib.import_module(mname)
@@ -87,7 +95,7 @@ def parse_functional_model(cfg_file, exp_file):
 
     in_shapes, in_trans, out_shapes, out_trans = \
         prepare_io_shapes(inputs, outputs, exp_file)
-    print out_shapes
-    print in_shapes
-    model = func_model_def.model(in_shapes, out_shapes) 
+    print(out_shapes)
+    print(in_shapes)
+    model = func_model_def.model(in_shapes, out_shapes)
     return model, in_shapes, in_trans, out_shapes, out_trans

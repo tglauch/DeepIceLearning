@@ -51,7 +51,7 @@ def conv_3pyramide(x0, n_kernels, **kwargs):
     if len(n_kernels) != 3:
         print('Conv_3pyramide stacks three convolutions. Give array of 3\
               kernel-lengths!')
-    x1 = Convolution3D(n_kernels[0], (3, 3, 4), padding='same', **kwargs)(x0)
+    x1 = Convolution3D(n_kernels[0], (3, 3, 5), padding='same', **kwargs)(x0)
     x2 = Convolution3D(n_kernels[1], (2, 2, 3), padding='same', **kwargs)(x1)
     x3 = Convolution3D(n_kernels[2], (2, 2, 2), padding='same', **kwargs)(x2)
     return x3

@@ -130,7 +130,7 @@ elif workload_manager == 'bsub':
                             condor_out_folder,\
                             thisfolder,\
                             arguments,\
-                            request_cpus=1)
+                            request_cpus=6)
 
 
 print(submit_info)

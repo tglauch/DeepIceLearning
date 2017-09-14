@@ -111,7 +111,9 @@ def generator(batch_size, file_handlers, inds,
                      for branch in out_branches]
     batch_input = [np.zeros((batch_size,) + branch[1])
                    for branch in in_branches]
-    batch_out = [np.zeros((batch_size,) + (branch[1],))
+    #batch_out = [np.zeros((batch_size,) + (branch[1],))
+    #             for branch in out_branches]
+    batch_out = [np.zeros((batch_size,) + branch[1])
                  for branch in out_branches]
 
     cur_file = 0
@@ -132,11 +134,6 @@ def generator(batch_size, file_handlers, inds,
                 while cur_len < batch_size:
                     fill_batch = batch_size - cur_len
                     if fill_batch < (temp_up_to - temp_cur_event_id):
-                        if j == 0 and k == 0:
-                            temp_out.extend(
-                                file_handlers[cur_file]['reco_vals']
-                                [temp_cur_event_id:
-                                 temp_cur_event_id + fill_batch])
                         temp_in.extend(
                             eval('file_handlers[cur_file][\'{}\']'.
                                  format(var[0]))
@@ -148,10 +145,6 @@ def generator(batch_size, file_handlers, inds,
                             eval('file_handlers[cur_file][\'{}\']'.
                                  format(var[0]))
                             [temp_cur_event_id:temp_up_to])
-                        if j == 0 and k == 0:
-                            temp_out.extend(
-                                file_handlers[cur_file]['reco_vals']
-                                [temp_cur_event_id:temp_up_to])
                         cur_len += temp_up_to - temp_cur_event_id
                         temp_cur_file += 1
                         if temp_cur_file == len(file_handlers):
@@ -169,14 +162,46 @@ def generator(batch_size, file_handlers, inds,
                     if len(var_array) > 1:
                         batch_input[j][i][slice_ind] = pre_append
                     else:
-                        batch_input[j][i] = np.squeeze(pre_append)        
+                        batch_input[j][i] = pre_append
                 temp_in = []
 
         for j, var_array in enumerate(out_variables):
             for k, var in enumerate(var_array):
+                temp_cur_file = cur_file
+                temp_cur_event_id = cur_event_id
+                temp_up_to = up_to
+                cur_len = 0
+                while cur_len < batch_size:
+                    fill_batch = batch_size - cur_len
+                    if fill_batch < (temp_up_to - temp_cur_event_id):
+                        temp_out.extend(
+                            eval('file_handlers[cur_file][\'reco_vals\'][\'{}\']'.
+                                 format(var[0]))[temp_cur_event_id:temp_cur_event_id + fill_batch])
+                        cur_len += fill_batch
+                        temp_cur_event_id += fill_batch
+                    else:
+                        temp_out.extend(
+                            eval('file_handlers[cur_file][\'reco_vals\'][\'{}\']'.
+                                 format(var[0]))[temp_cur_event_id:temp_up_to])
+                        cur_len += temp_up_to - temp_cur_event_id
+                        temp_cur_file += 1
+                        if temp_cur_file == len(file_handlers):
+                            break
+                        else:
+                            temp_cur_event_id = inds[temp_cur_file][0]
+                            temp_up_to = inds[temp_cur_file][1]
+
                 for i in range(len(temp_out)):
-                    batch_out[j][i][k] = var[1](temp_out[i][var[0]])
-            temp_out = []
+                    slice_ind = [slice(None)] * batch_out[j][i].ndim
+                    slice_ind[-1] = slice(k, k + 1, 1)
+                    pre_append = var[1](temp_out[i])
+                    if var == 'time':
+                        pre_append[pre_append == np.inf] = -1
+                    if len(var_array) > 1:
+                        batch_out[j][i][slice_ind] = pre_append
+                    else:
+                        batch_out[j][i] = pre_append
+                temp_out = []
 
         if temp_cur_file == len(file_handlers):
             cur_file = 0

@@ -305,10 +305,9 @@ if __name__ == "__main__":
         callbacks=[CSV_log, early_stop, best_model, MemoryCallback()],
         epochs=int(parser.get('Training_Parameters', 'epochs')),
         verbose=int(parser.get('Training_Parameters', 'verbose')),
-        max_q_size=int(parser.get('Training_Parameters', 'max_queue_size'))
-    )
+        max_q_size=int(parser.get('Training_Parameters', 'max_queue_size')))
 
-# Saving the Final Model and Calculation/Saving of Result for Test Dataset ####
+    # Saving the Final Model and Calculation/Saving of Result for Test Dataset ####
 
     model.save(os.path.join(save_path,
                             'final_network.h5'))  # save trained network

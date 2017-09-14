@@ -74,7 +74,7 @@ then\
     echo '##### GPUs busy. Restart job later.' exit 1\
 else\
     echo 'Found free GPU devices :'\n\
-    echo 'CUDA_VISIBLE_DEVICES =  $CUDA_VISIBLE_DEVICES'\n\
+    echo 'CUDA_VISIBLE_DEVICES =  $CUDA_VISIBLE_DEVICES '\n\
 fi\n\
 nvidia-smi\n\
 python {NN_recofolder}/{script} {args}\n".\
