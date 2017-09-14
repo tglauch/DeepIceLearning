@@ -40,3 +40,16 @@ def zenith_to_binary(x):
     ret[ret < 1.5707963268] = 0.0
     ret[ret > 1] = 1.0
     return ret
+
+def time_prepare(x):
+    """
+    This function normalizes the finite values of input data to the interval [0,1] and 
+    replaces all infinity-values with replace_with (defaults to 1).
+    """
+    replace_with = 1.0
+    ret = np.copy(x)
+    time_np_arr_max = np.max(ret[ret != np.inf])
+    time_np_arr_min = np.min(ret)
+    ret = (ret - time_np_arr_min) / (time_np_arr_max - time_np_arr_min)
+    ret[ret == np.inf] = replace_with
+    return ret
