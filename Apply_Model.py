@@ -132,7 +132,7 @@ if __name__ == "__main__":
         model = read_NN_weights(args.__dict__, base_model)
 
     os.system("nvidia-smi")
-    
+
     # Saving the Final Model and Calculation/Saving of Result for Test Dataset ####
 
     num_events = np.sum([k[1] - k[0] for k in test_inds])
@@ -154,6 +154,11 @@ if __name__ == "__main__":
                 steps = steps_per_epoch,\
                 verbose=1,\
                 max_q_size=2)
+
+    ## ugly hack to write out the prediction of outputs with array-shape
+    if len(prediction[0])>1:
+        np.save(os.path.join(DATA_DIR,"prediction.npy"), prediction)
+        exit(0)
 
     dtype = np.dtype([(var, np.float64) for br in out_shapes.keys()\
                       for var in out_shapes[br].keys() if var!='general'])

@@ -49,6 +49,7 @@ def prepare_io_shapes(inputs, outputs, exp_file):
                 inp_shapes[br]["general"] = res_shape + (1,)
             else:
                 inp_shapes[br]["general"] = res_shape
+
     for br in outputs:
         out_shapes[br] = {}
         out_transformations[br] = {}
@@ -57,13 +58,14 @@ def prepare_io_shapes(inputs, outputs, exp_file):
             test_arr = np.array(inp_file._get_node("/reco_vals").col(var)[0])
             res_shape = np.shape(np.squeeze(tr(test_arr))) if not \
                     isinstance(tr(test_arr), np.float) else (1,)
+            print(br,var,res_shape)
             out_shapes[br][var] = res_shape
             out_transformations[br][var] = tr
         if len(outputs[br]["variables"]) > 1:
             out_shapes[br]["general"] = \
                 res_shape + (len(outputs[br]["variables"]),)
         else:
-            if len(res_shape) >1:
+            if len(res_shape) > 1:
                 out_shapes[br]["general"] = res_shape + (1,)
             else:
                 out_shapes[br]["general"] = res_shape
