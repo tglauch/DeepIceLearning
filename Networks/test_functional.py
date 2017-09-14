@@ -54,7 +54,7 @@ def model(input_shapes, output_shapes):
 
     z = concatenate([z, input_b2])
     z = Dense(512)(z)
-    output_layer1 = Dense(output_shapes["Out1"]["general"], name="Target")(z)
+    output_layer1 = Dense(output_shapes["Out1"]["general"][0], name="Target")(z)
 
     model = keras.models.Model(
         inputs=[input_b1, input_b2],
