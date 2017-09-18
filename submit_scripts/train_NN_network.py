@@ -89,7 +89,7 @@ for a in args:
         arguments += ' --{} {} '.format(a, args[a])
 
 if args['continue'] != 'None':
-    arguments += '--continue {}'.format(args['continue'])
+    #arguments += '--continue {}'.format(args['continue'])
     save_path = args['continue']
     condor_out_folder = os.path.join(args['continue'], 'condor')
     args["model"] = os.path.join(args['continue'], 'model.py')
@@ -130,7 +130,7 @@ elif workload_manager == 'bsub':
                             condor_out_folder,\
                             thisfolder,\
                             arguments,\
-                            request_cpus=6)
+                            request_cpus=12)
 
 
 print(submit_info)

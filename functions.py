@@ -135,15 +135,13 @@ def generator(batch_size, file_handlers, inds,
                     fill_batch = batch_size - cur_len
                     if fill_batch < (temp_up_to - temp_cur_event_id):
                         temp_in.extend(
-                            eval('file_handlers[cur_file][\'{}\']'.
-                                 format(var[0]))
+                           file_handlers[cur_file][var[0]]\
                             [temp_cur_event_id:temp_cur_event_id + fill_batch])
                         cur_len += fill_batch
                         temp_cur_event_id += fill_batch
                     else:
                         temp_in.extend(
-                            eval('file_handlers[cur_file][\'{}\']'.
-                                 format(var[0]))
+                            file_handlers[cur_file][var[0]]\
                             [temp_cur_event_id:temp_up_to])
                         cur_len += temp_up_to - temp_cur_event_id
                         temp_cur_file += 1
@@ -175,14 +173,14 @@ def generator(batch_size, file_handlers, inds,
                     fill_batch = batch_size - cur_len
                     if fill_batch < (temp_up_to - temp_cur_event_id):
                         temp_out.extend(
-                            eval('file_handlers[cur_file][\'reco_vals\'][\'{}\']'.
-                                 format(var[0]))[temp_cur_event_id:temp_cur_event_id + fill_batch])
+                            file_handlers[cur_file]['reco_vals']\
+                            [var[0]][temp_cur_event_id:temp_cur_event_id + fill_batch])
                         cur_len += fill_batch
                         temp_cur_event_id += fill_batch
                     else:
                         temp_out.extend(
-                            eval('file_handlers[cur_file][\'reco_vals\'][\'{}\']'.
-                                 format(var[0]))[temp_cur_event_id:temp_up_to])
+                            file_handlers[cur_file]['reco_vals'][var[0]]\
+                            [temp_cur_event_id:temp_up_to])
                         cur_len += temp_up_to - temp_cur_event_id
                         temp_cur_file += 1
                         if temp_cur_file == len(file_handlers):
@@ -237,4 +235,3 @@ def read_NN_weights(args_dict, model):
         print('Initalize the model without pre-trained weights')
 
     return model
-

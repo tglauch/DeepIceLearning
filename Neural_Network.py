@@ -20,6 +20,7 @@ from six.moves import configparser
 import socket
 import argparse
 import h5py
+import tables
 import model_parse
 import sys
 import numpy.lib.recfunctions as rfn
@@ -288,8 +289,11 @@ if __name__ == "__main__":
     batch_size = int(
         parser.get("GPU", "request_gpus")) * int(parser.get(
             'Training_Parameters', 'single_gpu_batch_size'))
-    file_handlers = [h5py.File(os.path.join(mc_location, file_name), 'r')
+    file_handlers = [h5py.File(os.path.join(mc_location, file_name))
                      for file_name in input_files]
+
+    #file_handlers = [tables.open_file(os.path.join(mc_location, file_name))
+    #                 for file_name in input_files]
 
     model.fit_generator(
         generator(
@@ -309,9 +313,9 @@ if __name__ == "__main__":
 
     # Saving the Final Model and Calculation/Saving of Result for Test Dataset ####
 
-    model.save(os.path.join(save_path,
-                            'final_network.h5'))  # save trained network
+    model.save(os.path.join(save_path, 'final_network.h5'))  # save trained network
     print('\n Saved the Model \n')
+
     if args.__dict__["apply_test"]:
         print('Not implemented...Just calling Apply_Model failed on GPUs.')
         #os.system('python {this_fold}/Apply_Model.py --main_config {cfg}\
@@ -320,4 +324,5 @@ if __name__ == "__main__":
         #                                        cfg = args.main_config,\
         #                                       save_fold = save_path)
         #        )
-    print(' \n Finished .... Exit.....')
+    print('\n Finished .... Exit.....')
+

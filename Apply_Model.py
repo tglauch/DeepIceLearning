@@ -8,6 +8,7 @@ from six.moves import configparser
 import socket
 import argparse
 import model_parse
+import cPickle as pickle
 
 def parseArguments():
 
@@ -137,11 +138,10 @@ if __name__ == "__main__":
 
     num_events = np.sum([k[1] - k[0] for k in test_inds])
     print('Apply the NN to {} events'.format(num_events))
-    file_handlers = [h5py.File(os.path.join(mc_location, file_name), 'r')\
+    file_handlers = [h5py.File(os.path.join(mc_location, file_name))\
                      for file_name in input_files]
     steps_per_epoch = math.ceil(np.sum([k[1] - k[0] for k in\
                                         test_inds])/args.batch_size)
-
 
     prediction = model.predict_generator(
                  generator(args.batch_size,\
@@ -155,17 +155,6 @@ if __name__ == "__main__":
                 verbose=1,\
                 max_q_size=2)
 
-    ## ugly hack to write out the prediction of outputs with array-shape
-    if len(prediction[0])>1:
-        np.save(os.path.join(DATA_DIR,"prediction.npy"), prediction)
-        exit(0)
-
-    dtype = np.dtype([(var, np.float64) for br in out_shapes.keys()\
-                      for var in out_shapes[br].keys() if var!='general'])
-    prediction = np.array(zip(*[np.concatenate(prediction[:, i:i + 1])
-                      for i in range(np.shape(prediction)[-1])]),
-                      dtype=dtype)[0:num_events]
-
     ## write out muex etc for comparison later
     reference_outputs = model_parse.parse_reference_output(conf_model_file)
     print('Reference output-vars: ', reference_outputs)
@@ -173,7 +162,6 @@ if __name__ == "__main__":
     outbranch0 = out_shapes.keys()[0]
     for ref_out in reference_outputs:
         out_shapes[outbranch0][ref_out] = 1
-    print(out_shapes)
     mc_truth = [[] for br in out_shapes.keys()\
                 for var in out_shapes[br].keys()\
                 if var!='general']
@@ -191,10 +179,26 @@ if __name__ == "__main__":
                       for var in out_shapes[br].keys()\
                       if var!='general'])
     mc_truth = np.array(zip(*np.array(mc_truth)), dtype=dtype)
+
+    #write-out the mc_truth and the prediction separately to a joint pickle
+    #file...we can also look for a nicer solution with dtypes again. but the
+    #output-shape of prediction should be variable
+    MANUAL_writeout_pred_and_exit= True
+    if MANUAL_writeout_pred_and_exit:
+        pickle.dump({"mc_truth": mc_truth, "prediction": prediction},\
+                    open(os.path.join(DATA_DIR, "prediction.pickle"),"wc"))
+        print(' \n Finished .... Exiting.....')
+        exit(0)
+'''
+    dtype = np.dtype([(var, np.float64) for br in out_shapes.keys()\
+                      for var in out_shapes[br].keys() if var!='general'])
+    prediction = np.array(zip(*[np.concatenate(prediction[:, i:i + 1])
+                      for i in range(np.shape(prediction)[-1])]),
+                      dtype=dtype)[0:num_events]
+
     np.save(os.path.join(DATA_DIR, 'test_res.npy'),
         rfn.merge_arrays([mc_truth, prediction],
         flatten=True,
         usemask=False))
-
-    print(' \n Finished .... Exit.....')
+'''
 
