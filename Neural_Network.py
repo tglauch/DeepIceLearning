@@ -75,10 +75,6 @@ def parseArguments():
         "--save_folder",
         help="Folder for saving the output",
         type=str, default='None')
-    parser.add_argument(
-        "--apply_test",
-        help="Apply the model to the test data in the end?",
-        action="store_true")
     args = parser.parse_args()
     return args
 
@@ -316,13 +312,5 @@ if __name__ == "__main__":
     model.save(os.path.join(save_path, 'final_network.h5'))  # save trained network
     print('\n Saved the Model \n')
 
-    if args.__dict__["apply_test"]:
-        print('Not implemented...Just calling Apply_Model failed on GPUs.')
-        #os.system('python {this_fold}/Apply_Model.py --main_config {cfg}\
-        #          --folder {save_fold} '.format(\
-        #                                        this_fold = file_location,\
-        #                                        cfg = args.main_config,\
-        #                                       save_fold = save_path)
-        #        )
     print('\n Finished .... Exit.....')
 

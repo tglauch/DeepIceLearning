@@ -3,6 +3,7 @@
 
 import numpy as np
 from keras.utils import to_categorical
+from scipy.stats import norm
 
 def identity(x):
     return x
@@ -25,8 +26,15 @@ def sort_input(x):
 def sort_input_and_top20(x):
     return np.sort(np.ndarray.flatten(x))[-20:]
 
+def smeared_one_hot_encode_logbinned(E):
+    width = 0.16
+    bins=np.linspace(3,7,50)
+    gauss = norm(loc = np.log10(E), scale = width)
+    smeared_hot_output = gauss.pdf(bins)
+    return smeared_hot_output/np.sum(smeared_hot_output)
+
 def one_hot_encode_logbinned(x):
-    bins=np.linspace(3,7,40)
+    bins=np.linspace(3,7,50)
     bin_indcs = np.digitize(np.log10(x), bins)
     one_hot_output = to_categorical(bin_indcs, len(bins))
     return one_hot_output

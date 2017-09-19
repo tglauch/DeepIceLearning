@@ -56,6 +56,7 @@ args = parseArguments().__dict__
 parser = configparser.ConfigParser()
 if args['continue'] != 'None':
     parser.read(os.path.join(args["continue"], 'config.cfg'))
+    args["main_config"] = os.path.join(args["continue"], 'config.cfg')
 else:
     parser.read(args["main_config"])
 parser_dict = {s:dict(parser.items(s)) for s in parser.sections()}
@@ -84,7 +85,7 @@ for a in args:
         arguments += ' --input {} '.format(files)
     elif a =="apply_test":
         if args[a]:
-            arguments +=" --apply_test "
+            pass
     else:
         arguments += ' --{} {} '.format(a, args[a])
 
@@ -130,7 +131,10 @@ elif workload_manager == 'bsub':
                             condor_out_folder,\
                             thisfolder,\
                             arguments,\
-                            request_cpus=12)
+                            apply_test = args["apply_test"],\
+                            request_cpus=12,
+                            cfg_file = args["main_config"],
+                            save_path = save_path)
 
 
 print(submit_info)
