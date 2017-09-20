@@ -20,6 +20,9 @@ def max(x):
 def max_min_delta(x):
     return np.max(x)-np.min(x)
 
+def shift_min_to_zero(x):
+    return x-np.amin(x)
+
 def sort_input(x):
     return np.sort(np.ndarray.flatten(x))
 
