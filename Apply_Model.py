@@ -158,7 +158,7 @@ if __name__ == "__main__":
     ## write out muex etc for comparison later
     reference_outputs = model_parse.parse_reference_output(conf_model_file)
     print('Reference output-vars: ', reference_outputs)
-    ## add to arbitrary out-branch:
+    ## add to first out-branch:
     outbranch0 = out_shapes.keys()[0]
     for ref_out in reference_outputs:
         out_shapes[outbranch0][ref_out] = 1

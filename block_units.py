@@ -56,6 +56,31 @@ def conv_3pyramide(x0, n_kernels, **kwargs):
     x3 = Convolution3D(n_kernels[2], (2, 2, 2), padding='same', **kwargs)(x2)
     return x3
 
+def conv_3pyramide_wDrop_wBatchNorm(x0, n_kernels, drop=0.3, **kwargs):
+    if len(n_kernels) != 3:
+        print('Conv_3pyramide stacks three convolutions. Give array of 3\
+              kernel-lengths!')
+    x1 = Convolution3D(n_kernels[0], (3, 3, 5), padding='same', **kwargs)(x0)
+    x1 = Dropout(rate=drop*0.6)(x1)
+    x1 = BatchNormalization()(x1)
+    x2 = Convolution3D(n_kernels[1], (2, 2, 3), padding='same', **kwargs)(x1)
+    x2 = Dropout(rate=drop)(x2)
+    x2 = BatchNormalization()(x2)
+    x3 = Convolution3D(n_kernels[2], (2, 2, 2), padding='same', **kwargs)(x2)
+    return x3
+
+def conv_2pyramide_wDrop_wBatchNorm(x0, n_kernels, drop=0.3, **kwargs):
+    if len(n_kernels) != 2:
+        print('Conv_3pyramide stacks three convolutions. Give array of 3\
+              kernel-lengths!')
+    x1 = Convolution3D(n_kernels[0], (3, 3, 5), padding='same', **kwargs)(x0)
+    x1 = Dropout(rate=drop*0.6)(x1)
+    x1 = BatchNormalization()(x1)
+    x2 = Convolution3D(n_kernels[1], (2, 2, 3), padding='same', **kwargs)(x1)
+    x2 = Dropout(rate=drop)(x2)
+    return x2
+
+
 
 def inception_unit_pyramides(x0, **kwargs):
 
