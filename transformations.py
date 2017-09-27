@@ -26,6 +26,13 @@ def shift_min_to_zero(x):
 def sort_input(x):
     return np.sort(np.ndarray.flatten(x))
 
+def log_handle_zeros_flatten_top30(x):
+    tmp = np.where(x != 0, np.log10(x), 0)
+    return np.sort(np.ndarray.flatten(tmp))[-30:]
+
+def log_handle_zeros(x):
+    return np.where(x != 0, np.log10(x), 0)
+
 def sort_input_and_top20(x):
     return np.sort(np.ndarray.flatten(x))[-20:]
 
@@ -41,7 +48,6 @@ def one_hot_encode_logbinned(x):
     bin_indcs = np.digitize(np.log10(x), bins)
     one_hot_output = to_categorical(bin_indcs, len(bins))
     return one_hot_output
-
 
 def zenith_to_binary(x):
     """

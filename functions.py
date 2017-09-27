@@ -66,7 +66,8 @@ def read_input_len_shapes(file_location, input_files, virtual_len=-1):
                 raise Exception(
                     'The input files arrays do not have the same shape')
         if virtual_len == -1:
-            data_len = file_handler.root._v_attrs.len
+            data_len = len(file_handler.root.reco_vals)
+                #file_handler.root._v_attrs.len
         else:
             data_len = virtual_len
             print('Only use the first {} Monte Carlo Events'.format(data_len))
