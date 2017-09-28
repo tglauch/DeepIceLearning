@@ -3,6 +3,7 @@
 
 import numpy as np
 from keras.utils import to_categorical
+from scipy.stats import norm
 
 def identity(x):
     return x
@@ -19,18 +20,34 @@ def max(x):
 def max_min_delta(x):
     return np.max(x)-np.min(x)
 
+def shift_min_to_zero(x):
+    return x-np.amin(x)
+
 def sort_input(x):
     return np.sort(np.ndarray.flatten(x))
+
+def log_handle_zeros_flatten_top30(x):
+    tmp = np.where(x != 0, np.log10(x), 0)
+    return np.sort(np.ndarray.flatten(tmp))[-30:]
+
+def log_handle_zeros(x):
+    return np.where(x != 0, np.log10(x), 0)
 
 def sort_input_and_top20(x):
     return np.sort(np.ndarray.flatten(x))[-20:]
 
+def smeared_one_hot_encode_logbinned(E):
+    width = 0.16
+    bins=np.linspace(3,7,50)
+    gauss = norm(loc = np.log10(E), scale = width)
+    smeared_hot_output = gauss.pdf(bins)
+    return smeared_hot_output/np.sum(smeared_hot_output)
+
 def one_hot_encode_logbinned(x):
-    bins=np.linspace(3,7,40)
+    bins=np.linspace(3,7,50)
     bin_indcs = np.digitize(np.log10(x), bins)
     one_hot_output = to_categorical(bin_indcs, len(bins))
     return one_hot_output
-
 
 def zenith_to_binary(x):
     """

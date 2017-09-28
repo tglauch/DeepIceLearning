@@ -56,7 +56,8 @@ python {thisfolder}/{script} {args} \n'.format(
 
 
 def make_bsub(executable, request_memory, condor_folder, thisfolder,
-              arguments, request_cpus=1):
+              arguments, apply_test=False, request_cpus=1, cfg_file= None,
+              save_path = None):
     submit_info = "#!/usr/bin/env zsh\n\
 #BSUB -J {script}.job\n\
 #BSUB -W 12:00\n\
@@ -84,6 +85,12 @@ python {NN_recofolder}/{script} {args}\n".\
                        args=arguments,
                        NN_recofolder=thisfolder,
                        mem_request=request_memory)
+    if apply_test:
+        submit_info += "python {NN_recofolder}/Apply_Model.py --main_config\
+        {cfg} --folder {save_path} \n".\
+                format(cfg = cfg_file,
+                       save_path = save_path,
+                       NN_recofolder = thisfolder)
 
     return submit_info
 
