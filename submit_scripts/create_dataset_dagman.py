@@ -32,6 +32,14 @@ def parseArguments():
         "--name",
         help="Name for the Dagman Files",
         type=str, default='create_dataset')
+    parser.add_argument(
+        "--create_script",
+        help="Different script to execute",
+        type=str, default='Create_Data_Files.py')
+    parser.add_argument(
+        "--request_RAM",
+        help="amount of RAM in GB",
+        type=int, default=2)
     args = parser.parse_args()
     return args
 
@@ -57,7 +65,8 @@ if not os.path.exists(PROCESS_DIR):
 
 WORKDIR = os.path.join(PROCESS_DIR, "jobs/")
 script = os.path.join(
-    main_parser.get("Basics", "thisfolder"), "Create_Data_Files.py")
+    main_parser.get("Basics", "thisfolder"),\
+    args.__dict__["create_script"])
 dag_name = args.__dict__["name"]
 dagFile = os.path.join(
     WORKDIR, "job_{}.dag".format(dag_name))
@@ -72,19 +81,19 @@ if not Resc:
         os.makedirs(log_path)
         print "Created New Folder in: {}".format(log_path)
     print "Write Dagman Files to: {}".format(submitFile)
+    RAM_str = "{} GB".format(args.__dict__["request_RAM"])
     arguments = " --filelist $(PATH) --dataset_config $(DATASET) "
     submitFileContent = {"universe": "vanilla",
                          "notification": "Error",
                          "log": "$(LOGFILE).log",
                          "output": "$(LOGFILE).out",
                          "error": "$(LOGFILE).err",
-                         "request_memory": "1.5GB",
+                         "request_memory": RAM_str,
                          "arguments": arguments}
     submitFile = pydag.htcondor.HTCondorSubmit(submitFile,
                                                script,
                                                **submitFileContent)
     submitFile.dump()
-
     folderlist = dataset_parser.get("Basics", "folder_list")
     basepath = dataset_parser.get("Basics", "MC_path")
     filelist = dataset_parser.get("Basics", "file_list")
