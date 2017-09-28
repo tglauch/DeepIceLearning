@@ -20,6 +20,7 @@ small differences when processing data for the diffuse dataset
 '''
 
 from icecube import dataio, icetray
+from scipy.stats import moment, skew, kurtosis
 import numpy as np
 import math
 import tables
@@ -315,7 +316,7 @@ if __name__ == "__main__":
         charge = h5file.create_earray(
             h5file.root, 'charge', tables.Float64Atom(),
             (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Sum(Charge)")
+            title="Sum(Charges per Dom)")
         time_first = h5file.create_earray(
             h5file.root, 'time', tables.Float64Atom(),
             (0, input_shape[0], input_shape[1], input_shape[2], 1),
@@ -328,6 +329,30 @@ if __name__ == "__main__":
             h5file.root, 'first_charge', tables.Float64Atom(),
             (0, input_shape[0], input_shape[1], input_shape[2], 1),
             title="amplitude of the first charge")
+        av_charge_widths = h5file.create_earray(
+            h5file.root, 'av_charge_width', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="Weighted charge average (1./widths)")
+        av_time_charges = h5file.create_earray(
+            h5file.root, 'av_time_charges', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="Weighted time average (charges)")
+        num_pulses = h5file.create_earray(
+            h5file.root, 'num_pulses', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="Number of pulses for this DOM")
+        time_moment_2 = h5file.create_earray(
+            h5file.root, 'time_moment_2', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="Second central moment of time distr. of the pulses")
+        #time_skew = h5file.create_earray(
+        #    h5file.root, 'time_skew', tables.Float64Atom(),
+        #    (0, input_shape[0], input_shape[1], input_shape[2], 1),
+        #    title="skew of the time distr. of the pulses")
+        time_kurtosis = h5file.create_earray(
+            h5file.root, 'time_kurtosis', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="kurtosis of the time distr. of the pulses")
         reco_vals = tables.Table(h5file.root, 'reco_vals',
                                  description=dtype)
         h5file.root._v_attrs.shape = input_shape
@@ -381,21 +406,38 @@ if __name__ == "__main__":
                     (1, input_shape[0], input_shape[1], input_shape[2], 1))
                 charge_first_arr = np.zeros(
                     (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                charge_first_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                av_charge_widths_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                av_time_charges_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                num_pulses_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                time_moment_2_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                time_kurtosis_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
 
                 ###############################################
                 pulses = physics_event[pulsemap_key].apply(physics_event)
                 final_dict = dict()
                 for omkey in pulses.keys():
-                    temp_time = []
-                    temp_charge = []
-                    for pulse in pulses[omkey]:
-                        temp_time.append(pulse.time)
-                        temp_charge.append(pulse.charge)
+                    charges = np.array([p.charge for p in pulses[omkey][:]])
+                    times = np.array([p.time for p in pulses[omkey][:]])
+                    #times_shifted = times-np.amin(times)
+                    widths = np.array([p.width for p in pulses[omkey][:]])
                     final_dict[(omkey.string, omkey.om)] = \
-                        (np.sum(temp_charge),
-                         np.min(temp_time),
-                         np.max(temp_time) - np.min(temp_time),
-                         temp_charge[0])
+                        (np.sum(charges),
+                         np.amin(times),
+                         np.amax(times) - np.amin(times),
+                         charges[0],\
+                         np.average(charges,weights=1./widths),\
+                         np.average(times, weights=charges),\
+                         len(charges),\
+                         moment(times, moment=2),\
+                         skew(times)
+                         )
                 for dom in DOM_list:
                     gpos = grid[dom]
                     if dom in final_dict:
@@ -406,21 +448,41 @@ if __name__ == "__main__":
                         time_spread_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
                             final_dict[dom][2]
                         time_first_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                            np.minimum(
-                                time_first_arr[0][gpos[0]][gpos[1]][gpos[2]][0],
-                                final_dict[dom][1])
+                                final_dict[dom][1]
+                        av_charge_widths_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                final_dict[dom][4]
+                        av_time_charges_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                final_dict[dom][5]
+                        num_pulses_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                final_dict[dom][6]
+                        time_moment_2_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                final_dict[dom][7]
+                        time_kurtosis_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                final_dict[dom][8] 
 
                 charge.append(np.array(charge_arr))
                 charge_first.append(np.array(charge_first_arr))
                 time_spread.append(np.array(time_spread_arr))
-                time_np_arr = np.array(time_first_arr)
-                time_first.append(time_np_arr)
+                time_first.append(np.array(time_first_arr))
+                av_charge_widths.append(av_charge_widths_arr)
+                av_time_charges.append(av_time_charges_arr)
+                num_pulses.append(num_pulses_arr)
+                time_moment_2.append(time_moment_2_arr)
+                time_kurtosis.append(time_kurtosis_arr)
+
                 reco_vals.append(np.array(reco_arr))
                 j += 1
+
             charge.flush()
             time_first.flush()
             charge_first.flush()
             time_spread.flush()
+            av_charge_widths.flush()
+            av_time_charges.flush()
+            num_pulses.flush()
+            time_moment_2.flush()
+            time_kurtosis.flush()
+
             reco_vals.flush()
         print('###### Run Summary ###########')
         print('Processed: {} Frames \n Skipped {} \
