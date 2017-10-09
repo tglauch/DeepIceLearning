@@ -228,7 +228,7 @@ if __name__ == "__main__":
         lr=float(parser.get('Training_Parameters', 'learning_rate')))
 
     ngpus = args.__dict__['ngpus']
-    print'Use {} GPUS'.format(ngpus)
+    #print'Use {} GPUS'.format(ngpus)
     if ngpus > 1:
         if backend == 'tensorflow':
             with tf.device('/cpu:0'):
