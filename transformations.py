@@ -26,6 +26,11 @@ def shift_min_to_zero(x):
 def sort_input(x):
     return np.sort(np.ndarray.flatten(x))
 
+def plus_one_log10(x):
+    tmp = x + 1.
+    return np.log10(tmp)
+
+
 def log_handle_zeros_flatten_top30(x):
     tmp = np.where(x != 0, np.log10(x), 0)
     return np.sort(np.ndarray.flatten(tmp))[-30:]
