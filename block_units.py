@@ -107,3 +107,18 @@ def inception_unit_pyramides(x0, **kwargs):
 
     return concatenate([x1, x2, x3], axis=-1)
 
+def triple_conv_block(x0, features=12,  kernels=(2,2,2), **kwargs):
+    x1 = Convolution3D(features, kernels, padding='same', **kwargs)(x0)
+    x1 = Convolution3D(features, kernels, padding='same', **kwargs)(x1)
+    x1 = Convolution3D(features, kernels, padding='same', **kwargs)(x1)
+    return x1
+
+def triple_conv_block_wBN(x0, features=12,  kernels=(2,2,2), **kwargs):
+    x1 = Convolution3D(features, kernels, padding='same', **kwargs)(x0)
+    x1 = BatchNormalization()(x1)
+    x1 = Convolution3D(features, kernels, padding='same', **kwargs)(x1)
+    x1 = BatchNormalization()(x1)
+    x1 = Convolution3D(features, kernels, padding='same', **kwargs)(x1)
+    return x1
+
+
