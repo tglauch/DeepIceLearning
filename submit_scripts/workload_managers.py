@@ -60,7 +60,7 @@ def make_bsub(executable, request_memory, condor_folder, thisfolder,
               save_path = None):
     submit_info = "#!/usr/bin/env zsh\n\
 #BSUB -J {script}.job\n\
-#BSUB -W 12:00\n\
+#BSUB -W 48:00\n\
 #BSUB -M {mem_request}\n\
 #BSUB -n {request_cpus}\n\
 #BSUB -o {cond_fold}/{script}.out\n\

@@ -32,8 +32,8 @@ def plus_one_log10(x):
 
 
 def log_handle_zeros_flatten_top30(x):
-    tmp = np.where(x != 0, np.log10(x), 0)
-    return np.sort(np.ndarray.flatten(tmp))[-30:]
+    #tmp = np.where(x != 0, np.log10(x), 0)
+    return np.sort(np.ndarray.flatten(np.log10(1.+x)))[-30:]
 
 def log_handle_zeros(x):
     return np.where(x != 0, np.log10(x), 0)
