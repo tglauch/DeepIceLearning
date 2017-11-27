@@ -61,7 +61,12 @@ except Exception:
     raise Exception('Config File is missing!!!!')
 
 # File paths #########
-basepath = str(dataset_configparser.get('Basics', 'MC_path'))
+if dataset_configparser.get('Basics', 'multipleSim') == True:
+	basepath0 = str(dataset_configparser.get('Basics', 'MC_path0'))
+	basepath1 = str(dataset_configparser.get('Basics', 'MC_path1'))
+	basepath2 = str(dataset_configparser.get('Basics', 'MC_path2'))
+else:
+	basepath = str(dataset_configparser.get('Basics', 'MC_path'))
 geometry_file = str(dataset_configparser.get('Basics', 'geometry_file'))
 outfolder = str(dataset_configparser.get('Basics', 'out_folder'))
 pulsemap_key = str(dataset_configparser.get('Basics', 'PulseSeriesMap'))
