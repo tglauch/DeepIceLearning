@@ -41,29 +41,28 @@ def parseArguments():
         "--files",
         help="files to be processed",
         type=str, nargs="+", required=False)
-    parser.add_argument(
-        "--filelist",
-        help="Path to a filelist to be processed",
-        type=str, required=False)
-    parser.add_argument(
-        "--version",
-        action="version", version='%(prog)s - Version 1.0')
-    args = parser.parse_args()
-  
+    if dataset_configparser.get('Basics', 'multipleSim') == False:
+	    parser.add_argument(
+	        "--filelist",
+	        help="Path to a filelist to be processed",
+	        type=str, required=False)
+	    parser.add_argument(
+	        "--version",
+	        action="version", version='%(prog)s - Version 1.0')
     if dataset_configparser.get('Basics', 'multipleSim') == True:
-	parser.add_argument(
-	    "--filelist0",
-	    help="Path to a filelist of Simulation0 to be processed",
-	    type=str, required=False)
-	parser.add_argument(
-	    "--filelist1",
-	    help="Path to a filelist of Simulation1 to be processed",
-	    type=str, required=False)
-	parser.add_argument(
-	    "--filelist2",
-	    help="Path to a filelist of Simulation2 to be processed",
-	    type=str, required=False)
-
+		parser.add_argument(
+		    "--filelist0",
+		    help="Path to a filelist of Simulation0 to be processed",
+		    type=str, required=False)
+		parser.add_argument(
+		    "--filelist1",
+		    help="Path to a filelist of Simulation1 to be processed",
+		    type=str, required=False)
+		parser.add_argument(
+		    "--filelist2",
+		    help="Path to a filelist of Simulation2 to be processed",
+		    type=str, required=False)
+	args = parser.parse_args()
     return args
 
 
@@ -290,7 +289,109 @@ def analyze_grid(grid):
             print index, strings
 
 def process_event(physics_event):
-    
+	reco_arr = []
+	for k, cur_var in enumerate(data_source):
+		if cur_var[0] == 'variable':
+			try:
+				cur_value = eval(
+					'physics_event{}'.format(cur_var[1]))
+			except Exception:
+				skipped_frames += 1
+				print('Attribute Error occured :{}'.
+					  format(cur_var[1]))
+				break
+
+		if cur_var[0] == 'function':
+			try:
+				cur_value = eval(
+					cur_var[1].replace('(x)', '(physics_event)'))
+			except Exception:
+				skipped_frames += 1
+				print(
+					'The given function is not implemented')
+				break
+
+		if cur_value < cur_var[2][0] or cur_value > cur_var[2][1]:
+			break
+		else:
+			reco_arr.append(cur_value)
+
+	if not len(reco_arr) == dtype_len:
+		continue
+	charge_arr = np.zeros(
+		(1, input_shape[0], input_shape[1], input_shape[2], 1))
+	time_first_arr = np.zeros(
+		(1, input_shape[0], input_shape[1], input_shape[2], 1))
+	time_spread_arr = np.zeros(
+		(1, input_shape[0], input_shape[1], input_shape[2], 1))
+	charge_first_arr = np.zeros(
+		(1, input_shape[0], input_shape[1], input_shape[2], 1))
+	charge_first_arr = np.zeros(
+		(1, input_shape[0], input_shape[1], input_shape[2], 1))
+	av_charge_widths_arr = np.zeros(
+		(1, input_shape[0], input_shape[1], input_shape[2], 1))
+	av_time_charges_arr = np.zeros(
+		(1, input_shape[0], input_shape[1], input_shape[2], 1))
+	num_pulses_arr = np.zeros(
+		(1, input_shape[0], input_shape[1], input_shape[2], 1))
+	time_moment_2_arr = np.zeros(
+		(1, input_shape[0], input_shape[1], input_shape[2], 1))
+	time_kurtosis_arr = np.zeros(
+		(1, input_shape[0], input_shape[1], input_shape[2], 1))
+
+	###############################################
+	pulses = physics_event[pulsemap_key].apply(physics_event)
+	final_dict = dict()
+	for omkey in pulses.keys():
+		charges = np.array([p.charge for p in pulses[omkey][:]])
+		times = np.array([p.time for p in pulses[omkey][:]])
+		#times_shifted = times-np.amin(times)
+		widths = np.array([p.width for p in pulses[omkey][:]])
+		final_dict[(omkey.string, omkey.om)] = \
+			(np.sum(charges),
+			 np.amin(times),
+			 np.amax(times) - np.amin(times),
+			 charges[0],\
+			 np.average(charges,weights=1./widths),\
+			 np.average(times, weights=charges),\
+			 len(charges),\
+			 moment(times, moment=2),\
+			 skew(times)
+			 )
+	for dom in DOM_list:
+		gpos = grid[dom]
+		if dom in final_dict:
+			charge_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
+				final_dict[dom][0]
+			charge_first_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
+				final_dict[dom][3]
+			time_spread_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
+				final_dict[dom][2]
+			time_first_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+					final_dict[dom][1]
+			av_charge_widths_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+					final_dict[dom][4]
+			av_time_charges_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+					final_dict[dom][5]
+			num_pulses_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+					final_dict[dom][6]
+			time_moment_2_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+					final_dict[dom][7]
+			time_kurtosis_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+					final_dict[dom][8] 
+
+	charge.append(np.array(charge_arr))
+	charge_first.append(np.array(charge_first_arr))
+	time_spread.append(np.array(time_spread_arr))
+	time_first.append(np.array(time_first_arr))
+	av_charge_widths.append(av_charge_widths_arr)
+	av_time_charges.append(av_time_charges_arr)
+	num_pulses.append(num_pulses_arr)
+	time_moment_2.append(time_moment_2_arr)
+	time_kurtosis.append(time_kurtosis_arr)
+
+	reco_vals.append(np.array(reco_arr))
+	j += 1 
 
 
 if __name__ == "__main__":
@@ -391,147 +492,41 @@ if __name__ == "__main__":
         j = 0
         skipped_frames = 0
 	
-	
-########################################################################
         if dataset_configparser.get('Basics', 'multipleSim') == True:
-	    for counter0, f_name0 in enumerate(filelist0) or counter1, f_name1 in enumerate(filelist1) or counter2, f_name2 in enumerate(filelist2):  
-		if counter0 % 10 == 0:
-	            print('Processing File Sim0 {}/{}'.format(counter0, len(filelist0)))
-		if counter1 % 10 == 0:
-                    print('Processing File Sim1 {}/{}'.format(counter1, len(filelist1)))
-		if counter2 % 10 == 0:
-                   print('Processing File Sim2 {}/{}'.format(counter2, len(filelist2)))
-	        event_file0 = dataio.I3File(str(f_name0), "r")
-	        event_file1 = dataio.I3File(str(f_name1), "r")
-	        event_file2 = dataio.I3File(str(f_name2), "r")
-	        event_files = ([event_file0, event_file1, event_file2])
-	        print "Opening succesful"
-				
-		while not event_files:
-		    a= random.choice(event_files)
-       		    if a.more(): # ist sichergestellt dass nicht immer wieder am anfang begonnen wird
-			i=0, eventsToProcess=randint(1, 9)
-			for i < eventsToProcess:
-			    physics_event = a.pop_physics()
-			    process_event(physics_event)
-			    i +=1
-			else:
-		       	    event_files.remove(a)
+		    for counter0, f_name0 in enumerate(filelist0) or counter1, f_name1 in enumerate(filelist1) or counter2, f_name2 in enumerate(filelist2):  
+				if counter0 % 10 == 0:
+			            print('Processing File Sim0 {}/{}'.format(counter0, len(filelist0)))
+				if counter1 % 10 == 0:
+		                    print('Processing File Sim1 {}/{}'.format(counter1, len(filelist1)))
+				if counter2 % 10 == 0:
+		                   print('Processing File Sim2 {}/{}'.format(counter2, len(filelist2)))
+			        event_file0 = dataio.I3File(str(f_name0), "r")
+			        event_file1 = dataio.I3File(str(f_name1), "r")
+			        event_file2 = dataio.I3File(str(f_name2), "r")
+			        event_files = ([event_file0, event_file1, event_file2])
+			        print "Opening succesful"
+					
+				while not event_files:
+				    a= random.choice(event_files)
+		       		    if a.more(): # ist sichergestellt dass nicht immer wieder am anfang begonnen wird??
+					i=0, eventsToProcess=randint(1, 9)
+					for i < eventsToProcess:
+					    physics_event = a.pop_physics()
+					    process_event(physics_event)
+					    i +=1
+					else:
+				       	event_files.remove(a) ### unsicher
 
-	else:
-	    for counter, f_name in enumerate(filelist):
-	        if counter % 10 == 0:
-	            print('Processing File {}/{}'.format(counter, len(filelist)))
-	        event_file = dataio.I3File(str(f_name), "r")
-	        print "Opening succesful"
-	        while event_file.more():
-		    physics_event = event_file.pop_physics()
-		    process_event(physics_event)
-########################################################################
+		else:
+		    for counter, f_name in enumerate(filelist):
+		        if counter % 10 == 0:
+		            print('Processing File {}/{}'.format(counter, len(filelist)))
+		        event_file = dataio.I3File(str(f_name), "r")
+		        print "Opening succesful"
+		        while event_file.more():
+				    physics_event = event_file.pop_physics()
+				    process_event(physics_event
 
-                reco_arr = []
-                for k, cur_var in enumerate(data_source):
-                    if cur_var[0] == 'variable':
-                        try:
-                            cur_value = eval(
-                                'physics_event{}'.format(cur_var[1]))
-                        except Exception:
-                            skipped_frames += 1
-                            print('Attribute Error occured :{}'.
-                                  format(cur_var[1]))
-                            break
-
-                    if cur_var[0] == 'function':
-                        try:
-                            cur_value = eval(
-                                cur_var[1].replace('(x)', '(physics_event)'))
-                        except Exception:
-                            skipped_frames += 1
-                            print(
-                                'The given function is not implemented')
-                            break
-
-                    if cur_value < cur_var[2][0] or cur_value > cur_var[2][1]:
-                        break
-                    else:
-                        reco_arr.append(cur_value)
-
-                if not len(reco_arr) == dtype_len:
-                    continue
-                charge_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                time_first_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                time_spread_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                charge_first_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                charge_first_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                av_charge_widths_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                av_time_charges_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                num_pulses_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                time_moment_2_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                time_kurtosis_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-
-                ###############################################
-                pulses = physics_event[pulsemap_key].apply(physics_event)
-                final_dict = dict()
-                for omkey in pulses.keys():
-                    charges = np.array([p.charge for p in pulses[omkey][:]])
-                    times = np.array([p.time for p in pulses[omkey][:]])
-                    #times_shifted = times-np.amin(times)
-                    widths = np.array([p.width for p in pulses[omkey][:]])
-                    final_dict[(omkey.string, omkey.om)] = \
-                        (np.sum(charges),
-                         np.amin(times),
-                         np.amax(times) - np.amin(times),
-                         charges[0],\
-                         np.average(charges,weights=1./widths),\
-                         np.average(times, weights=charges),\
-                         len(charges),\
-                         moment(times, moment=2),\
-                         skew(times)
-                         )
-                for dom in DOM_list:
-                    gpos = grid[dom]
-                    if dom in final_dict:
-                        charge_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
-                            final_dict[dom][0]
-                        charge_first_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
-                            final_dict[dom][3]
-                        time_spread_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
-                            final_dict[dom][2]
-                        time_first_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                final_dict[dom][1]
-                        av_charge_widths_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                final_dict[dom][4]
-                        av_time_charges_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                final_dict[dom][5]
-                        num_pulses_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                final_dict[dom][6]
-                        time_moment_2_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                final_dict[dom][7]
-                        time_kurtosis_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                final_dict[dom][8] 
-
-                charge.append(np.array(charge_arr))
-                charge_first.append(np.array(charge_first_arr))
-                time_spread.append(np.array(time_spread_arr))
-                time_first.append(np.array(time_first_arr))
-                av_charge_widths.append(av_charge_widths_arr)
-                av_time_charges.append(av_time_charges_arr)
-                num_pulses.append(num_pulses_arr)
-                time_moment_2.append(time_moment_2_arr)
-                time_kurtosis.append(time_kurtosis_arr)
-
-                reco_vals.append(np.array(reco_arr))
-                j += 1
 
             charge.flush()
             time_first.flush()
