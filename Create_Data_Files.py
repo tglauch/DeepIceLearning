@@ -29,6 +29,7 @@ import os, sys
 from configparser import ConfigParser
 from reco_quantities import *
 import cPickle as pickle
+import random
 
 def parseArguments():
     parser = argparse.ArgumentParser()
@@ -48,6 +49,20 @@ def parseArguments():
         "--version",
         action="version", version='%(prog)s - Version 1.0')
     args = parser.parse_args()
+  
+    if dataset_configparser.get('Basics', 'multipleSim') == True:
+	parser.add_argument(
+	    "--filelist0",
+	    help="Path to a filelist of Simulation0 to be processed",
+	    type=str, required=False)
+	parser.add_argument(
+	    "--filelist1",
+	    help="Path to a filelist of Simulation1 to be processed",
+	    type=str, required=False)
+	parser.add_argument(
+	    "--filelist2",
+	    help="Path to a filelist of Simulation2 to be processed",
+	    type=str, required=False)
 
     return args
 
@@ -61,7 +76,12 @@ except Exception:
     raise Exception('Config File is missing!!!!')
 
 # File paths #########
-basepath = str(dataset_configparser.get('Basics', 'MC_path'))
+if dataset_configparser.get('Basics', 'multipleSim') == True:
+	basepath0 = str(dataset_configparser.get('Basics', 'MC_path0'))
+	basepath1 = str(dataset_configparser.get('Basics', 'MC_path1'))
+	basepath2 = str(dataset_configparser.get('Basics', 'MC_path2'))
+else:
+	basepath = str(dataset_configparser.get('Basics', 'MC_path'))
 geometry_file = str(dataset_configparser.get('Basics', 'geometry_file'))
 outfolder = str(dataset_configparser.get('Basics', 'out_folder'))
 pulsemap_key = str(dataset_configparser.get('Basics', 'PulseSeriesMap'))
@@ -269,6 +289,9 @@ def analyze_grid(grid):
         for index, strings in enumerate(dims[i]):
             print index, strings
 
+def process_event(physics_event):
+    
+
 
 if __name__ == "__main__":
 
@@ -300,6 +323,11 @@ if __name__ == "__main__":
     elif 'files' in args.keys():
         filelist = args['files']
         outfile = filelist[0].replace('.i3.bz2', '.h5')
+    elif dataset_configparser.get('Basics', 'multipleSim') == True: #only "filelist" option possible
+	filelist0 = pickle.load(open(args['filelist0'], 'r'))
+	filelist1 = pickle.load(open(args['filelist1'], 'r'))
+	filelist2 = pickle.load(open(args['filelist2'], 'r'))
+	outfile = str(dataset_configparser.get('Basics', 'output_file')).h5
     else:
         raise Exception('No input files given')
 
@@ -362,13 +390,45 @@ if __name__ == "__main__":
         np.save('grid.npy', grid)
         j = 0
         skipped_frames = 0
-        for counter, f_name in enumerate(filelist):
-            if counter % 10 == 0:
-                print('Processing File {}/{}'.format(counter, len(filelist)))
-            event_file = dataio.I3File(str(f_name), "r")
-            print "Opening succesful"
-            while event_file.more():
-                physics_event = event_file.pop_physics()
+	
+	
+########################################################################
+        if dataset_configparser.get('Basics', 'multipleSim') == True:
+	    for counter0, f_name0 in enumerate(filelist0) or counter1, f_name1 in enumerate(filelist1) or counter2, f_name2 in enumerate(filelist2):  
+		if counter0 % 10 == 0:
+	            print('Processing File Sim0 {}/{}'.format(counter0, len(filelist0)))
+		if counter1 % 10 == 0:
+                    print('Processing File Sim1 {}/{}'.format(counter1, len(filelist1)))
+		if counter2 % 10 == 0:
+                   print('Processing File Sim2 {}/{}'.format(counter2, len(filelist2)))
+	        event_file0 = dataio.I3File(str(f_name0), "r")
+	        event_file1 = dataio.I3File(str(f_name1), "r")
+	        event_file2 = dataio.I3File(str(f_name2), "r")
+	        event_files = ([event_file0, event_file1, event_file2])
+	        print "Opening succesful"
+				
+		while not event_files:
+		    a= random.choice(event_files)
+       		    if a.more(): # ist sichergestellt dass nicht immer wieder am anfang begonnen wird
+			i=0, eventsToProcess=randint(1, 9)
+			for i < eventsToProcess:
+			    physics_event = a.pop_physics()
+			    process_event(physics_event)
+			    i +=1
+			else:
+		       	    event_files.remove(a)
+
+	else:
+	    for counter, f_name in enumerate(filelist):
+	        if counter % 10 == 0:
+	            print('Processing File {}/{}'.format(counter, len(filelist)))
+	        event_file = dataio.I3File(str(f_name), "r")
+	        print "Opening succesful"
+	        while event_file.more():
+		    physics_event = event_file.pop_physics()
+		    process_event(physics_event)
+########################################################################
+
                 reco_arr = []
                 for k, cur_var in enumerate(data_source):
                     if cur_var[0] == 'variable':
