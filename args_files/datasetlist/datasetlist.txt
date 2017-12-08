@@ -1,0 +1,3 @@
+/data/sim/IceCube/2012/filtered/level2/neutrino-generator/11374
+/data/sim/IceCube/2012/filtered/level2/neutrino-generator/11477
+/data/sim/IceCube/2012/filtered/level2/neutrino-generator/11981
