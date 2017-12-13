@@ -15,9 +15,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-'''
-small differences when processing data for the diffuse dataset
-'''
 
 from icecube import dataio, icetray
 from scipy.stats import moment, skew, kurtosis
@@ -282,24 +279,22 @@ if __name__ == "__main__":
     geo = dataio.I3File(geometry_file).pop_frame()['I3Geometry'].omgeo
 
     input_shape_par = dataset_configparser.get('Basics', 'input_shape')
-    if input_shape_par != "auto":
-        input_shape = eval(input_shape_par)
-        grid, DOM_list = make_grid_dict(input_shape, geo)
-    else:
-        input_shape = [12, 11, 61]
-        grid, DOM_list = make_autoHexGrid(geo)
+
+    input_shape = [12, 11, 61]
+    grid, DOM_List = make_autoHexGrid(geo)
 
     # Create HDF5 File ##########
 
     if not os.path.exists(outfolder):
         os.makedirs(outfolder)
 
-    if 'filelist' in args.keys():
+    if args['filelist'] is not None :
         filelist = pickle.load(open(args['filelist'], 'r'))
         outfile = args['filelist'].replace('.pickle', '.h5')
-    elif 'files' in args.keys():
+    elif args['files'] is not None:
         filelist = args['files']
-        outfile = filelist[0].replace('.i3.bz2', '.h5')
+        tmp = filelist[0].replace('.i3.bz2', '.h5')
+        outfile = outfolder+"/"+tmp.split("/")[-1] 
     else:
         raise Exception('No input files given')
 
@@ -309,42 +304,18 @@ if __name__ == "__main__":
     dtype, data_source = read_variables(dataset_configparser)
     dtype_len = len(dtype)
     FILTERS = tables.Filters(complib='zlib', complevel=9)
+    N_SLICES = 24
+    T_MAX = 6000 # this cuts out some late pulses. But do we want/need them?
+    time_bins = np.linspace(0, T_MAX, N_SLICES+1) ##try around with logspace?
+                                                #More resolution for early pulses!
+    print("Time-bins used for dicrete time-steps", time_bins)
     with tables.open_file(
         outfile, mode="w", title="Events for training the NN",
             filters=FILTERS) as h5file:
-
         charge = h5file.create_earray(
             h5file.root, 'charge', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Sum(Charges per Dom)")
-        time_first = h5file.create_earray(
-            h5file.root, 'time', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Times of the first pulse")
-        time_spread = h5file.create_earray(
-            h5file.root, 'time_spread', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Time delay between first and last pulse")
-        charge_first = h5file.create_earray(
-            h5file.root, 'first_charge', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="amplitude of the first charge")
-        av_time_charges = h5file.create_earray(
-            h5file.root, 'av_time_charges', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Weighted time average (charges)")
-        charge_100ns = h5file.create_earray(
-            h5file.root, 'charge_100ns', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Integrated charge in the first 100 ns")
-        time_quartercharge = h5file.create_earray(
-            h5file.root, 'time_quartercharge', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title=" Time where quarter of the total charge was detected ")
-        time_kurtosis = h5file.create_earray(
-            h5file.root, 'time_kurtosis', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="kurtosis of the time distr. of the pulses")
+            (0, N_SLICES, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="Sum of charges per Dom per time-interval")
         reco_vals = tables.Table(h5file.root, 'reco_vals',
                                  description=dtype)
         h5file.root._v_attrs.shape = input_shape
@@ -391,80 +362,35 @@ if __name__ == "__main__":
                 if not len(reco_arr) == dtype_len:
                     continue
                 charge_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                time_first_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                time_spread_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                charge_first_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                av_time_charges_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                charge_100ns_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                time_quartercharge_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                time_kurtosis_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-
-                ###############################################
+                    (1, N_SLICES, input_shape[0], input_shape[1], input_shape[2], 1))
+                 ###############################################
                 pulses = physics_event[pulsemap_key].apply(physics_event)
-                final_dict = dict()
+                #times = []
+                #for omkey in pulses.keys():
+                #    for p in pulses[omkey]:
+                #        times.append(p.time)
+                #times_20pc = np.percentile(times,20)
+                times_min = physics_event["SPEFit2TimeSplit1"].time #np.amin(times)
+
+                #shift all times to the 20pc quantile and truncate at +1000ns
+                #This could help to isolate the actual event
                 for omkey in pulses.keys():
-                    charges = np.array([p.charge for p in pulses[omkey][:]])
-                    times = np.array([p.time for p in pulses[omkey][:]])
-                    #times_shifted = times-np.amin(times)
-                    widths = np.array([p.width for p in pulses[omkey][:]])
-                    final_dict[(omkey.string, omkey.om)] = \
-                        (np.sum(charges),
-                         np.amin(times),
-                         np.amax(times) - np.amin(times),
-                         charges[np.argmin(times)],\
-                         np.average(times, weights=charges),\
-                         kurtosis(times),
-                         np.amin(times[np.where(np.cumsum(charges)>=(np.sum(charges)/4.))]),
-                         np.sum(charges[np.where(times<=(np.amin(times)+100))]))
+                    if (omkey.string, omkey.om) not in DOM_List:
+                        continue
+                    charges = np.zeros(N_SLICES+1)
+                    for p in pulses[omkey]:
+                        t_bin = np.digitize([p.time-times_min], time_bins)-1
+                        charges[t_bin] += p.charge
 
-                for dom in DOM_list:
-                    gpos = grid[dom]
-                    if dom in final_dict:
-                        charge_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
-                            final_dict[dom][0]
-                        charge_first_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
-                            final_dict[dom][3]
-                        time_spread_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
-                            final_dict[dom][2]
-                        time_first_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                final_dict[dom][1]
-                        av_time_charges_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                final_dict[dom][4]
-                        time_kurtosis_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                final_dict[dom][5]
-                        time_quartercharge_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                final_dict[dom][6]
-                        charge_100ns_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                final_dict[dom][7]
-
+                    gpos = grid[(omkey.string, omkey.om)]
+                    for t_stamp, ch in enumerate(charges[:-1]):
+                        charge_arr[0][t_stamp, gpos[0]][gpos[1]][gpos[2]] = ch
 
                 charge.append(np.array(charge_arr))
-                charge_first.append(np.array(charge_first_arr))
-                time_spread.append(np.array(time_spread_arr))
-                time_first.append(np.array(time_first_arr))
-                av_time_charges.append(av_time_charges_arr)
-                time_kurtosis.append(time_kurtosis_arr)
-                charge_100ns.append(charge_100ns_arr)
-                time_quartercharge.append(time_quartercharge_arr)
                 reco_vals.append(np.array(reco_arr))
                 j += 1
 
             charge.flush()
-            charge_first.flush()
-            time_spread.flush()
-            time_first.flush()
-            av_time_charges.flush()
-            time_kurtosis.flush()
-            charge_100ns.flush()
-            time_quartercharge.flush()
             reco_vals.flush()
         print('###### Run Summary ###########')
         print('Processed: {} Frames \n Skipped {} \
