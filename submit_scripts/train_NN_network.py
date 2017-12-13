@@ -132,7 +132,7 @@ elif workload_manager == 'bsub':
                             thisfolder,\
                             arguments,\
                             apply_test = args["apply_test"],\
-                            request_cpus=12,
+                            request_cpus=22,
                             cfg_file = args["main_config"],
                             save_path = save_path)
 
