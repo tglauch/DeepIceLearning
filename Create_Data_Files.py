@@ -32,24 +32,24 @@ import cPickle as pickle
 import random
 
 def parseArguments():
-	parser = argparse.ArgumentParser()
-	parser.add_argument(
-		"--dataset_config",
-		help="main config file, user-specific",
-		type=str, default='default.cfg')
-	parser.add_argument(
-		"--files",
-		help="files to be processed",
-		type=str, nargs="+", required=False)
-	parser.add_argument(
-		"--filelist",
-		help="Path to a filelist to be processed",
-		type=str, nargs="+", required=False)
-	parser.add_argument(
-		"--version",
-		action="version", version='%(prog)s - Version 1.0')
-	args = parser.parse_args()
-	return args
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--dataset_config",
+        help="main config file, user-specific",
+        type=str, default='default.cfg')
+    parser.add_argument(
+        "--files",
+        help="files to be processed",
+        type=str, nargs="+", required=False)
+    parser.add_argument(
+        "--filelist",
+        help="Path to a filelist to be processed",
+        type=str, nargs="+", required=False)
+    parser.add_argument(
+        "--version",
+        action="version", version='%(prog)s - Version 1.0')
+    args = parser.parse_args()
+    return args
 
 
 args = parseArguments().__dict__
@@ -67,8 +67,8 @@ if len(args['filelist']) != int(dataset_configparser.get('Basics', 'amountoffile
 # File paths #########
 basepath= []
 for i in xrange(int(dataset_configparser.get('Basics', 'amountoffiles'))):
-	a = "MC_path" + str(i)
-	basepath.append(str(dataset_configparser.get('Basics', a)))
+    a = "MC_path" + str(i)
+    basepath.append(str(dataset_configparser.get('Basics', a)))
 geometry_file = str(dataset_configparser.get('Basics', 'geometry_file'))
 outfolder = str(dataset_configparser.get('Basics', 'out_folder'))
 pulsemap_key = str(dataset_configparser.get('Basics', 'PulseSeriesMap'))
@@ -256,335 +256,291 @@ def make_autoHexGrid(geometry):
 
 
 def analyze_grid(grid):
-	"""
-	if you want to see which string/om the bins contain
-	"""
-	dims = []
-	for dim in range(3):
-		for index in range(input_shape[dim]):
-			strings = set()
-			dims.append(list())
-			for k, v in grid.items():
-				if v[dim] == index:
-					if dim == 2:
-						strings.add(k[1])  # print om
-					else:
-						strings.add(k[0])  # print string
-			dims[dim].append(strings)
-	for i, c in enumerate("xyz"):
-		print c
-		for index, strings in enumerate(dims[i]):
-			print index, strings
-
-def process_event(physics_event, reco_arr):
-	charge_arr = np.zeros(
-		(1, input_shape[0], input_shape[1], input_shape[2], 1))
-	time_first_arr = np.zeros(
-		(1, input_shape[0], input_shape[1], input_shape[2], 1))
-	time_spread_arr = np.zeros(
-		(1, input_shape[0], input_shape[1], input_shape[2], 1))
-	charge_first_arr = np.zeros(
-		(1, input_shape[0], input_shape[1], input_shape[2], 1))
-	charge_first_arr = np.zeros(
-		(1, input_shape[0], input_shape[1], input_shape[2], 1))
-	av_charge_widths_arr = np.zeros(
-		(1, input_shape[0], input_shape[1], input_shape[2], 1))
-	av_time_charges_arr = np.zeros(
-		(1, input_shape[0], input_shape[1], input_shape[2], 1))
-	num_pulses_arr = np.zeros(
-		(1, input_shape[0], input_shape[1], input_shape[2], 1))
-	time_moment_2_arr = np.zeros(
-		(1, input_shape[0], input_shape[1], input_shape[2], 1))
-	time_kurtosis_arr = np.zeros(
-		(1, input_shape[0], input_shape[1], input_shape[2], 1))
-
-	###############################################
-	pulses = physics_event[pulsemap_key].apply(physics_event)
-	final_dict = dict()
-	for omkey in pulses.keys():
-		charges = np.array([p.charge for p in pulses[omkey][:]])
-		times = np.array([p.time for p in pulses[omkey][:]])
-		#times_shifted = times-np.amin(times)
-		widths = np.array([p.width for p in pulses[omkey][:]])
-		final_dict[(omkey.string, omkey.om)] = \
-			(np.sum(charges),
-			 np.amin(times),
-			 np.amax(times) - np.amin(times),
-			 charges[0],\
-			 np.average(charges,weights=1./widths),\
-			 np.average(times, weights=charges),\
-			 len(charges),\
-			 moment(times, moment=2),\
-			 skew(times)
-			 )
-	for dom in DOM_list:
-		gpos = grid[dom]
-		if dom in final_dict:
-			charge_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
-				final_dict[dom][0]
-			charge_first_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
-				final_dict[dom][3]
-			time_spread_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
-				final_dict[dom][2]
-			time_first_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-					final_dict[dom][1]
-			av_charge_widths_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-					final_dict[dom][4]
-			av_time_charges_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-					final_dict[dom][5]
-			num_pulses_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-					final_dict[dom][6]
-			time_moment_2_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-					final_dict[dom][7]
-			time_kurtosis_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-					final_dict[dom][8] 
-
-	charge.append(np.array(charge_arr))
-	charge_first.append(np.array(charge_first_arr))
-	time_spread.append(np.array(time_spread_arr))
-	time_first.append(np.array(time_first_arr))
-	av_charge_widths.append(av_charge_widths_arr)
-	av_time_charges.append(av_time_charges_arr)
-	num_pulses.append(num_pulses_arr)
-	time_moment_2.append(time_moment_2_arr)
-	time_kurtosis.append(time_kurtosis_arr)
-
-	reco_vals.append(np.array(reco_arr))
-	j += 1 
+    """
+    if you want to see which string/om the bins contain
+    """
+    dims = []
+    for dim in range(3):
+        for index in range(input_shape[dim]):
+            strings = set()
+            dims.append(list())
+            for k, v in grid.items():
+                if v[dim] == index:
+                    if dim == 2:
+                        strings.add(k[1])  # print om
+                    else:
+                        strings.add(k[0])  # print string
+            dims[dim].append(strings)
+    for i, c in enumerate("xyz"):
+        print c
+        for index, strings in enumerate(dims[i]):
+            print index, strings
 
 
 if __name__ == "__main__":
 
-	# Raw print arguments
-	print"\n ############################################"
-	print("You are running the script with arguments: ")
-	for a in args.keys():
-		print(str(a) + ": " + str(args[a]))
-	print"############################################\n "
-	
-	geo = dataio.I3File(geometry_file).pop_frame()['I3Geometry'].omgeo
-	
-	input_shape_par = dataset_configparser.get('Basics', 'input_shape')
-	if input_shape_par != "auto":
-		input_shape = eval(input_shape_par)
-		grid, DOM_list = make_grid_dict(input_shape, geo)
-	else:
-		input_shape = [12, 11, 61]
-		grid, DOM_list = make_autoHexGrid(geo)
-	
-	# Create HDF5 File ##########
-	print"\n ###########################################################"
-	print("TEST : ")
-	print args['filelist'][1]
-	print"############################################################\n "
+    # Raw print arguments
+    print"\n ############################################"
+    print("You are running the script with arguments: ")
+    for a in args.keys():
+        print(str(a) + ": " + str(args[a]))
+    print"############################################\n "
+    
+    geo = dataio.I3File(geometry_file).pop_frame()['I3Geometry'].omgeo
+    
+    input_shape_par = dataset_configparser.get('Basics', 'input_shape')
+    if input_shape_par != "auto":
+        input_shape = eval(input_shape_par)
+        grid, DOM_list = make_grid_dict(input_shape, geo)
+    else:
+        input_shape = [12, 11, 61]
+        grid, DOM_list = make_autoHexGrid(geo)
+    
+    # Create HDF5 File ##########
+    if not os.path.exists(outfolder):
+        os.makedirs(outfolder)
+    
+    if int(dataset_configparser.get('Basics', 'amountoffiles')) > 1:
+        filelist=[]
+        for i in xrange(int(dataset_configparser.get('Basics', 'amountoffiles'))):
+            a=[]
+            flist = open(args['filelist'][i], 'r')
+            for line in flist:
+                a.append(line.rstrip())
+            pickle.dump( a, open( "saveee.p", "wb" ) )
+            a = pickle.load( open( "saveee.p", "rb" ) )
+            filelist.append(a)
+        outfile = str(dataset_configparser.get('Basics', 'output_file') + ".h5")
+    
+    elif args['filelist'] != None:
+        filelist=[]
+        flist = open(args['filelist'], 'r')
+        for line in flist:
+            filelist.append(line.rstrip())
+        pickle.dump( filelist, open( "save.p", "wb" ) )
+        filelist = pickle.load( open( "save.p", "rb" ) )
+        outfile = args['filelist'].replace('.pickle', '.h5')
+    
+    elif args['files'] != None:
+        filelist = args['files']
+        outfile = filelist[0].replace('.i3.bz2', '.h5')
+    else:
+        raise Exception('No input files given')
+    
+    if os.path.exists(outfile):
+        os.remove(outfile)
+    
+    dtype, data_source = read_variables(dataset_configparser)
+    dtype_len = len(dtype)
+    FILTERS = tables.Filters(complib='zlib', complevel=9)
+    with tables.open_file(
+        outfile, mode="w", title="Events for training the NN",
+            filters=FILTERS) as h5file:
+    
+        charge = h5file.create_earray(
+            h5file.root, 'charge', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="Sum(Charges per Dom)")
+        time_first = h5file.create_earray(
+            h5file.root, 'time', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="Times of the first pulse")
+        time_spread = h5file.create_earray(
+            h5file.root, 'time_spread', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="Time delay between first and last pulse")
+        charge_first = h5file.create_earray(
+            h5file.root, 'first_charge', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="amplitude of the first charge")
+        av_charge_widths = h5file.create_earray(
+            h5file.root, 'av_charge_width', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="Weighted charge average (1./widths)")
+        av_time_charges = h5file.create_earray(
+            h5file.root, 'av_time_charges', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="Weighted time average (charges)")
+        num_pulses = h5file.create_earray(
+            h5file.root, 'num_pulses', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="Number of pulses for this DOM")
+        time_moment_2 = h5file.create_earray(
+            h5file.root, 'time_moment_2', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="Second central moment of time distr. of the pulses")
+        #time_skew = h5file.create_earray(
+        #    h5file.root, 'time_skew', tables.Float64Atom(),
+        #    (0, input_shape[0], input_shape[1], input_shape[2], 1),
+        #    title="skew of the time distr. of the pulses")
+        time_kurtosis = h5file.create_earray(
+            h5file.root, 'time_kurtosis', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="kurtosis of the time distr. of the pulses")
+        reco_vals = tables.Table(h5file.root, 'reco_vals',
+                                 description=dtype)
+        h5file.root._v_attrs.shape = input_shape
+        print('Created a new HDF File with the Settings:')
+        print(h5file)
+        print(h5file.root)
+    
+        np.save('grid.npy', grid)
+        TotalEventCounter = 0
+        skipped_frames = 0
+        framesNotNeutrinoPrimary = 0
+        statusInFilelist=0
+        event_files = []
+        while statusInFilelist < int(dataset_configparser.get('Basics', 'LengthFilelist')):
+            counterSim=0
+            while counterSim < int(dataset_configparser.get('Basics', 'amountoffiles')):
+                event_files.append(dataio.I3File(filelist[counterSim][statusInFilelist], "r"))
+                counterSim = counterSim+1
+            statusInFilelist += 1
+            
+            #while not len(event_files) == 0:
+            jj=0
+            while jj < 15:  # zum testen
+                print jj
+                a=random.choice(event_files)
+                if a.more(): 
+                    EventCounter=0
+                    eventsToProcess=random.randint(1, 4)
+                    while EventCounter < eventsToProcess:
+                        physics_event = a.pop_physics()
+                        ParticelList = [12, 14, 16]
+                        if dataset_configparser.get('Basics', 'onlyneutrinoasprimary') == "True":
+                            if abs(int(eval('physics_event{}'.format(dataset_configparser.get('firstParticle', 'variable'))))) not in ParticelList:
+                                EventCounter +=1
+                                framesNotNeutrinoPrimary +=1
+                                break
+                        reco_arr = []
+                        for k, cur_var in enumerate(data_source):
+                            if cur_var[0] == 'variable':
+                                try:
+                                    cur_value = eval(
+                                        'physics_event{}'.format(cur_var[1]))
+                                except Exception:
+                                    skipped_frames += 1
+                                    print('Attribute Error occured :{}'.
+                                          format(cur_var[1]))
+                                    EventCounter +=1
+                                    break
+                            if cur_var[0] == 'function':
+                                try:
+                                    cur_value = eval(
+                                        cur_var[1].replace('(x)', '(physics_event)'))
+                                except Exception:
+                                    skipped_frames += 1
+                                    print(
+                                        'The given function is not implemented')
+                                    EventCounter +=1
+                                    break
+                            if cur_value < cur_var[2][0] or cur_value > cur_var[2][1]:
+                                EventCounter +=1
+                                break
+                            else:
+                                reco_arr.append(cur_value)
+                        if not len(reco_arr) == dtype_len:
+                            continue
+                        charge_arr = np.zeros(
+                            (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                        time_first_arr = np.zeros(
+                            (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                        time_spread_arr = np.zeros(
+                            (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                        charge_first_arr = np.zeros(
+                            (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                        charge_first_arr = np.zeros(
+                            (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                        av_charge_widths_arr = np.zeros(
+                            (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                        av_time_charges_arr = np.zeros(
+                            (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                        num_pulses_arr = np.zeros(
+                            (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                        time_moment_2_arr = np.zeros(
+                            (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                        time_kurtosis_arr = np.zeros(
+                            (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                    
+                        ###############################################
+                        pulses = physics_event[pulsemap_key].apply(physics_event)
+                        final_dict = dict()
+                        for omkey in pulses.keys():
+                            charges = np.array([p.charge for p in pulses[omkey][:]])
+                            times = np.array([p.time for p in pulses[omkey][:]])
+                            #times_shifted = times-np.amin(times)
+                            widths = np.array([p.width for p in pulses[omkey][:]])
+                            final_dict[(omkey.string, omkey.om)] = \
+                                (np.sum(charges),
+                                 np.amin(times),
+                                 np.amax(times) - np.amin(times),
+                                 charges[0],\
+                                 np.average(charges,weights=1./widths),\
+                                 np.average(times, weights=charges),\
+                                 len(charges),\
+                                 moment(times, moment=2),\
+                                 skew(times)
+                                 )
+                        for dom in DOM_list:
+                            gpos = grid[dom]
+                            if dom in final_dict:
+                                charge_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
+                                    final_dict[dom][0]
+                                charge_first_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
+                                    final_dict[dom][3]
+                                time_spread_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
+                                    final_dict[dom][2]
+                                time_first_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                        final_dict[dom][1]
+                                av_charge_widths_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                        final_dict[dom][4]
+                                av_time_charges_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                        final_dict[dom][5]
+                                num_pulses_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                        final_dict[dom][6]
+                                time_moment_2_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                        final_dict[dom][7]
+                                time_kurtosis_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                        final_dict[dom][8] 
 
-	if not os.path.exists(outfolder):
-		os.makedirs(outfolder)
-	
+                        charge.append(np.array(charge_arr))
+                        charge_first.append(np.array(charge_first_arr))
+                        time_spread.append(np.array(time_spread_arr))
+                        time_first.append(np.array(time_first_arr))
+                        av_charge_widths.append(av_charge_widths_arr)
+                        av_time_charges.append(av_time_charges_arr)
+                        num_pulses.append(num_pulses_arr)
+                        time_moment_2.append(time_moment_2_arr)
+                        time_kurtosis.append(time_kurtosis_arr)
+                        
+                        reco_vals.append(np.array(reco_arr))
+                        EventCounter +=1
+                    jj +=1
+                    TotalEventCounter = TotalEventCounter + EventCounter
+                elif len(event_files) == 0: 
+                    continue
+                else:
+                    event_files.remove(a)
+                    #print a
+                    #print "REMOVVVVVVVVVVVVVVE"
 
-	
-	if int(dataset_configparser.get('Basics', 'amountoffiles')) > 1:
-		for i in xrange(int(dataset_configparser.get('Basics', 'amountoffiles'))):
-			filelist0=[]
-			filelist1=[]
-			filelist2=[]
-			flist0 = open(args['filelist'][0], 'r')
-			flist1 = open(args['filelist'][1], 'r')
-			flist2 = open(args['filelist'][2], 'r')
-			for line in flist0:
-				filelist0.append(line.rstrip())
-			pickle.dump( filelist0, open( "save0.p", "wb" ) )
-			filelist0 = pickle.load( open( "save0.p", "rb" ) )
-		#filelist0 = pickle.load(open(args['filelist0'], 'r'))
-		#filelist1 = pickle.load(open(args['filelist1'], 'r'))
-		#filelist2 = pickle.load(open(args['filelist2'], 'r'))
-		outfile = str(dataset_configparser.get('Basics', 'output_file')).h5
-		
-	elif args['filelist'] != None:
-		filelist=[]
-		flist = open(args['filelist'], 'r')
-		for line in flist:
-			filelist.append(line.rstrip())
-		pickle.dump( filelist, open( "save.p", "wb" ) )
-		filelist = pickle.load( open( "save.p", "rb" ) )
-		outfile = args['filelist'].replace('.pickle', '.h5')
-		
-	elif args['files'] != None:
-		filelist = args['files']
-		outfile = filelist[0].replace('.i3.bz2', '.h5')
-	else:
-		raise Exception('No input files given')
+        charge.flush()
+        time_first.flush()
+        charge_first.flush()
+        time_spread.flush()
+        av_charge_widths.flush()
+        av_time_charges.flush()
+        num_pulses.flush()
+        time_moment_2.flush()
+        time_kurtosis.flush()
 
-	if os.path.exists(outfile):
-		os.remove(outfile)
-
-	dtype, data_source = read_variables(dataset_configparser)
-	dtype_len = len(dtype)
-	FILTERS = tables.Filters(complib='zlib', complevel=9)
-	with tables.open_file(
-		outfile, mode="w", title="Events for training the NN",
-			filters=FILTERS) as h5file:
-
-		charge = h5file.create_earray(
-			h5file.root, 'charge', tables.Float64Atom(),
-			(0, input_shape[0], input_shape[1], input_shape[2], 1),
-			title="Sum(Charges per Dom)")
-		time_first = h5file.create_earray(
-			h5file.root, 'time', tables.Float64Atom(),
-			(0, input_shape[0], input_shape[1], input_shape[2], 1),
-			title="Times of the first pulse")
-		time_spread = h5file.create_earray(
-			h5file.root, 'time_spread', tables.Float64Atom(),
-			(0, input_shape[0], input_shape[1], input_shape[2], 1),
-			title="Time delay between first and last pulse")
-		charge_first = h5file.create_earray(
-			h5file.root, 'first_charge', tables.Float64Atom(),
-			(0, input_shape[0], input_shape[1], input_shape[2], 1),
-			title="amplitude of the first charge")
-		av_charge_widths = h5file.create_earray(
-			h5file.root, 'av_charge_width', tables.Float64Atom(),
-			(0, input_shape[0], input_shape[1], input_shape[2], 1),
-			title="Weighted charge average (1./widths)")
-		av_time_charges = h5file.create_earray(
-			h5file.root, 'av_time_charges', tables.Float64Atom(),
-			(0, input_shape[0], input_shape[1], input_shape[2], 1),
-			title="Weighted time average (charges)")
-		num_pulses = h5file.create_earray(
-			h5file.root, 'num_pulses', tables.Float64Atom(),
-			(0, input_shape[0], input_shape[1], input_shape[2], 1),
-			title="Number of pulses for this DOM")
-		time_moment_2 = h5file.create_earray(
-			h5file.root, 'time_moment_2', tables.Float64Atom(),
-			(0, input_shape[0], input_shape[1], input_shape[2], 1),
-			title="Second central moment of time distr. of the pulses")
-		#time_skew = h5file.create_earray(
-		#    h5file.root, 'time_skew', tables.Float64Atom(),
-		#    (0, input_shape[0], input_shape[1], input_shape[2], 1),
-		#    title="skew of the time distr. of the pulses")
-		time_kurtosis = h5file.create_earray(
-			h5file.root, 'time_kurtosis', tables.Float64Atom(),
-			(0, input_shape[0], input_shape[1], input_shape[2], 1),
-			title="kurtosis of the time distr. of the pulses")
-		reco_vals = tables.Table(h5file.root, 'reco_vals',
-								 description=dtype)
-		h5file.root._v_attrs.shape = input_shape
-		print('Created a new HDF File with the Settings:')
-		print(h5file)
-
-		np.save('grid.npy', grid)
-		j = 0
-		skipped_frames = 0
-
-	if int(dataset_configparser.get('Basics', 'amountoffiles')) > 1:
-	    for counter0, f_name0 in enumerate(filelist0) or counter1, f_name1 in enumerate(filelist1) or counter2, f_name2 in enumerate(filelist2):  
-			if counter0 % 10 == 0:
-		            print('Processing File Sim0 {}/{}'.format(counter0, len(filelist0)))
-			if counter1 % 10 == 0:
-	                    print('Processing File Sim1 {}/{}'.format(counter1, len(filelist1)))
-			if counter2 % 10 == 0:
-	                   print('Processing File Sim2 {}/{}'.format(counter2, len(filelist2)))
-		        event_file0 = dataio.I3File(str(f_name0), "r")
-		        event_file1 = dataio.I3File(str(f_name1), "r")
-		        event_file2 = dataio.I3File(str(f_name2), "r")
-		        event_files = ([event_file0, event_file1, event_file2])
-		        print "Opening succesful"
-				
-			#while not event_files:
-			j=0
-			while j < 15:  # zum testen
-				a=random.choice(event_files)
-				if a.more(): 
-					i=0
-					eventsToProcess=randint(1, 4)
-					while i < eventsToProcess:
-						physics_event = a.pop_physics()
-						reco_arr = []
-						for k, cur_var in enumerate(data_source):
-							if cur_var[0] == 'variable':
-								try:
-									cur_value = eval(
-										'physics_event{}'.format(cur_var[1]))
-								except Exception:
-									skipped_frames += 1
-									print('Attribute Error occured :{}'.
-										  format(cur_var[1]))
-									break
-
-							if cur_var[0] == 'function':
-								try:
-									cur_value = eval(
-										cur_var[1].replace('(x)', '(physics_event)'))
-								except Exception:
-									skipped_frames += 1
-									print(
-										'The given function is not implemented')
-									break
-					
-							if cur_value < cur_var[2][0] or cur_value > cur_var[2][1]:
-								break
-							else:
-								reco_arr.append(cur_value)
-					
-						if not len(reco_arr) == dtype_len:
-							continue
-						process_event(physics_event)
-						i +=1
-						j +=1
-				else:
-					event_files.remove(a) ### unsicher
-
-	else:
-	    for counter, f_name in enumerate(filelist):
-	        if counter % 10 == 0:
-	            print('Processing File {}/{}'.format(counter, len(filelist)))
-	        event_file = dataio.I3File(str(f_name), "r")
-	        print "Opening succesful"
-	        while event_file.more():
-				physics_event = event_file.pop_physics()
-				for k, cur_var in enumerate(data_source):
-					if cur_var[0] == 'variable':
-						try:
-							cur_value = eval(
-								'physics_event{}'.format(cur_var[1]))
-						except Exception:
-							skipped_frames += 1
-							print('Attribute Error occured :{}'.
-								  format(cur_var[1]))
-							break
-			
-					if cur_var[0] == 'function':
-						try:
-							cur_value = eval(
-								cur_var[1].replace('(x)', '(physics_event)'))
-						except Exception:
-							skipped_frames += 1
-							print(
-								'The given function is not implemented')
-							break
-			
-					if cur_value < cur_var[2][0] or cur_value > cur_var[2][1]:
-						break
-					else:
-						reco_arr.append(cur_value)
-			
-				if not len(reco_arr) == dtype_len:
-					continue
-				process_event(physics_event)
-
-		charge.flush()
-		time_first.flush()
-		charge_first.flush()
-		time_spread.flush()
-		av_charge_widths.flush()
-		av_time_charges.flush()
-		num_pulses.flush()
-		time_moment_2.flush()
-		time_kurtosis.flush()
-
-		reco_vals.flush()
-		print('###### Run Summary ###########')
-		print('Processed: {} Frames \n Skipped {} \
-			Frames with Attribute Error'.format(j, skipped_frames))
-		h5file.root._v_attrs.len = j
-		h5file.close()
-		filelist.close()
+        print reco_vals
+        reco_vals.flush()
+        print"\n ###########################################################"
+        print('###### Run Summary ###########')
+        print('Processed: {} Frames \n Skipped {} \ Frames with Attribute Error \n No Neutrino as Primary {}'.format(TotalEventCounter, skipped_frames, framesNotNeutrinoPrimary))
+        print"############################################################\n " 
+        h5file.root._v_attrs.len = TotalEventCounter
+    h5file.close()
+    

@@ -1,5 +1,5 @@
-/data/sim/IceCube/2012/filtered/level2/neutrino-generator/11477/00000-00999/clsim-base-4.0.3.0.99_eff/Level2_IC86.2012_nugen_nutau.011477.000001.clsim-base-4.0.3.0.99_eff.i3.bz2
-/data/sim/IceCube/2012/filtered/level2/neutrino-generator/11477/00000-00999/clsim-base-4.0.3.0.99_eff/Level2_IC86.2012_nugen_nutau.011477.000002.clsim-base-4.0.3.0.99_eff.i3.bz2
-/data/sim/IceCube/2012/filtered/level2/neutrino-generator/11477/00000-00999/clsim-base-4.0.3.0.99_eff/Level2_IC86.2012_nugen_nutau.011477.000003.clsim-base-4.0.3.0.99_eff.i3.bz2
-/data/sim/IceCube/2012/filtered/level2/neutrino-generator/11477/00000-00999/clsim-base-4.0.3.0.99_eff/Level2_IC86.2012_nugen_nutau.011477.000004.clsim-base-4.0.3.0.99_eff.i3.bz2
-/data/sim/IceCube/2012/filtered/level2/neutrino-generator/11477/00000-00999/clsim-base-4.0.3.0.99_eff/Level2_IC86.2012_nugen_nutau.011477.000005.clsim-base-4.0.3.0.99_eff.i3.bz2
+/data/sim/IceCube/2012/filtered/level2/neutrino-generator/11374/00000-00999/clsim-base-4.0.3.0.99_eff/Level2_IC86.2012_nugen_numu.011374.000221.clsim-base-4.0.3.0.99_eff.i3.bz2
+/data/sim/IceCube/2012/filtered/level2/neutrino-generator/11374/00000-00999/clsim-base-4.0.3.0.99_eff/Level2_IC86.2012_nugen_numu.011374.000222.clsim-base-4.0.3.0.99_eff.i3.bz2
+/data/sim/IceCube/2012/filtered/level2/neutrino-generator/11374/00000-00999/clsim-base-4.0.3.0.99_eff/Level2_IC86.2012_nugen_numu.011374.000223.clsim-base-4.0.3.0.99_eff.i3.bz2
+/data/sim/IceCube/2012/filtered/level2/neutrino-generator/11374/00000-00999/clsim-base-4.0.3.0.99_eff/Level2_IC86.2012_nugen_numu.011374.000224.clsim-base-4.0.3.0.99_eff.i3.bz2
+/data/sim/IceCube/2012/filtered/level2/neutrino-generator/11374/00000-00999/clsim-base-4.0.3.0.99_eff/Level2_IC86.2012_nugen_numu.011374.000225.clsim-base-4.0.3.0.99_eff.i3.bz2
