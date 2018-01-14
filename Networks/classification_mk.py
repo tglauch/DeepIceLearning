@@ -28,8 +28,8 @@ y_train = keras.utils.to_categorical(y_train, num_classes)
 y_test = keras.utils.to_categorical(y_test, num_classes)
 '''
 # *Settings*
-# define inputs for each branch
 
+# define inputs for each branch
 inputs = OrderedDict()
 
 inputs["Branch1"] = {"variables": ["charge"],
@@ -43,16 +43,14 @@ inputs["Branch3"] = {"variables": ["charge"],
 
 
 # define outputs for each branch
-
 outputs = OrderedDict()
-outputs["Out1"] = {"variables": ["energy"],
-                   "transformations": [np.log10]}
+outputs["Out1"] = {"variables": ["classificationTag"],
+                   "transformations": [tr.oneHotEncode]}
 
-reference_outputs = ['muex',\
-                     'energy_splinempe_neutrino',\
-                     'energy_splinempe_muon']
-                     
-            #encoded = to_categorical(data)
+#reference_outputs = ['muex',\
+#                     'energy_splinempe_neutrino',\
+#                     'energy_splinempe_muon']
+
 # *Model*
 
 def model(input_shapes, output_shapes):
@@ -77,7 +75,7 @@ def model(input_shapes, output_shapes):
     #branch2
     input_b2 = Input(shape=input_shapes["Branch2"]["general"],
                      name = "Input-Branch2")
-    z2 = Conv3D(12, (3, 3, 5), padding="same", **kwargs)(input_b1)
+    z2 = Conv3D(12, (3, 3, 5), padding="same", **kwargs)(input_b2)
     z2 = MaxPooling3D(pool_size=(2, 2, 3))(z2)
     z2 = Conv3D(16, (2, 2, 4))(z2)
     z2 = Dropout(rate=0.2)(z2)
@@ -97,18 +95,19 @@ def model(input_shapes, output_shapes):
     zo = concatenate([z1, z2, input_b3])
     zo = Dense(312,\
               **kwargs)(zo)
-    zo = Dropout(rate=0.26)(zo)
+    zo = Dropout(rate=0.2)(zo)
     zo = BatchNormalization()(zo)
     zo = Dense(128, **kwargs)(zo)
     zo = Dropout(rate=0.2)(zo)
     zo = BatchNormalization()(zo)
     zo = Dense(64, **kwargs)(zo)
 
+
     # output
     output_layer1 = Dense(output_shapes["Out1"]["general"][0],\
-                          activation="elu",\
+                          activation="softmax",\
                           name="Target")(zo)
-    model = keras.models.Model(inputs=[input_b1, input_b2, input_b3, input_b4],\
+    model = keras.models.Model(inputs=[input_b1, input_b2, input_b3],\
                                outputs=[output_layer1])
     print(model.summary())
     return model

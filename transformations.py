@@ -75,3 +75,25 @@ def time_prepare(x):
     ret = (ret - time_np_arr_min) / (time_np_arr_max - time_np_arr_min)
     ret[ret == np.inf] = replace_with
     return ret
+
+def oneHotEncode(x):
+    """
+    This function one hot encodes the input
+    """
+    # define universe of possible input values
+    onehot_encoded = []
+    # universe has to defined depending on the problem, in this implementation integers are neccesary
+    universe = [1, 2, 3]
+    for i in len(universe):
+        if x == universe[i]:
+            value = 1
+        else:
+            value = 0
+        onehot_encoded.append(value)
+    return onehot_encoded
+
+
+
+
+
+

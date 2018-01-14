@@ -210,16 +210,24 @@ if __name__ == "__main__":
             while not len(event_files) == 0:
                 a=random.choice(event_files) 
                 EventCounter=0
+                ProbCount=0
                 eventsToProcess=random.randint(1, 4)
                 while EventCounter < eventsToProcess:
                     if a.more():
                         physics_event = a.pop_physics()
-                        ParticelList = [12, 14, 16]
-                        if dataset_configparser.get('Basics', 'onlyneutrinoasprimary') == "True":
-                            if abs(int(eval('physics_event{}'.format(dataset_configparser.get('firstParticle', 'variable'))))) not in ParticelList:
-                                EventCounter +=1
-                                framesNotNeutrinoPrimary +=1
-                                break
+                        try: 
+                            ParticelList = [12, 14, 16]
+                            if dataset_configparser.get('Basics', 'onlyneutrinoasprimary') == "True":
+                                if abs(int(eval('physics_event{}'.format(dataset_configparser.get('firstParticle', 'variable'))))) not in ParticelList:
+                                    EventCounter +=1
+                                    framesNotNeutrinoPrimary +=1
+                                    break
+                        except Exception:
+                            print "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+                            print "sdfafasdfasdf"
+                            print eval('physics_event{}'.format(dataset_configparser.get('firstParticle', 'variable')))
+                            raise Exception('The Check if particle is in particle list went wrong!!')
+                            ProbCount +=1
                         reco_arr = []
                         for k, cur_var in enumerate(data_source):
                             if cur_var[0] == 'variable':
@@ -340,6 +348,7 @@ if __name__ == "__main__":
         time_kurtosis.flush()
 
         print reco_vals
+        print "ProbCount: {}".format(ProbCount)
         reco_vals.flush()
         print"\n ###########################################################"
         print('###### Run Summary ###########')

@@ -26,10 +26,7 @@ import sys
 import numpy.lib.recfunctions as rfn
 
 # Function Definitions #####################
-
-
 def parseArguments():
-
     """Parse the command line arguments
 
     Returns:
@@ -78,8 +75,8 @@ def parseArguments():
     args = parser.parse_args()
     return args
 
-# Read config and load keras stuff #############
 
+# Read config and load keras stuff #############
 
 print('Running on Hostcomputer {}'.format(socket.gethostname()))
 args = parseArguments()
@@ -217,6 +214,8 @@ if __name__ == "__main__":
     test_inds = [(int(tot_len * (train_frac + valid_frac)), tot_len - 1)
                  for tot_len in file_len]
     print('Index ranges used for training: {}'.format(train_inds))
+    print('Index ranges used for validation: {}'.format(valid_inds))
+    print('Index ranges used for testing: {}'.format(test_inds))
 
     # create model (new implementation, functional API of Keras)
     base_model, inp_shapes, inp_trans, out_shapes, out_trans = \
