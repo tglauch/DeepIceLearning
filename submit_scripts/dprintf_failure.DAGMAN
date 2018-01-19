@@ -1,0 +1,3 @@
+dprintf() had a fatal error in pid 12179
+Error writing debug log
+ errno: 122 (Disk quota exceeded) euid: 27106, ruid: 27106

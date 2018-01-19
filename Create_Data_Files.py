@@ -199,142 +199,169 @@ if __name__ == "__main__":
         framesNotNeutrinoPrimary = 0
         statusInFilelist=0
         event_files = []
+        print "##################################"
+        print len(filelist[0])
+        print len(filelist[1])
+        print args['filelist']
+        print "##################################"
         while statusInFilelist < len(filelist[0]):
+            event_files = []
             counterSim=0
             while counterSim < len(args['filelist']):
-                event_files.append(dataio.I3File(filelist[counterSim][statusInFilelist], "r"))
-                counterSim = counterSim+1
+                try:
+                    event_files.append(dataio.I3File(filelist[counterSim][statusInFilelist], "r"))
+                    counterSim = counterSim+1
+                except Exception:
+                    statusInFilelist += 1       
+                    continue
             statusInFilelist += 1
-
             # shuffeling of the files
             while not len(event_files) == 0:
                 a=random.choice(event_files) 
                 EventCounter=0
                 ProbCount=0
                 eventsToProcess=random.randint(1, 4)
+                print "before while loop"
                 while EventCounter < eventsToProcess:
-                    if a.more():
-                        physics_event = a.pop_physics()
-                        try: 
+                    print "Begining of while loop"
+                    print "EventCounter: {}".format(EventCounter)
+                    ####################################################
+                    try: 
+                        if a.more():
+                            physics_event = a.pop_physics()
+                            print "Frame poped"
+                            #try to open the I3MCTree, if not possible skip frame
+                            try:
+                                ash = physics_event['I3MCTree']
+                                print "no problems with MCTree"
+                            except Exception:
+                                print "Point B"
+                                EventCounter +=1
+                                break
                             ParticelList = [12, 14, 16]
                             if dataset_configparser.get('Basics', 'onlyneutrinoasprimary') == "True":
                                 if abs(int(eval('physics_event{}'.format(dataset_configparser.get('firstParticle', 'variable'))))) not in ParticelList:
-                                    EventCounter +=1
-                                    framesNotNeutrinoPrimary +=1
-                                    break
-                        except Exception:
-                            print "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                            print "sdfafasdfasdf"
-                            print eval('physics_event{}'.format(dataset_configparser.get('firstParticle', 'variable')))
-                            raise Exception('The Check if particle is in particle list went wrong!!')
-                            ProbCount +=1
-                        reco_arr = []
-                        for k, cur_var in enumerate(data_source):
-                            if cur_var[0] == 'variable':
-                                try:
-                                    cur_value = eval(
-                                        'physics_event{}'.format(cur_var[1]))
-                                except Exception:
-                                    skipped_frames += 1
-                                    print('Attribute Error occured :{}'.
-                                          format(cur_var[1]))
-                                    EventCounter +=1
-                                    break
-                            if cur_var[0] == 'function':
-                                try:
-                                    cur_value = eval(
-                                        cur_var[1].replace('(x)', '(physics_event)'))
-                                except Exception:
-                                    skipped_frames += 1
-                                    print(
-                                        'The given function is not implemented')
+                                        print "Particle not in ParticleList"
+                                        EventCounter +=1
+                                        framesNotNeutrinoPrimary +=1
+                                        break
+                            reco_arr = []
+                            for k, cur_var in enumerate(data_source):
+                                if cur_var[0] == 'variable':
+                                    try:
+                                        cur_value = eval(
+                                            'physics_event{}'.format(cur_var[1]))
+                                    except Exception:
+                                        skipped_frames += 1
+                                        print('Attribute Error occured :{}'.
+                                              format(cur_var[1]))
+                                        EventCounter +=1
+                                        break
+                                if cur_var[0] == 'function':
+                                    try:
+                                        cur_value = eval(
+                                            cur_var[1].replace('(x)', '(physics_event)'))
+                                    except Exception:
+                                        skipped_frames += 1
+                                        print(
+                                            'The given function is not implemented')
+                                        EventCounter +=1
+                                        break
+                                if cur_value < cur_var[2][0] or cur_value > cur_var[2][1]:
                                     EventCounter +=1
                                     break
-                            if cur_value < cur_var[2][0] or cur_value > cur_var[2][1]:
-                                EventCounter +=1
-                                break
-                            else:
-                                reco_arr.append(cur_value)
-                        if not len(reco_arr) == dtype_len:
-                            continue
-                        charge_arr = np.zeros(
-                            (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                        time_first_arr = np.zeros(
-                            (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                        time_spread_arr = np.zeros(
-                            (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                        charge_first_arr = np.zeros(
-                            (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                        charge_first_arr = np.zeros(
-                            (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                        av_charge_widths_arr = np.zeros(
-                            (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                        av_time_charges_arr = np.zeros(
-                            (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                        num_pulses_arr = np.zeros(
-                            (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                        time_moment_2_arr = np.zeros(
-                            (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                        time_kurtosis_arr = np.zeros(
-                            (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                    
-                        pulses = physics_event[pulsemap_key].apply(physics_event)
-                        final_dict = dict()
-                        for omkey in pulses.keys():
-                            charges = np.array([p.charge for p in pulses[omkey][:]])
-                            times = np.array([p.time for p in pulses[omkey][:]])
-                            #times_shifted = times-np.amin(times)
-                            widths = np.array([p.width for p in pulses[omkey][:]])
-                            final_dict[(omkey.string, omkey.om)] = \
-                                (np.sum(charges),
-                                 np.amin(times),
-                                 np.amax(times) - np.amin(times),
-                                 charges[0],\
-                                 np.average(charges,weights=1./widths),\
-                                 np.average(times, weights=charges),\
-                                 len(charges),\
-                                 moment(times, moment=2),\
-                                 skew(times)
-                                 )
-                        for dom in DOM_list:
-                            gpos = grid[dom]
-                            if dom in final_dict:
-                                charge_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
-                                    final_dict[dom][0]
-                                charge_first_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
-                                    final_dict[dom][3]
-                                time_spread_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
-                                    final_dict[dom][2]
-                                time_first_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                        final_dict[dom][1]
-                                av_charge_widths_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                        final_dict[dom][4]
-                                av_time_charges_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                        final_dict[dom][5]
-                                num_pulses_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                        final_dict[dom][6]
-                                time_moment_2_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                        final_dict[dom][7]
-                                time_kurtosis_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                        final_dict[dom][8] 
-
-                        charge.append(np.array(charge_arr))
-                        charge_first.append(np.array(charge_first_arr))
-                        time_spread.append(np.array(time_spread_arr))
-                        time_first.append(np.array(time_first_arr))
-                        av_charge_widths.append(av_charge_widths_arr)
-                        av_time_charges.append(av_time_charges_arr)
-                        num_pulses.append(num_pulses_arr)
-                        time_moment_2.append(time_moment_2_arr)
-                        time_kurtosis.append(time_kurtosis_arr)
+                                else:
+                                    reco_arr.append(cur_value)
+                            print "Checkpoint A"
+                            if not len(reco_arr) == dtype_len:
+                                continue
+                            charge_arr = np.zeros(
+                                (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                            time_first_arr = np.zeros(
+                                (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                            time_spread_arr = np.zeros(
+                                (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                            charge_first_arr = np.zeros(
+                                (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                            charge_first_arr = np.zeros(
+                                (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                            av_charge_widths_arr = np.zeros(
+                                (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                            av_time_charges_arr = np.zeros(
+                                (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                            num_pulses_arr = np.zeros(
+                                (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                            time_moment_2_arr = np.zeros(
+                                (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                            time_kurtosis_arr = np.zeros(
+                                (1, input_shape[0], input_shape[1], input_shape[2], 1))
                         
-                        reco_vals.append(np.array(reco_arr))
+                            pulses = physics_event[pulsemap_key].apply(physics_event)
+                            final_dict = dict()
+                            for omkey in pulses.keys():
+                                charges = np.array([p.charge for p in pulses[omkey][:]])
+                                times = np.array([p.time for p in pulses[omkey][:]])
+                                #times_shifted = times-np.amin(times)
+                                widths = np.array([p.width for p in pulses[omkey][:]])
+                                final_dict[(omkey.string, omkey.om)] = \
+                                    (np.sum(charges),
+                                     np.amin(times),
+                                     np.amax(times) - np.amin(times),
+                                     charges[0],\
+                                     np.average(charges,weights=1./widths),\
+                                     np.average(times, weights=charges),\
+                                     len(charges),\
+                                     moment(times, moment=2),\
+                                     skew(times)
+                                     )
+                            print "Checkpoint B"
+                            for dom in DOM_list:
+                                gpos = grid[dom]
+                                if dom in final_dict:
+                                    charge_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
+                                        final_dict[dom][0]
+                                    charge_first_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
+                                        final_dict[dom][3]
+                                    time_spread_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
+                                        final_dict[dom][2]
+                                    time_first_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                            final_dict[dom][1]
+                                    av_charge_widths_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                            final_dict[dom][4]
+                                    av_time_charges_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                            final_dict[dom][5]
+                                    num_pulses_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                            final_dict[dom][6]
+                                    time_moment_2_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                                final_dict[dom][7]
+                                    time_kurtosis_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                                final_dict[dom][8] 
+        
+                                charge.append(np.array(charge_arr))
+                                charge_first.append(np.array(charge_first_arr))
+                                time_spread.append(np.array(time_spread_arr))
+                                time_first.append(np.array(time_first_arr))
+                                av_charge_widths.append(av_charge_widths_arr)
+                                av_time_charges.append(av_time_charges_arr)
+                                num_pulses.append(num_pulses_arr)
+                                time_moment_2.append(time_moment_2_arr)
+                                time_kurtosis.append(time_kurtosis_arr)
+                                
+                                reco_vals.append(np.array(reco_arr))
+                            print "End Point"
+                            EventCounter +=1
+                        else:
+                            print "no more in a"
+                            event_files.remove(a)
+                    except Exception:
                         EventCounter +=1
+                        print "Could not open frame"
+                        ################################################
                     TotalEventCounter = TotalEventCounter + EventCounter
-                if len(event_files) == 0: 
-                    continue
-                else:
-                    event_files.remove(a)
+                #if len(event_files) == 0: 
+                    #continue
+                #else:
+                    #event_files.remove(a)
 
 
         charge.flush()
@@ -348,7 +375,7 @@ if __name__ == "__main__":
         time_kurtosis.flush()
 
         print reco_vals
-        print "ProbCount: {}".format(ProbCount)
+        #print "ProbCount: {}".format(ProbCount)
         reco_vals.flush()
         print"\n ###########################################################"
         print('###### Run Summary ###########')
