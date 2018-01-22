@@ -77,10 +77,8 @@ if not Resc:
         print "Created New Folder in: {}".format(log_path)
     print "Write Dagman Files to: {}".format(submitFile)
     RAM_str = "{} GB".format(args.__dict__["request_RAM"])
-    #####################################################################
     #arguments = " --filelist $(PATH) --dataset_config $(DATASET) "
     arguments = " --filelist $(PATHs) --dataset_config $(DATASET) "
-    #####################################################################
     submitFileContent = {"universe": "vanilla",
                          "notification": "Error",
                          "log": "$(LOGFILE).log",
@@ -93,36 +91,24 @@ if not Resc:
                                                **submitFileContent)
     submitFile.dump()
     folderlist = dataset_parser.get("Basics", "folder_list")
-    #####################################################################
-    #basepath = dataset_parser.get("Basics", "MC_path0")
     basepath= []
     for i in xrange(3): # zum testen
     #for i in xrange(len(args['filelist'])):
         a = "MC_path" + str(i)
         basepath.append(str(dataset_parser.get('Basics', a)))
-    ###################################################################
     
     filelist = dataset_parser.get("Basics", "file_list")
     filesperjob = args.filesperJob
     file_bunches = []
-    #list_file_bunches =[] # unnoetig, da wir davon ausgehen, dass alle file_bunches die gleiche laenge haben
 
-    if folderlist == 'allinmcpath': ##############################################
+    if folderlist == 'allinmcpath': 
         folderlist = []
         for i in xrange(len(basepath)):
             a = [subfolder + "/clsim-base-4.0.3.0.99_eff" for subfolder in os.listdir(basepath[i])
                       if os.path.isdir(os.path.join(basepath[i], subfolder))]
-            #a =[b + "clsim-base-4.0.3.0.99_eff/"]
             if "logs" in a:
                 a.remove("logs") 
             folderlist.append(a)
-        #print "\n ############################################"
-        #print "Basepath: "
-        #print basepath
-        #print "Folderlist total: "
-        #print folderlist
-        #print"############################################\n "
-        ############################################################################
     else:
         folderlist = [folder.strip() for folder in folderlist.split(',')]
 
@@ -130,25 +116,15 @@ if not Resc:
         filelist = filelist.split(',')
 
     for j, sim in enumerate(folderlist):
-        #print "folderlist total"
-        #print folderlist
         outfolder = dataset_parser.get('Basics', 'out_folder') +"/filelists/dataset" + str(j)
-        #file_bunches = []
         if not os.path.exists(outfolder):
             os.makedirs(outfolder)
-        for i, folder in enumerate(folderlist[j]):
-            run_filelist = []
-            #print "\n ############################################"
-            #print "folderlist j"
-            #print folderlist[j]
-            #print "Folder: "
-            #print folder
-            #print "\n ############################################"
+        run_filelist = []
+        for ii, folder in enumerate(folderlist[j]):
             for root, dirs, files in os.walk(os.path.join(basepath[j], folder)):
-                #print "Folder: "
-                #print folder
                 i3_files_all = [single_file for single_file in files
                                 if single_file[-6:] == 'i3.bz2']
+                print folder
                 if not filelist == 'allinfolder':
                     i3_files = []
                     for single_file in i3_files_all:
@@ -158,42 +134,37 @@ if not Resc:
                             i3_files.append(single_file)
                 else:
                     i3_files = i3_files_all
-                    #print "Checkpoint 2"
-                    #print len(i3_files)
                 if len(i3_files) > 0:
-                    #print "Checkpoint 3"
-                    #print "root:"
-                    #print root
-                    #print "single file"
-                    #print single_file
                     b = [os.path.join(root, single_file)
                                          for single_file in i3_files]
                     run_filelist.extend(b)
+                print "Point Top"
+                print len(run_filelist)
             if filesperjob == -1:
-                #print "Checkpoint 4"
-                #print run_filelist
                 with open(os.path.join(outfolder,
-                                       'File_{}.pickle'.format(i)), 'w+') as f:
+                                       'File_{}.pickle'.format(ii)), 'w+') as f:
                     pickle.dump(run_filelist, f)
                 #file_bunches.append('File_{}'.format(i))
-                run_filelist
-            if filesperjob != -1:
-                #print "Checkpoint 5"
-                run_filelist = [run_filelist[i:i + filesperjob]
-                                if (i + filesperjob) < len(run_filelist)
-                                else run_filelist[i:] for i in np.arange(
-                                    0, len(run_filelist), filesperjob)]
-                for i, single_filelist in enumerate(run_filelist):
-                    with open(os.path.join(outfolder,
-                                           'File_{}.pickle'.format(i)), 'w+') as f:
-                        pickle.dump(run_filelist[0], f)
-                    #file_bunches.append('File_{}'.format(i))
-            #list_file_bunches.append(file_bunches)
-    for i, folder in enumerate(folderlist[j]):
-        file_bunches.append('File_{}'.format(i))
+                run_filelist = []
+        if filesperjob != -1:
+            run_filelist = [run_filelist[i:i + filesperjob]
+                            if (i + filesperjob) < len(run_filelist)
+                            else run_filelist[i:] for i in np.arange(
+                                0, len(run_filelist), filesperjob)]
+            #print "##################################################"
+            #print run_filelist
+            print len(run_filelist)
+            for numberInRunFilelist, single_filelist in enumerate(run_filelist):
+                with open(os.path.join(outfolder,
+                                       'File_{}.pickle'.format(numberInRunFilelist)), 'w+') as f:
+                    pickle.dump(run_filelist[0], f)
+                #file_bunches.append('File_{}'.format(i))
+        #list_file_bunches.append(file_bunches
+    misty = 0
+    while misty <= 199: #### bad quick fix
+        file_bunches.append('File_{}'.format(misty))
+        misty +=1
     nodes = []
-    #for j, file_bunches in enumerate(list_file_bunches):
-    #print file_bunches
     for i, bunch in enumerate(file_bunches):
         logfile = log_path + bunch
         PATH = str()
