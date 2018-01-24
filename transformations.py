@@ -84,7 +84,7 @@ def oneHotEncode(x):
     onehot_encoded = []
     # universe has to defined depending on the problem, in this implementation integers are neccesary
     universe = [1, 2, 3]
-    for i in len(universe):
+    for i in range(len(universe)):
         if x == universe[i]:
             value = 1
         else:

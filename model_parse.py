@@ -84,14 +84,13 @@ def parse_reference_output(cfg_file):
     return ref_outputs
 
 def parse_functional_model(cfg_file, exp_file):
-    try:
-        # fancy relative imports..
-        sys.path.append(os.path.dirname(cfg_file))
-        mname = os.path.splitext(os.path.basename(cfg_file))[0]
-        func_model_def = importlib.import_module(mname)
-        sys.path.pop()
-    except Exception:
-        raise Exception('Import of model.py failed: {}'.format(cfg_file))
+    # fancy relative imports..
+    sys.path.append(os.getcwd()+os.path.dirname(cfg_file))
+    mname = os.path.splitext(os.path.basename(cfg_file))[0]
+    func_model_def = importlib.import_module(mname)
+    sys.path.pop()
+    # except Exception:
+    #    raise Exception('Import of model.py failed: {}'.format(cfg_file))
     inputs = func_model_def.inputs
     outputs = func_model_def.outputs
 
