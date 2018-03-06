@@ -85,7 +85,12 @@ def parse_reference_output(cfg_file):
 
 def parse_functional_model(cfg_file, exp_file):
     # fancy relative imports..
-    sys.path.append(os.getcwd()+os.path.dirname(cfg_file))
+    sys.path.append(os.path.dirname(cfg_file))
+    sys.path.append("/scratch9/mkron/software/DeepIceLearning/Networks/classifikation_mk/")
+    #sys.path.append(os.getcwd()+"/"+os.path.dirname(cfg_file))
+    print os.path.dirname(cfg_file)
+    print "########################################"
+    print sys.path
     mname = os.path.splitext(os.path.basename(cfg_file))[0]
     func_model_def = importlib.import_module(mname)
     sys.path.pop()
@@ -100,3 +105,5 @@ def parse_functional_model(cfg_file, exp_file):
     print(in_shapes)
     model = func_model_def.model(in_shapes, out_shapes)
     return model, in_shapes, in_trans, out_shapes, out_trans
+
+

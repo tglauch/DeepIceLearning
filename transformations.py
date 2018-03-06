@@ -86,14 +86,30 @@ def oneHotEncode(x):
     universe = [1, 2, 3]
     for i in range(len(universe)):
         if x == universe[i]:
-            value = 1
+            value = 1.
         else:
-            value = 0
+            value = 0.
         onehot_encoded.append(value)
     return onehot_encoded
 
+def oneHotEncode_noDoubleBang(x):
+    """
+    This function one hot encodes the input
+    """
+    # define universe of possible input values
+    onehot_encoded = []
+    # universe has to defined depending on the problem, in this implementation integers are neccesary
+    universe = [1, 2, 3]
+    for i in range(len(universe)):
+        if x == universe[i]:
+            value = 1.
+        else:
+            value = 0.
+        onehot_encoded.append(value)
+    if onehot_encoded == [0., 0., 1.]:
+        onehot_encoded = [1.0, 0.0, 0.0]
+    return onehot_encoded[:-1]
 
-
-
-
-
+#def time_interval_0.1_to_0.9(x):
+#    interval = np.percentile(x, 90)-np.percentile(x, 10)
+#    return interval

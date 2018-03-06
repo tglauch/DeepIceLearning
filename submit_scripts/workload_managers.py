@@ -27,23 +27,22 @@ def make_condor(executable, request_gpus, request_memory, requirements, addpath,
 
 
 def make_slurm(executable, request_gpus, request_memory, condor_folder, file_location,
-               arguments, thisfolder, exclude=''):
+               arguments, thisfolder, exclude='nothing'):
 
     if exclude != '':
         exclude_node = '#SBATCH --exclude {} \n'.format(exclude)
 
 # Please do not ident!!!
-
     submit_info = '#!/usr/bin/env bash\n\
 #SBATCH --time=48:00:00\n\
 #SBATCH --partition=gpu\n\
 #SBATCH --gres=gpu:{req_gpus}\n\
 #SBATCH --mem={req_mem} \n\
 #SBATCH --error={cond_fold}/{script}.err\n\
-#SBATCH --output={cond_folder}/{script}.out\n\
+#SBATCH --output={cond_fold}/{script}.out\n\
 {excl_node}\
 \n\
-python {thisfolder}/{script} {args} \n'.format(
+bash {thisfolder}/{script} {args} \n'.format(
         script = executable,\
         req_gpus = request_gpus,\
         req_mem = int(request_memory),\

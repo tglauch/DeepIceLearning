@@ -134,6 +134,7 @@ if backend == 'tensorflow':
     from keras_exp.multigpu import make_parallel
 from functions import *
 from keras.utils import plot_model
+import individual_loss
 
 if __name__ == "__main__":
 
@@ -150,18 +151,32 @@ if __name__ == "__main__":
     # Setup the Training Objects and Variables ##############################
 
     # Continuing the training of a model ##############################
+    # Has to be changed because shelf was substituded
+    #if args.__dict__['continue'] != 'None':
+        #save_path = args.__dict__['continue']
+        #shelf = shelve.open(os.path.join(save_path, 'run_info.shlf'))
+        #mc_location = shelf['mc_location']
+        #input_files = shelf['Files']
+        #if input_files == "['all']":
+            #input_files = os.listdir(mc_location)
+        #conf_model_file = os.path.join(save_path, 'model.py')
+        #print "Continuing training. Loaded shelf : ", shelf
+        #print "Input files: ", input_files
+        #shelf.close()
 
+    # ALTERNATIVE TO SHELF, using a simple dict
     if args.__dict__['continue'] != 'None':
         save_path = args.__dict__['continue']
-        shelf = shelve.open(os.path.join(save_path, 'run_info.shlf'))
-        mc_location = shelf['mc_location']
-        input_files = shelf['Files']
+        run_info =  np.load(os.path.join(save_path, 'run_info.npy'))[()]
+        mc_location = run_info['mc_location']
+        input_files = run_info['Files']
         if input_files == "['all']":
             input_files = os.listdir(mc_location)
-        conf_model_file = os.path.join(save_path, 'model.py')
-        print "Continuing training. Loaded shelf : ", shelf
+        conf_model_file = os.path.join(save_path, 'classification_mk.py')
+        #conf_model_file = "/scratch9/mkron/software/DeepIceLearning/Networks/classification_mk.py"
+        print "Continuing training. Loaded dict : ", run_info
         print "Input files: ", input_files
-        shelf.close()
+
     # Build-up a new Model ###########################################
 
     else:
@@ -244,9 +259,17 @@ if __name__ == "__main__":
     loss_func = 'mean_squared_error'
     if parser.has_option('Training_Parameters', 'loss_function'):
         loss_func = parser.get('Training_Parameters', 'loss_function')
-
-    model.compile(
-        loss=loss_func, optimizer=adam, metrics=['accuracy'])
+        if loss_func == "weighted_categorial_crossentropy":
+            weights = parser.get('Training_Parameters', 'weights')
+            weights = np.array(weights.split(',')).astype(np.float)
+            loss_func = individual_loss.weighted_categorical_crossentropy(weights) 
+    print "Used Loss-Function {}".format(loss_func)
+    if loss_func == "weighted_categorial_crossentropy": 
+        model.compile(
+            loss=loss_func, optimizer=adam)
+    else:
+        model.compile(
+            loss=loss_func, optimizer=adam, metrics=['accuracy'])
 
     os.system("nvidia-smi")
 
@@ -258,6 +281,15 @@ if __name__ == "__main__":
             shelf['mc_location'] = mc_location
             shelf['Test_Inds'] = test_inds
             shelf.close()
+
+    # Alternative to Shelf
+    if not os.path.exists(os.path.join(save_path, "run_info.npy")):
+        if args.__dict__['continue'] == 'None':
+            run_info = dict()
+            run_info['Files'] = input_files
+            run_info['mc_location'] = mc_location
+            run_info['Test_Inds'] = test_inds
+            np.save(os.path.join(save_path, 'run_info.npy'), run_info)
 
 # Train the Model #########################################################
 
