@@ -110,6 +110,18 @@ def oneHotEncode_noDoubleBang(x):
         onehot_encoded = [1.0, 0.0, 0.0]
     return onehot_encoded[:-1]
 
+def log_of_sum(x):
+    return np.log10(np.sum(x)+0.0001)
+
+def max_min_delta_log(x):
+    return np.log10(np.max(x)-np.min(x))
+
+
+
+
+
+
+
 #def time_interval_0.1_to_0.9(x):
 #    interval = np.percentile(x, 90)-np.percentile(x, 10)
 #    return interval

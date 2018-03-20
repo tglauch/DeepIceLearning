@@ -113,7 +113,17 @@ else:
 
 arguments += ' --ngpus {} '.format(request_gpus)
 if workload_manager == 'slurm':
-    submit_info = make_slurm("NN.sh",\
+    if args['continue'] != 'None':
+                submit_info = make_slurm("NN_continue.sh",\
+                             request_gpus,\
+                             float(request_memory) * 1e3,\
+                             condor_out_folder,\
+                             train_location,\
+                             arguments,\
+                             thisfolder,\
+                             exclude)
+    else:
+        submit_info = make_slurm("NN.sh",\
                              request_gpus,\
                              float(request_memory) * 1e3,\
                              condor_out_folder,\

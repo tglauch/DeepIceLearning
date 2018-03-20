@@ -168,11 +168,14 @@ if __name__ == "__main__":
     if args.__dict__['continue'] != 'None':
         save_path = args.__dict__['continue']
         run_info =  np.load(os.path.join(save_path, 'run_info.npy'))[()]
-        mc_location = run_info['mc_location']
+        #mc_location = run_info['mc_location']
+        #################################################################
+        mc_location = parser.get('Basics', 'mc_path')
+        ###############################################################
         input_files = run_info['Files']
         if input_files == "['all']":
             input_files = os.listdir(mc_location)
-        conf_model_file = os.path.join(save_path, 'classification_mk.py')
+        conf_model_file = os.path.join(save_path, 'class_2branch.py')
         #conf_model_file = "/scratch9/mkron/software/DeepIceLearning/Networks/classification_mk.py"
         print "Continuing training. Loaded dict : ", run_info
         print "Input files: ", input_files
@@ -327,7 +330,7 @@ if __name__ == "__main__":
             batch_size, file_handlers, train_inds, inp_shapes,
             inp_trans, out_shapes, out_trans),
         steps_per_epoch=math.ceil(
-            np.sum([k[1] - k[0] for k in train_inds]) / batch_size),
+            (np.sum([k[1] - k[0] for k in train_inds]) / batch_size))/len(input_files),
         validation_data=generator(
             batch_size, file_handlers, valid_inds, inp_shapes,
             inp_trans, out_shapes, out_trans, val_run=True),
@@ -337,6 +340,15 @@ if __name__ == "__main__":
         epochs=int(parser.get('Training_Parameters', 'epochs')),
         verbose=int(parser.get('Training_Parameters', 'verbose')),
         max_q_size=int(parser.get('Training_Parameters', 'max_queue_size')))
+
+
+
+
+    # Saving a visualization of the model 
+    plot_model(model, to_file=os.path.join(save_path, 'model.png'))
+    plot_model(model, to_file=os.path.join(save_path, 'model.pdf'))
+    print('\n Model Visualisation saved')
+
 
     # Saving the Final Model and Calculation/Saving of Result for Test Dataset ####
 
