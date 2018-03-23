@@ -86,13 +86,10 @@ def parse_reference_output(cfg_file):
 def parse_functional_model(cfg_file, exp_file):
     # fancy relative imports..
     sys.path.append(os.path.dirname(cfg_file))
-    sys.path.append("/scratch9/mkron/software/DeepIceLearning/Networks/classifikation_mk/")
-    sys.path.append("/scratch9/mkron/data/NN_out/run35/")
+    #sys.path.append("/scratch9/mkron/software/DeepIceLearning/Networks/classifikation_mk/")
+    #sys.path.append("/scratch9/mkron/data/NN_out/run35/")
     sys.path.append(os.getcwd()+"/"+os.path.dirname(cfg_file))
-    print "##########SIMPSONS##############################"
-    print cfg_file
     mname = os.path.splitext(os.path.basename(cfg_file))[0]
-    print mname
     func_model_def = importlib.import_module(mname)
     sys.path.pop()
     # except Exception:

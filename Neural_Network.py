@@ -175,8 +175,7 @@ if __name__ == "__main__":
         input_files = run_info['Files']
         if input_files == "['all']":
             input_files = os.listdir(mc_location)
-        conf_model_file = os.path.join(save_path, 'class_2branch.py')
-        #conf_model_file = "/scratch9/mkron/software/DeepIceLearning/Networks/classification_mk.py"
+        conf_model_file = args.__dict__['model']
         print "Continuing training. Loaded dict : ", run_info
         print "Input files: ", input_files
 
@@ -185,7 +184,6 @@ if __name__ == "__main__":
     else:
         mc_location = parser.get('Basics', 'mc_path')
         conf_model_file = args.__dict__['model']
-        # conf_model_file = os.path.join('Networks', args.__dict__['model'])
         if args.__dict__['input'] == 'all':
             input_files = [f for f in os.listdir(mc_location)
                            if os.path.isfile(
@@ -241,8 +239,18 @@ if __name__ == "__main__":
             conf_model_file,
             os.path.join(mc_location, input_files[0]))
 
-    adam = keras.optimizers.Adam(
-        lr=float(parser.get('Training_Parameters', 'learning_rate')))
+
+    if parser.get('Training_Parameters', 'optimizer')=="Nadam":
+        print "Optimizer: Nadam"
+        optimizer_used = keras.optimizers.Nadam(
+             lr=float(parser.get('Training_Parameters', 'learning_rate')))
+    elif parser.get('Training_Parameters', 'optimizer')=="Adam":
+        optimizer_used = keras.optimizers.Adam(
+             lr=float(parser.get('Training_Parameters', 'learning_rate')))
+    else:
+        print "Optimizer unchoosen or unknown -> default: Adam"
+        optimizer_used = keras.optimizers.Adam(
+             lr=float(parser.get('Training_Parameters', 'learning_rate')))
 
     ngpus = args.__dict__['ngpus']
     #print'Use {} GPUS'.format(ngpus)
@@ -269,10 +277,10 @@ if __name__ == "__main__":
     print "Used Loss-Function {}".format(loss_func)
     if loss_func == "weighted_categorial_crossentropy": 
         model.compile(
-            loss=loss_func, optimizer=adam)
+            loss=loss_func, optimizer=optimizer_used)
     else:
         model.compile(
-            loss=loss_func, optimizer=adam, metrics=['accuracy'])
+            loss=loss_func, optimizer=optimizer_used, metrics=['accuracy'])
 
     os.system("nvidia-smi")
 
@@ -345,7 +353,6 @@ if __name__ == "__main__":
 
 
     # Saving a visualization of the model 
-    plot_model(model, to_file=os.path.join(save_path, 'model.png'))
     plot_model(model, to_file=os.path.join(save_path, 'model.pdf'))
     print('\n Model Visualisation saved')
 
