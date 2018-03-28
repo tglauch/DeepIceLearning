@@ -36,7 +36,7 @@ inputs["Branch4"] = {"variables": ["time"],
 # define outputs for each branch
 outputs = OrderedDict()
 outputs["Out1"] = {"variables": ["classificationTag"],
-                   "transformations": [tr.oneHotEncode_noDoubleBang]}
+                   "transformations": [tr.oneHotEncode]}
 
 reference_outputs = []
 
