@@ -163,26 +163,18 @@ if __name__ == "__main__":
             h5file.root, 'first_charge', tables.Float64Atom(),
             (0, input_shape[0], input_shape[1], input_shape[2], 1),
             title="amplitude of the first charge")
-        av_charge_widths = h5file.create_earray(
-            h5file.root, 'av_charge_width', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Weighted charge average (1./widths)")
         av_time_charges = h5file.create_earray(
             h5file.root, 'av_time_charges', tables.Float64Atom(),
             (0, input_shape[0], input_shape[1], input_shape[2], 1),
             title="Weighted time average (charges)")
-        num_pulses = h5file.create_earray(
-            h5file.root, 'num_pulses', tables.Float64Atom(),
+        charge_100ns = h5file.create_earray(
+            h5file.root, 'charge_100ns', tables.Float64Atom(),
             (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Number of pulses for this DOM")
-        time_moment_2 = h5file.create_earray(
-            h5file.root, 'time_moment_2', tables.Float64Atom(),
+            title="Integrated charge in the first 100 ns")
+        time_quartercharge = h5file.create_earray(
+            h5file.root, 'time_quartercharge', tables.Float64Atom(),
             (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Second central moment of time distr. of the pulses")
-        #time_skew = h5file.create_earray(
-        #    h5file.root, 'time_skew', tables.Float64Atom(),
-        #    (0, input_shape[0], input_shape[1], input_shape[2], 1),
-        #    title="skew of the time distr. of the pulses")
+            title=" Time where quarter of the total charge was detected ")
         time_kurtosis = h5file.create_earray(
             h5file.root, 'time_kurtosis', tables.Float64Atom(),
             (0, input_shape[0], input_shape[1], input_shape[2], 1),
@@ -383,4 +375,3 @@ if __name__ == "__main__":
         #print"############################################################\n " 
         h5file.root._v_attrs.len = TotalEventCounter
     h5file.close()
-    
