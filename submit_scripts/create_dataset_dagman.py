@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import pydag
+import datetime
 import os
 import argparse
 import time
@@ -53,7 +54,10 @@ if __name__ == '__main__':
     print"############################################\n "
 
 Resc = args.__dict__["Rescue"]
-PROCESS_DIR = dataset_parser.get("Basics", "dagman_folder")
+today = str(datetime.datetime.now()).\
+        replace(" ", "-").split(".")[0].replace(":", "-")
+
+PROCESS_DIR = dataset_parser.get("Basics", "dagman_folder")+"/"+today+"/"
 if not os.path.exists(PROCESS_DIR):
     os.makedirs(PROCESS_DIR)
 
