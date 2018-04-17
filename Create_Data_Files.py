@@ -33,6 +33,20 @@ import random
 import functions_Create_Data_Files as fu
 import time
 
+##### used for later calculations
+
+def time_of_percentage(charges, times, percentage):
+    cut = np.sum(charges)/(100/percentage)
+    sum=0
+    for i in charges:
+        sum = sum + i
+        if sum > cut:
+            tim = times[charges.index(i)]
+            break
+    return tim
+
+##########
+
 # arguments given in the terminal
 def parseArguments():
     parser = argparse.ArgumentParser()
@@ -187,6 +201,22 @@ if __name__ == "__main__":
             h5file.root, 'time_kurtosis', tables.Float64Atom(),
             (0, input_shape[0], input_shape[1], input_shape[2], 1),
             title="kurtosis of the time distr. of the pulses")
+        charge_500ns = h5file.create_earray(
+            h5file.root, 'charge_500ns', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="Sum of the Charge during the first 500ns per DOM")
+        charge_100ns = h5file.create_earray(
+            h5file.root, 'charge_100ns', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="Sum of the Charge during the first 100ns per DOM")
+        time_20pct = h5file.create_earray(
+            h5file.root, 'time_20pct', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="Time at which 20 percent of charge is deposited")
+        time_50pct = h5file.create_earray(
+            h5file.root, 'time_50pct', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="Time at which 50 percent of charge is deposited")
         reco_vals = tables.Table(h5file.root, 'reco_vals',
                                  description=dtype)
         h5file.root._v_attrs.shape = input_shape
@@ -303,7 +333,16 @@ if __name__ == "__main__":
                         (1, input_shape[0], input_shape[1], input_shape[2], 1))
                     time_kurtosis_arr = np.zeros(
                         (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                
+                    charge_500ns_arr = np.zeros(
+                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                    charge_100ns_arr = np.zeros(
+                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                    time_20pct_arr = np.zeros(
+                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                    time_50pct_arr = np.zeros(
+                        (1, input_shape[0], input_shape[1], input_shape[2], 1))        
+
+        
                     pulses = physics_event[pulsemap_key].apply(physics_event)
                     final_dict = dict()
                     for omkey in pulses.keys():
@@ -320,7 +359,11 @@ if __name__ == "__main__":
                              np.average(times, weights=charges),\
                              len(charges),\
                              moment(times, moment=2),\
-                             skew(times)
+                             skew(times),\
+                             np.sum(charges[times<100]),\
+                             np.sum(charges[times<500]),\
+                             time_of_percentage(charges, times, 20),\
+                             time_of_percentage(charges, times, 50)
                              )
                     #print "Checkpoint B"
                     for dom in DOM_list:
@@ -344,6 +387,16 @@ if __name__ == "__main__":
                                         final_dict[dom][7]
                             time_kurtosis_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
                                         final_dict[dom][8] 
+                            charge_500ns_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                        final_dict[dom][9]
+                            charge_100ns_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                        final_dict[dom][10]
+                            time_20pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                        final_dict[dom][11]
+                            time_50pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                        final_dict[dom][12]
+
+
 
                     charge.append(np.array(charge_arr))
                     charge_first.append(np.array(charge_first_arr))
@@ -354,7 +407,11 @@ if __name__ == "__main__":
                     num_pulses.append(num_pulses_arr)
                     time_moment_2.append(time_moment_2_arr)
                     time_kurtosis.append(time_kurtosis_arr)
-                        
+                    charge_500ns.append(charge_500ns_arr)
+                    charge_100ns.append(charge_100ns_arr)
+                    time_20pct.append(time_20pct_arr)
+                    time_50pct.append(time_50pct_arr)
+                       
                     reco_vals.append(np.array(reco_arr))
                     #print "End Point"
                     #EventCounter +=1
@@ -373,6 +430,10 @@ if __name__ == "__main__":
         num_pulses.flush()
         time_moment_2.flush()
         time_kurtosis.flush()
+        charge_500ns.flush()
+        charge_100ns.flush()
+        time_20pct.flush()
+        time_50pct.flush()
 
         print reco_vals
         #print "ProbCount: {}".format(ProbCount)
