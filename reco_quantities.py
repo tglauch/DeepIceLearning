@@ -68,7 +68,17 @@ def classificationTag(physics_frame):
     return classificationTag
 
 
-
+def starting(physics_frame):
+    gcdfile = "/data/sim/sim-new/downloads/GCD/GeoCalibDetectorStatus_2012.56063_V0.i3.gz"
+    N = 10
+    neutrino = physics_frame['I3MCTree'][0]
+    surface = MuonGun.ExtrudedPolygon.from_file(gcdfile, padding=-N)
+    intersections = surface.GetIntersection(neutrino.pos + neutrino.length*neutrino.dir, neutrino.dir)
+    if intersections.first <= 0 and intersections.second > 0:
+        starting = True
+    else:
+        starting = False
+    return starting
 
 
 
