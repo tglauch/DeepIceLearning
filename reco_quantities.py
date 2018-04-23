@@ -24,7 +24,7 @@ def calc_depositedE(physics_frame):
     losses = 0
     for p in I3Tree:
         if not p.is_cascade: continue
-        if not p.location_type == I3Particle.InIce: continue 
+        if not p.location_type == dataclasses.I3Particle.InIce: continue 
         if p.shape == p.Dark: continue 
         if p.type in [p.Hadrons, p.PiPlus, p.PiMinus, p.NuclInt]:
             if p.energy < 1*I3Units.GeV:
@@ -70,16 +70,23 @@ def classificationTag(physics_frame):
 
 def starting(physics_frame):
     gcdfile = "/data/sim/sim-new/downloads/GCD/GeoCalibDetectorStatus_2012.56063_V0.i3.gz"
-    N = 10
+    N = 50
     neutrino = physics_frame['I3MCTree'][0]
     surface = MuonGun.ExtrudedPolygon.from_file(gcdfile, padding=-N)
     intersections = surface.GetIntersection(neutrino.pos + neutrino.length*neutrino.dir, neutrino.dir)
     if intersections.first <= 0 and intersections.second > 0:
-        starting = True
+        starting = 0 # starting event
     else:
-        starting = False
+        starting = 1 # through-going or stopping event
     return starting
 
+def up_or_down(physics_frame):
+    zenith = physics_frame["LineFit"].dir.zenith
+    if zenith > 1.5*np.pi or zenith < 0.5*np.pi:
+        up_or_down = 1 # down-going
+    else:
+        up_or_down = 0 # up-going    
+    return up_or_down
 
 
 

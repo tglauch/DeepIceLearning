@@ -74,6 +74,7 @@ args = parseArguments().__dict__
 dataset_configparser = ConfigParser()
 try:
     dataset_configparser.read(args['dataset_config'])
+    print "Config is found {}".format(dataset_configparser) 
 except Exception:
     raise Exception('Config File is missing!!!!')
 
@@ -181,10 +182,6 @@ if __name__ == "__main__":
             h5file.root, 'av_time_charges', tables.Float64Atom(),
             (0, input_shape[0], input_shape[1], input_shape[2], 1),
             title="Weighted time average (charges)")
-        charge_100ns = h5file.create_earray(
-            h5file.root, 'charge_100ns', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Integrated charge in the first 100 ns")
         time_quartercharge = h5file.create_earray(
             h5file.root, 'time_quartercharge', tables.Float64Atom(),
             (0, input_shape[0], input_shape[1], input_shape[2], 1),
@@ -220,6 +217,7 @@ if __name__ == "__main__":
         TotalEventCounter = 0
         skipped_frames = 0
         framesNotNeutrinoPrimary = 0
+        frameToHighDepositedEnergy = 0
         statusInFilelist=0
         event_files = []
         print "##################################"
@@ -265,7 +263,7 @@ if __name__ == "__main__":
                         ash = physics_event['I3MCTree']
                         #print "no problems with MCTree"
                     except Exception:
-                        print "Point B"
+                        print "Problem with the I3MCTree"
                         #EventCounter +=1
                         continue
                     ParticelList = [12, 14, 16]
@@ -275,6 +273,10 @@ if __name__ == "__main__":
                                 #EventCounter +=1
                                 framesNotNeutrinoPrimary +=1
                                 continue
+                    energy_cutoff = int(dataset_configparser.get('Basics', 'energy_cutoff'))
+                    if calc_depositedE(physics_event) > energy_cutoff:
+                        frameToHighDepositedEnergy +=1
+                        continue
                     reco_arr = []
                     for k, cur_var in enumerate(data_source):
                         if cur_var[0] == 'variable':
@@ -294,7 +296,7 @@ if __name__ == "__main__":
                             except Exception:
                                 skipped_frames += 1
                                 print(
-                                    'The given function is not implemented')
+                                    'The given function {} is not implemented'.format(cur_value))
                                 #EventCounter +=1
                                 break
                         if cur_value < cur_var[2][0] or cur_value > cur_var[2][1]:
@@ -315,8 +317,8 @@ if __name__ == "__main__":
                         (1, input_shape[0], input_shape[1], input_shape[2], 1))
                     charge_first_arr = np.zeros(
                         (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                    av_charge_widths_arr = np.zeros(
-                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                    #av_charge_widths_arr = np.zeros(
+                    #    (1, input_shape[0], input_shape[1], input_shape[2], 1))
                     av_time_charges_arr = np.zeros(
                         (1, input_shape[0], input_shape[1], input_shape[2], 1))
                     num_pulses_arr = np.zeros(
@@ -369,8 +371,8 @@ if __name__ == "__main__":
                                 final_dict[dom][2]
                             time_first_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
                                     final_dict[dom][1]
-                            av_charge_widths_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                    final_dict[dom][4]
+                            #av_charge_widths_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                            #        final_dict[dom][4]
                             av_time_charges_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
                                     final_dict[dom][5]
                             num_pulses_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
@@ -394,7 +396,7 @@ if __name__ == "__main__":
                     charge_first.append(np.array(charge_first_arr))
                     time_spread.append(np.array(time_spread_arr))
                     time_first.append(np.array(time_first_arr))
-                    av_charge_widths.append(av_charge_widths_arr)
+                    #av_charge_widths.append(av_charge_widths_arr)
                     av_time_charges.append(av_time_charges_arr)
                     num_pulses.append(num_pulses_arr)
                     time_moment_2.append(time_moment_2_arr)
@@ -417,7 +419,7 @@ if __name__ == "__main__":
         time_first.flush()
         charge_first.flush()
         time_spread.flush()
-        av_charge_widths.flush()
+        #av_charge_widths.flush()
         av_time_charges.flush()
         num_pulses.flush()
         time_moment_2.flush()
@@ -431,8 +433,9 @@ if __name__ == "__main__":
         #print "ProbCount: {}".format(ProbCount)
         reco_vals.flush()
         #print"\n ###########################################################"
-        #print('###### Run Summary ###########')
-        #print('Processed: {} Frames \n Skipped {} \ Frames with Attribute Error \n No Neutrino as Primary {}'.format(TotalEventCounter, skipped_frames, framesNotNeutrinoPrimary))
+        print('###### Run Summary ###########')
+        print('Processed: {} Frames \n Skipped {} \ Frames with Attribute Error \n No Neutrino as Primary {} \n To high depoited Energy {}'.format(TotalEventCounter, skipped_frames, framesNotNeutrinoPrimary, frameToHighDepositedEnergy))
         #print"############################################################\n " 
+        print "Script is at its END"
         h5file.root._v_attrs.len = TotalEventCounter
     h5file.close()

@@ -108,17 +108,38 @@ if not Resc:
     if folderlist == 'allinmcpath': 
         folderlist = []
         for i in xrange(len(basepath)):
-            a = [subfolder + "/clsim-base-4.0.3.0.99_eff" for subfolder in os.listdir(basepath[i])
-                      if os.path.isdir(os.path.join(basepath[i], subfolder))]
+            check_sys = os.path.isdir(os.path.join(basepath[i], "00000-00999//clsim-base-4.0.3.0.99_eff"))
+            print "Check for systematic dataset: {}".format(check_sys)
+            if check_sys: 
+                a = [subfolder + "/clsim-base-4.0.3.0.99_eff" for subfolder in os.listdir(basepath[i])
+                         if os.path.isdir(os.path.join(basepath[i], subfolder))]
+            else:
+                a = [subfolder for subfolder in os.listdir(basepath[i])
+                         if os.path.isdir(os.path.join(basepath[i], subfolder))]
             if "logs" in a:
                 a.remove("logs") 
+            if "job_stats.json.gz" in a:
+                a.remove("job_stats.json.gz")
             folderlist.append(a)
     else:
         folderlist = [folder.strip() for folder in folderlist.split(',')]
 
     if not filelist == 'allinfolder':
         filelist = filelist.split(',')
-
+#####################################################################
+    longest = len(folderlist[0])
+    factor_list = []
+    for j, sim in enumerate(folderlist):
+        if len(folderlist[j]) > longest:
+             longest = len(folderlist[j])
+    for j, sim in enumerate(folderlist):
+        if len(folderlist[j]) < longest:
+             factor = longest/len(folderlist[j])
+             factor_list.append(factor)
+        else:
+             factor_list.append(1)
+    print factor_list
+#####################################################################
     for j, sim in enumerate(folderlist):
         outfolder = dataset_parser.get('Basics', 'out_folder') +"/filelists/dataset" + str(j)
         if not os.path.exists(outfolder):
@@ -128,7 +149,6 @@ if not Resc:
             for root, dirs, files in os.walk(os.path.join(basepath[j], folder)):
                 i3_files_all = [single_file for single_file in files
                                 if single_file[-6:] == 'i3.bz2']
-                print folder
                 if not filelist == 'allinfolder':
                     i3_files = []
                     for single_file in i3_files_all:
@@ -142,32 +162,38 @@ if not Resc:
                     b = [os.path.join(root, single_file)
                                          for single_file in i3_files]
                     run_filelist.extend(b)
-                print "Point Top"
-                print len(run_filelist)
             if filesperjob == -1:
-                with open(os.path.join(outfolder,
-                                       'File_{}.pickle'.format(ii)), 'w+') as f:
-                    pickle.dump(run_filelist, f)
-                #file_bunches.append('File_{}'.format(i))
-                run_filelist = []
+                if factor_list[j] == 1:
+                    with open(os.path.join(outfolder,
+                                           'File_{}.pickle'.format(ii)), 'w+') as f:
+                        pickle.dump(run_filelist, f)
+                    #file_bunches.append('File_{}'.format(i))
+                    run_filelist = []
+                else:
+                    size_chunk = len(run_filelist)/factor_list[j]+1
+                    for k in xrange(factor_list[j]):
+                        run_filelist_k = run_filelist[k*(size_chunk) : ((k+1)*size_chunk)-1]
+                        with open(os.path.join(outfolder,
+                                               'File_{}.pickle'.format(ii*factor_list[j]+k)), 'w+') as f:
+                            pickle.dump(run_filelist_k, f)
+                    run_filelist = []
         if filesperjob != -1:
             run_filelist = [run_filelist[i:i + filesperjob]
                             if (i + filesperjob) < len(run_filelist)
                             else run_filelist[i:] for i in np.arange(
                                 0, len(run_filelist), filesperjob)]
-            #print "##################################################"
-            #print run_filelist
-            print len(run_filelist)
             for numberInRunFilelist, single_filelist in enumerate(run_filelist):
                 with open(os.path.join(outfolder,
                                        'File_{}.pickle'.format(numberInRunFilelist)), 'w+') as f:
                     pickle.dump(run_filelist[0], f)
-                #file_bunches.append('File_{}'.format(i))
-        #list_file_bunches.append(file_bunches
+                file_bunches.append('File_{}'.format(i))
+        #list_file_bunches.append(file_bunches)
+#################### if Job number is set by hand ################
     misty = 0
     while misty <= 199: #### bad quick fix
         file_bunches.append('File_{}'.format(misty))
         misty +=1
+###################################################################
     nodes = []
     for i, bunch in enumerate(file_bunches):
         logfile = log_path + bunch
