@@ -186,11 +186,11 @@ if not Resc:
                 with open(os.path.join(outfolder,
                                        'File_{}.pickle'.format(numberInRunFilelist)), 'w+') as f:
                     pickle.dump(run_filelist[0], f)
-                file_bunches.append('File_{}'.format(i))
+                #file_bunches.append('File_{}'.format(i))
         #list_file_bunches.append(file_bunches)
 #################### if Job number is set by hand ################
     misty = 0
-    while misty <= 199: #### bad quick fix
+    while misty <= 19: #### bad quick fix
         file_bunches.append('File_{}'.format(misty))
         misty +=1
 ###################################################################

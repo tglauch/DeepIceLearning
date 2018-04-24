@@ -182,6 +182,10 @@ if __name__ == "__main__":
             h5file.root, 'av_time_charges', tables.Float64Atom(),
             (0, input_shape[0], input_shape[1], input_shape[2], 1),
             title="Weighted time average (charges)")
+        num_pulses = h5file.create_earray(
+            h5file.root, 'num_pulses', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="Number of pulses")
         time_quartercharge = h5file.create_earray(
             h5file.root, 'time_quartercharge', tables.Float64Atom(),
             (0, input_shape[0], input_shape[1], input_shape[2], 1),
@@ -312,8 +316,6 @@ if __name__ == "__main__":
                     time_first_arr = np.zeros(
                         (1, input_shape[0], input_shape[1], input_shape[2], 1))
                     time_spread_arr = np.zeros(
-                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                    charge_first_arr = np.zeros(
                         (1, input_shape[0], input_shape[1], input_shape[2], 1))
                     charge_first_arr = np.zeros(
                         (1, input_shape[0], input_shape[1], input_shape[2], 1))
