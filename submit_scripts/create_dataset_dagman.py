@@ -135,9 +135,10 @@ if not Resc:
     for j, sim in enumerate(folderlist):
         if len(folderlist[j]) < longest:
              factor = longest/len(folderlist[j])
-             factor_list.append(factor)
+             factor_list.append(factor*10)
         else:
-             factor_list.append(1)
+             factor_list.append(10)
+    factor_list = factor_list
     print factor_list
 #####################################################################
     for j, sim in enumerate(folderlist):
@@ -162,6 +163,9 @@ if not Resc:
                     b = [os.path.join(root, single_file)
                                          for single_file in i3_files]
                     run_filelist.extend(b)
+#################################################################################################
+            #run_filelist = run_filelist[:5]
+#################################################################################################
             if filesperjob == -1:
                 if factor_list[j] == 1:
                     with open(os.path.join(outfolder,
@@ -190,7 +194,7 @@ if not Resc:
         #list_file_bunches.append(file_bunches)
 #################### if Job number is set by hand ################
     misty = 0
-    while misty <= 19: #### bad quick fix
+    while misty <= 199: #### bad quick fix
         file_bunches.append('File_{}'.format(misty))
         misty +=1
 ###################################################################

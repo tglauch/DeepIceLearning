@@ -29,3 +29,8 @@ def weighted_categorical_crossentropy(weights):
         loss = -K.sum(loss, -1)
         return loss
     return loss
+
+
+def multipleLoss():
+    total_loss = 0
+    return total_loss
