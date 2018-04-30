@@ -240,6 +240,7 @@ if __name__ == "__main__":
             os.path.join(mc_location, input_files[0]))
 
 
+    # Choosing the Optimizer
     if parser.get('Training_Parameters', 'optimizer')=="Nadam":
         print "Optimizer: Nadam"
         optimizer_used = keras.optimizers.Nadam(
@@ -267,6 +268,7 @@ if __name__ == "__main__":
     else:
         model = read_NN_weights(args.__dict__, base_model)
 
+    # Choosing the Loss function
     loss_func = 'mean_squared_error'
     if parser.has_option('Training_Parameters', 'loss_function'):
         loss_func = parser.get('Training_Parameters', 'loss_function')
@@ -275,13 +277,19 @@ if __name__ == "__main__":
             weights = np.array(weights.split(',')).astype(np.float)
             loss_func = individual_loss.weighted_categorical_crossentropy(weights) 
     print "Used Loss-Function {}".format(loss_func)
-    if loss_func == "weighted_categorial_crossentropy": 
-        model.compile(
-            loss=loss_func, optimizer=optimizer_used)
-    else:
-        model.compile(
-            loss=loss_func, optimizer=optimizer_used, metrics=['accuracy'])
-
+###########################################################################################
+    if parser.has_option('Multi_Task_Learning', 'ON/OFF') == "ON":
+       model.compile(optimizer=optimizer_used,\
+           loss = parser.has_option('Multi_Task_Learning', 'loss'),\
+           loss_weights = parser.has_option('Multi_Task_Learning', 'loss_weights'))
+    else: 
+        if loss_func == "weighted_categorial_crossentropy":
+            model.compile(
+                loss=loss_func, optimizer=optimizer_used)
+        else:
+            model.compile(
+                loss=loss_func, optimizer=optimizer_used, metrics=['accuracy'])
+###########################################################################################
     os.system("nvidia-smi")
 
     # Save Run Information

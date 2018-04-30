@@ -36,6 +36,7 @@ import time
 ##### used for later calculations
 
 def time_of_percentage(charges, times, percentage):
+    charges = charges.tolist()
     cut = np.sum(charges)/(100/percentage)
     sum=0
     for i in charges:
@@ -194,6 +195,10 @@ if __name__ == "__main__":
             h5file.root, 'time_kurtosis', tables.Float64Atom(),
             (0, input_shape[0], input_shape[1], input_shape[2], 1),
             title="kurtosis of the time distr. of the pulses")
+        time_moment_2 = h5file.create_earray(
+            h5file.root, 'time_moment_2', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="second moment of time")
         charge_500ns = h5file.create_earray(
             h5file.root, 'charge_500ns', tables.Float64Atom(),
             (0, input_shape[0], input_shape[1], input_shape[2], 1),
@@ -220,15 +225,16 @@ if __name__ == "__main__":
         np.save('grid.npy', grid)
         TotalEventCounter = 0
         skipped_frames = 0
+        TreeProblem = 0
         framesNotNeutrinoPrimary = 0
         frameToHighDepositedEnergy = 0
         statusInFilelist=0
         event_files = []
-        print "##################################"
-        print len(filelist[0])
-        print len(filelist[1])
-        print args['filelist']
-        print "##################################"
+        #print "##################################"
+        #print len(filelist[0])
+        #print len(filelist[1])
+        #print args['filelist']
+        #print "##################################"
         starttime = time.time()
         while statusInFilelist < len(filelist[0]):
             timestamp = time.time()
@@ -243,38 +249,27 @@ if __name__ == "__main__":
                     statusInFilelist += 1       
                     continue
             statusInFilelist += 1
-            counterWHile= 0
-            ProbCount=0
             # shuffeling of the files
-            while not len(event_files) == 0:
+            while not len(event_files) == 0: 
+                TotalEventCounter +=1
                 a=random.choice(event_files) 
-                eventsToProcess=random.randint(1, 4)
-                #print "before while loop"
-                #while EventCounter < eventsToProcess:
-                #print "Begining of while loop"
-                #print "EventCounter: {}".format(EventCounter)
+                #eventsToProcess=random.randint(1, 4)
                 if a.more():
-                    if counterWHile%(1000) == 0:
-                        print counterWHile
                     try:
                         physics_event = a.pop_physics()
-                        counterWHile += 1
                     except Exception:
                         print "Frame not poped"
                         continue
                     #try to open the I3MCTree, if not possible skip frame
                     try:
                         ash = physics_event['I3MCTree']
-                        #print "no problems with MCTree"
                     except Exception:
                         print "Problem with the I3MCTree"
-                        #EventCounter +=1
+                        TreeProblem +=1
                         continue
                     ParticelList = [12, 14, 16]
                     if dataset_configparser.get('Basics', 'onlyneutrinoasprimary') == "True":
                         if abs(int(eval('physics_event{}'.format(dataset_configparser.get('firstParticle', 'variable'))))) not in ParticelList:
-                                #print "Particle not in ParticleList"
-                                #EventCounter +=1
                                 framesNotNeutrinoPrimary +=1
                                 continue
                     energy_cutoff = int(dataset_configparser.get('Basics', 'energy_cutoff'))
@@ -291,7 +286,6 @@ if __name__ == "__main__":
                                 skipped_frames += 1
                                 print('Attribute Error occured :{}'.
                                       format(cur_var[1]))
-                                #EventCounter +=1
                                 break
                         if cur_var[0] == 'function':
                             try:
@@ -300,15 +294,12 @@ if __name__ == "__main__":
                             except Exception:
                                 skipped_frames += 1
                                 print(
-                                    'The given function {} is not implemented'.format(cur_value))
-                                #EventCounter +=1
+                                    'The given function {} is not implemented'.format(cur_var[1]))
                                 break
                         if cur_value < cur_var[2][0] or cur_value > cur_var[2][1]:
-                            #EventCounter +=1
                             break
                         else:
                             reco_arr.append(cur_value)
-                    #print "Checkpoint A"
                     if not len(reco_arr) == dtype_len:
                         continue
                     charge_arr = np.zeros(
@@ -432,12 +423,14 @@ if __name__ == "__main__":
         time_50pct.flush()
 
         print reco_vals
-        #print "ProbCount: {}".format(ProbCount)
         reco_vals.flush()
-        #print"\n ###########################################################"
+        print"\n ###########################################################"
         print('###### Run Summary ###########')
-        print('Processed: {} Frames \n Skipped {} \ Frames with Attribute Error \n No Neutrino as Primary {} \n To high depoited Energy {}'.format(TotalEventCounter, skipped_frames, framesNotNeutrinoPrimary, frameToHighDepositedEnergy))
-        #print"############################################################\n " 
+        print('Processed: {} Frames \n Skipped {} \ Frames with Attribute Error \n To high depoited Energy {}'.format(TotalEventCounter, skipped_frames, frameToHighDepositedEnergy))
+        if dataset_configparser.get('Basics', 'onlyneutrinoasprimary') == "True":
+            print "\n No Neutrino as Primary {}".format(framesNotNeutrinoPrimary)
+        print "\n Frames with a I3MCTree Problem {}".format(TreeProblem)
+        print"############################################################\n " 
         print "Script is at its END"
         h5file.root._v_attrs.len = TotalEventCounter
     h5file.close()
