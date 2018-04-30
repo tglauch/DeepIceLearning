@@ -17,6 +17,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from icecube import dataclasses, dataio, icetray
 from icecube.icetray import I3Units
+import icecube.MuonGun
+import numpy as np
 
 
 def calc_depositedE(physics_frame):
@@ -38,14 +40,23 @@ def calc_depositedE(physics_frame):
 
 
 def classificationTag(physics_frame):
-    energy = calc_depsitedE(physics_frame)
+    energy = calc_depositedE(physics_frame)
+    ParticelList = [12, 14, 16]
     I3Tree = physics_frame['I3MCTree']
-    if abs(I3Tree[0].pdg_encoding) == 12: # primary particle is a electron neutrino
+    primary_list = I3Tree.get_primaries()
+    if len(primary_list) == 1:
+        neutrino = I3Tree[0]
+    else:
+        for p in primary_list:
+            pdg = p.pdg_encoding
+            if abs(pdg) in ParticelList:
+                neutrino = p
+    if abs(neutrino.pdg_encoding) == 12: # primary particle is a electron neutrino
         classificationTag = 1
-    elif abs(I3Tree[0].pdg_encoding) == 14: # primary particle is a muon neutrino
+    elif abs(neutrino.pdg_encoding) == 14: # primary particle is a muon neutrino
         classificationTag = 2
-    elif abs(I3Tree[0].pdg_encoding) == 16: # primary particle is a tau neutrino
-        listChildren = I3Tree.children(I3Tree[1])
+    elif abs(neutrino.pdg_encoding) == 16: # primary particle is a tau neutrino
+        listChildren = I3Tree.children(I3Tree.first_child(neutrino))
         if not listChildren: # without this, the function collapses
             if energy > 10**6: # more than 1 PeV, due to energy in GeV
                 classificationTag = 3
@@ -70,10 +81,19 @@ def classificationTag(physics_frame):
 
 def starting(physics_frame):
     gcdfile = "/data/sim/sim-new/downloads/GCD/GeoCalibDetectorStatus_2012.56063_V0.i3.gz"
-    N = 50
-    neutrino = physics_frame['I3MCTree'][0]
-    surface = MuonGun.ExtrudedPolygon.from_file(gcdfile, padding=-N)
-    intersections = surface.GetIntersection(neutrino.pos + neutrino.length*neutrino.dir, neutrino.dir)
+    N = 0
+    ParticelList = [12, 14, 16]
+    I3Tree = physics_frame['I3MCTree']
+    primary_list = I3Tree.get_primaries()
+    if len(primary_list) == 1:
+        neutrino = I3Tree[0]
+    else:
+        for p in primary_list:
+            pdg = p.pdg_encoding
+            if abs(pdg) in ParticelList:
+                neutrino = p
+    surface = icecube.MuonGun.ExtrudedPolygon.from_file(gcdfile, padding=-N)
+    intersections = surface.intersection(neutrino.pos + neutrino.length*neutrino.dir, neutrino.dir)
     if intersections.first <= 0 and intersections.second > 0:
         starting = 0 # starting event
     else:
@@ -89,7 +109,13 @@ def up_or_down(physics_frame):
     return up_or_down
 
 
-
+def coincidenceLabel(physics_frame):
+    primary_list = physics_frame["I3MCTree"].get_primaries() 
+    if len(primary_list) > 1:
+        coincidence = 1
+    else:
+        coincidence = 0
+    return coincidence
 
 
 
