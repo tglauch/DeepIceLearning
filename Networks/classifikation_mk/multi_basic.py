@@ -12,7 +12,7 @@ import sys
 from collections import OrderedDict
 sys.path.append("..")
 import transformations as tr
-import block_units
+#import block_units
 import numpy as np
 sys.path.append("/scratch9/mkron/software/DeepIceLearning/model_additions")
 import residual_unit as resid
@@ -36,16 +36,16 @@ inputs["Branch4"] = {"variables": ["time"],
 # define outputs for each branch
 outputs = OrderedDict()
 outputs["Out1"] = {"variables": ["ClassificationLabel"],
-                   "transformations": [tr.oneHotEncode]}
+                   "transformations": [tr.oneHotEncode_EventType]}
 
 outputs["Out2"] = {"variables": ["StartingLabel"],
-                   "transformations": [tr.oneHotEncode]}
+                   "transformations": [tr.oneHotEncode_01]}
 
 outputs["Out3"] = {"variables": ["CoincidenceLabel"],
-                   "transformations": [tr.oneHotEncode]}
+                   "transformations": [tr.oneHotEncode_01]}
 
 outputs["Out4"] = {"variables": ["UpDownLabel"],
-                   "transformations": [tr.oneHotEncode]}
+                   "transformations": [tr.oneHotEncode_01]}
 
 reference_outputs = []
 
@@ -131,34 +131,34 @@ def model(input_shapes, output_shapes):
     o1 = resid.Dense_Residual(36, 36, o1)
     output_b1 = Dense(output_shapes["Out1"]["general"][0],\
                           activation="softmax",\
-                          name="Target")(o1)
+                          name="Target1")(o1)
 
 
     # output 2
     o2 = resid.Dense_Residual(36, 36, zo)
     o2 = resid.Dense_Residual(36, 36, o2)
     o2 = resid.Dense_Residual(36, 36, o2)
-    output_b2 = Dense(output_shapes["Out1"]["general"][0],\
+    output_b2 = Dense(output_shapes["Out2"]["general"][0],\
                           activation="softmax",\
-                          name="Target")(o2)
+                          name="Target2")(o2)
 
 
     # output 3
     o3 = resid.Dense_Residual(36, 36, zo)
     o3 = resid.Dense_Residual(36, 36, o3)
     o3 = resid.Dense_Residual(36, 36, o3)
-    output_b3 = Dense(output_shapes["Out1"]["general"][0],\
+    output_b3 = Dense(output_shapes["Out3"]["general"][0],\
                           activation="softmax",\
-                          name="Target")(o3)
+                          name="Target3")(o3)
 
 
     # output 4
     o4 = resid.Dense_Residual(36, 36, zo)
     o4 = resid.Dense_Residual(36, 36, o4)
     o4 = resid.Dense_Residual(36, 36, o4)
-    output_b4 = Dense(output_shapes["Out1"]["general"][0],\
+    output_b4 = Dense(output_shapes["Out4"]["general"][0],\
                           activation="softmax",\
-                          name="Target")(o4)
+                          name="Target4")(o4)
 
 
     model = keras.models.Model(inputs=[input_b1, input_b2, input_b3, input_b4],\

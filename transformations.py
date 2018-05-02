@@ -76,9 +76,9 @@ def time_prepare(x):
     ret[ret == np.inf] = replace_with
     return ret
 
-def oneHotEncode(x):
+def oneHotEncode_EventType(x):
     """
-    This function one hot encodes the input
+    This function one hot encodes the input for the event types cascade, tracks, doubel-bang
     """
     # define universe of possible input values
     onehot_encoded = []
@@ -117,6 +117,21 @@ def max_min_delta_log(x):
     return np.log10(np.max(x)-np.min(x))
 
 
+def oneHotEncode_01(x):
+    """
+    This function one hot encodes the input for a binary label 
+    """
+    # define universe of possible input values
+    onehot_encoded = []
+    # universe has to defined depending on the problem, in this implementation integers are neccesary
+    universe = [0, 1]
+    for i in range(len(universe)):
+        if x == universe[i]:
+            value = 1.
+        else:
+            value = 0.
+        onehot_encoded.append(value)
+    return onehot_encoded
 
 
 
