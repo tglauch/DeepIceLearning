@@ -12,35 +12,34 @@ def acc_loss_plot(acc_train, loss_train, acc_val, loss_val, title):
     plt.plot(x, loss_train, color='#35bcf8', label="loss of the training set")
     plt.plot(x, acc_val, color='#6c1ba1', label="acc of the validation set")
     plt.plot(x, loss_val, color='#af27cd', label="loss of the validation set")
-    plt.title(title)
+    plt.title(title, fontsize=18)
     #plt.set_ylim(0., 1.8)
     plt.legend(bbox_to_anchor=(0.59, 0.97), loc=2, borderaxespad=0.)
-    plt.ylabel('loss & percentage')
-    plt.xlabel("epochs")
+    plt.ylabel('loss & percentage', fontsize=16)
+    plt.xlabel("epochs", fontsize=16)
 
 
 
-def plot_confusion_matrix(cm, classes,title="",
-                          cmap=plt.cm.Blues):
+def plot_confusion_matrix(cm, classes,title="", cmap=plt.cm.Blues):
     """
     This function plots the confusion matrix.
     """
 
     plt.imshow(cm, interpolation='nearest', cmap=cmap)
-    plt.title(title)
+    plt.title(title, fontsize=20)
     plt.colorbar()
     tick_marks = np.arange(len(classes))
-    plt.xticks(tick_marks, classes, rotation=45)
-    plt.yticks(tick_marks, classes)
+    plt.xticks(tick_marks, classes, rotation=45, fontsize=18)
+    plt.yticks(tick_marks, classes, fontsize=18)
     
     thresh = cm.max() / 2.
     for i, j in itertools.product(range(len(classes)), range(len(classes))):
         plt.text(j, i, '{:.2f}'.format(cm[i, j]),
                  horizontalalignment="center",
-                 color="white" if cm[i, j] > thresh else "black")  
+                 color="white" if cm[i, j] > thresh else "black", fontsize=14)  
 
-    plt.ylabel('Predicted label')
-    plt.xlabel('True label')
+    plt.ylabel('Predicted label', fontsize=18)
+    plt.xlabel('True label', fontsize=18)
     #plt.tight_layout()
     #plt.show()
 
@@ -70,9 +69,9 @@ def acc_vs_energy_plot(pred, true, energy, title, binnumber):
 
     plt.plot(bins[:-1], acc, "x")
     #plt.imshow(cm, interpolation='nearest', cmap=cmap)
-    plt.title(title)
-    plt.ylabel('accuracy')
-    plt.xlabel('log_10(E/GeV)')
+    plt.title(title, fontsize=18)
+    plt.ylabel('accuracy', fontsize=16)
+    plt.xlabel('log_10(E) [GeV]', fontsize=16)
 
 
 
@@ -104,17 +103,17 @@ def summary_plot_binary_target(pred_target, MC_target, classes, energy, binnumbe
     bins = np.linspace(np.min(np.log10(E_for_class1)), np.max(np.log10(E_for_class1)), binnumber)
     valsAll = np.histogram(np.log10(E_for_class1), bins=bins)[0]
     ax3.semilogy(bins[:-1], valsAll)
-    ax3.set_title("Statistic of {} Events vs. Energy".format(classes[0]))
-    ax3.set_xlabel('log_10(E/GeV)')
-    ax3.set_ylabel('amount of events')
+    ax3.set_title("Statistic of {} Events vs. Energy".format(classes[0]), fontsize=16)
+    ax3.set_xlabel('log_10(E) [GeV]', fontsize=16)
+    ax3.set_ylabel('amount of events', fontsize=16)
     
     ax4 = plt.subplot2grid((3, 2), (1, 1))
     bins = np.linspace(np.min(np.log10(E_for_class2)), np.max(np.log10(E_for_class2)), binnumber)
     valsAll = np.histogram(np.log10(E_for_class2), bins=bins)[0]
     ax4.semilogy(bins[:-1], valsAll)
-    ax4.set_title("Statistic of {} Events vs. Energy".format(classes[1]))
-    ax4.set_xlabel('log_10(E/GeV)')
-    ax4.set_ylabel('amount of events')
+    ax4.set_title("Statistic of {} Events vs. Energy".format(classes[1]), fontsize=16)
+    ax4.set_xlabel('log_10(E) [GeV]', fontsize=16)
+    ax4.set_ylabel('amount of events', fontsize=16)
     
     ax5 = plt.subplot2grid((3, 2), (2, 0))
     plot_confusion_matrix(res_true, classes=classes, title='Confusion matrix normalized on MCTruth')
@@ -123,4 +122,31 @@ def summary_plot_binary_target(pred_target, MC_target, classes, energy, binnumbe
     plot_confusion_matrix(res_pred, classes=classes, title='Confusion matrix normalized on PREDICTION')
 
 
+def acc_vs_hitDOMs_plot(pred, true, hitDOMs, title, binnumber):
+    '''
+    inputs:
+    pred: predictions of the NN of the events
+    true: integer - what should the NN predict - number of class
+    energy: energys of the events
+       
+    '''
 
+    was_NN_right = [] #was_NN_right: Mask with 1 if prediction was right, if not 0
+    for i in xrange(0,len(pred)):
+        if np.argmax(pred[i]) == true:
+            was_NN_right.append(1)
+        else:
+            was_NN_right.append(0)
+
+
+    bins = np.linspace(np.min(hitDOMs), np.max(hitDOMs), binnumber)
+    valsTrue = np.histogram(hitDOMs, weights=was_NN_right, bins=bins)[0]
+    valsAll = np.histogram(hitDOMs, bins=bins)[0]
+    acc = 1.*valsTrue/valsAll
+
+
+    plt.plot(bins[:-1], acc, "x")
+    #plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title, fontsize=18)
+    plt.ylabel('accuracy', fontsize=16)
+    plt.xlabel('number of hit DOMs', fontsize=16)

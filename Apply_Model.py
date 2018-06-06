@@ -181,7 +181,7 @@ if __name__ == "__main__":
                 verbose=1,\
                 max_q_size=2)
     #print prediction 
-    np.save(os.path.join(DATA_DIR, 'predictions_mk.npy'), prediction)
+    #np.save(os.path.join(DATA_DIR, 'predictions_mk.npy'), prediction)
 
 
 
@@ -190,7 +190,7 @@ if __name__ == "__main__":
 
     ## write out muex etc for comparison later
     reference_outputs = model_parse.parse_reference_output(conf_model_file)
-    print('Reference output-vars: ', reference_outputs)
+    #print('Reference output-vars: ', reference_outputs)
     ## add to first out-branch:
     outbranch0 = out_shapes.keys()[0]
     for ref_out in reference_outputs:
@@ -199,6 +199,7 @@ if __name__ == "__main__":
                 for var in out_shapes[br].keys()\
                 if var!='general']
     reco_vals = []
+    hit_vals = []
 
     for i, file_handler in enumerate(file_handlers):
         down = test_inds[i][0]
@@ -214,20 +215,30 @@ if __name__ == "__main__":
                                 if var!='general']):
               mc_truth[j].extend(temp_truth[var])
         reco_vals.extend(temp_truth) 
-
-
+###################################################################################
+        hit_DOMs_list = []
+	for k in xrange(up-down):
+	    charge = file_handler["charge"][down+k]
+	    hitDOMs = np.count_nonzero(charge)
+	    hit_DOMs_list.append(hitDOMs)
+	hit_vals.extend(hit_DOMs_list)
+##################################################################################
+    print "TEST \n"
+    print var
+    print br
     dtype = np.dtype([(var + '_truth', np.float64)\
                       for br in out_shapes.keys() \
                       for var in out_shapes[br].keys()\
                       if var!='general'])
     mc_truth = np.array(zip(*np.array(mc_truth)), dtype=dtype)
+    #hit_vals = np.array(zip(*np.array(hit_vals)), dtype=dtype)
 
     #write-out the mc_truth and the prediction separately to a joint pickle
     #file...we can also look for a nicer solution with dtypes again. but the
     #output-shape of prediction should be variable
     MANUAL_writeout_pred_and_exit= True
     if MANUAL_writeout_pred_and_exit:
-        pickle.dump({"mc_truth": mc_truth, "prediction": prediction, "reco_vals": reco_vals},\
+        pickle.dump({"mc_truth": mc_truth, "prediction": prediction, "reco_vals": reco_vals, "HitDOMs": hit_vals},\
                     open(os.path.join(DATA_DIR, "prediction.pickle"),"wc"))
         print(' \n Finished .... Exiting.....')
         exit(0)

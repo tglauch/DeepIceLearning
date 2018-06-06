@@ -38,6 +38,14 @@ def calc_depositedE(physics_frame):
             losses += p.energy 
     return losses
 
+def calc_hitDOMs(physics_frame):
+    hitDOMS = 0
+    pulses = physics_frame["InIcePulses"]
+    # apply the pulsemask --> make it an actual mapping of omkeys to pulses
+    pulses = pulses.apply(physics_frame)
+    for key, pulses in pulses:
+        hitDOMs += 1   
+    return hitDOMs
 
 def classificationTag(physics_frame):
     energy = calc_depositedE(physics_frame)

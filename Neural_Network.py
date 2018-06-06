@@ -279,9 +279,25 @@ if __name__ == "__main__":
     print "Used Loss-Function {}".format(loss_func)
 ###########################################################################################
     if parser.has_option('Multi_Task_Learning', 'ON/OFF') == "ON":
-       model.compile(optimizer=optimizer_used,\
-           loss = parser.has_option('Multi_Task_Learning', 'loss'),\
-           loss_weights = parser.has_option('Multi_Task_Learning', 'loss_weights'))
+        if parser.has_option('Multi_Task_Learning', 'CustomLoss') == "ON":
+            #extra_parameter_1 = XX
+            #extra_parameter_2 =
+            #custom = [individual_loss.event_type_and_energy_weighted_loss(extra_parameter_1, extra_parameter_2), "categorial_crossentropy", "categorial_crossentropy", "categorial_crossentropy"] 
+            
+##############################################################################################
+            weights = parser.get('Multi_Task_Learning', 'weights')
+            weights = np.array(weights.split(',')).astype(np.float)
+            custom = [individual_loss.weighted_categorical_crossentropy(weights), "categorial_crossentropy", "categorial_crossentropy", "categorial_crossentropy"]
+            
+
+############################################################################################################
+            model.compile(optimizer=optimizer_used,\
+                loss=custom,
+                loss_weights = parser.has_option('Multi_Task_Learning', 'loss_weights'))
+        else:   
+            model.compile(optimizer=optimizer_used,\
+               loss = parser.has_option('Multi_Task_Learning', 'loss'),\
+               loss_weights = parser.has_option('Multi_Task_Learning', 'loss_weights'))
     else: 
         if loss_func == "weighted_categorial_crossentropy":
             model.compile(

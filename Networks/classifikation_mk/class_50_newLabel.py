@@ -22,35 +22,21 @@ import residual_unit as resid
 # define inputs for each branch
 inputs = OrderedDict()
 
-inputs["Branch1"] = {"variables": ["charge", "first_charge", "num_pulses", "charge_100ns", "charge_500ns", "time"],
-                     "transformations": [tr.centralize, tr.centralize, tr.centralize, tr.centralize, tr.centralize, tr.centralize]}
+inputs["Branch1"] = {"variables": ["charge", "first_charge", "time"],
+                     "transformations": [tr.centralize, tr.centralize, tr.centralize]}
 inputs["Branch2"] = {"variables": ["charge"],
                      "transformations": [tr.log_of_sum]}
 
-inputs["Branch3"] = {"variables": ["time", "time_spread", "av_time_charges", "time_20pct", "time_50pct", "charge"],
-                     "transformations": [tr.centralize, tr.centralize, tr.centralize, tr.centralize, tr.centralize, tr.centralize]}
+inputs["Branch3"] = {"variables": ["time", "time_spread", "av_time_charges", "charge"],
+                     "transformations": [tr.centralize, tr.centralize, tr.centralize, tr.centralize]}
 inputs["Branch4"] = {"variables": ["time"],
                      "transformations": [tr.max_min_delta_log]}
 
 
 # define outputs for each branch
 outputs = OrderedDict()
-outputs["Out1"] = {"variables": ["ClassificationLabel"],
-                   "transformations": [tr.oneHotEncode_EventType]}
-
-outputs["Out2"] = {"variables": ["StartingLabel"],
+outputs["Out1"] = {"variables": ["UpDownLabel"],
                    "transformations": [tr.oneHotEncode_01]}
-
-outputs["Out3"] = {"variables": ["CoincidenceLabel"],
-                   "transformations": [tr.oneHotEncode_01]}
-
-outputs["Out4"] = {"variables": ["UpDownLabel"],
-                   "transformations": [tr.oneHotEncode_01]}
-
-#outputs["Loss"] = {"variables": ["depositedE", "ClassificationLabel"],
-#                   "transformations": [tr.identity, tr.identity]}
-
-
 
 reference_outputs = []
 
@@ -130,43 +116,11 @@ def model(input_shapes, output_shapes):
     zo = resid.Dense_Residual(72, 36, zo)
 
 
-    # output 1
-    o1 = resid.Dense_Residual(36, 36, zo)
-    o1 = resid.Dense_Residual(36, 36, o1)
-    o1 = resid.Dense_Residual(36, 36, o1)
-    output_b1 = Dense(output_shapes["Out1"]["general"][0],\
+    # output
+    output_layer1 = Dense(output_shapes["Out1"]["general"][0],\
                           activation="softmax",\
-                          name="Target1")(o1)
-
-
-    # output 2
-    o2 = resid.Dense_Residual(36, 36, zo)
-    o2 = resid.Dense_Residual(36, 36, o2)
-    o2 = resid.Dense_Residual(36, 36, o2)
-    output_b2 = Dense(output_shapes["Out2"]["general"][0],\
-                          activation="softmax",\
-                          name="Target2")(o2)
-
-
-    # output 3
-    o3 = resid.Dense_Residual(36, 36, zo)
-    o3 = resid.Dense_Residual(36, 36, o3)
-    o3 = resid.Dense_Residual(36, 36, o3)
-    output_b3 = Dense(output_shapes["Out3"]["general"][0],\
-                          activation="softmax",\
-                          name="Target3")(o3)
-
-
-    # output 4
-    o4 = resid.Dense_Residual(36, 36, zo)
-    o4 = resid.Dense_Residual(36, 36, o4)
-    o4 = resid.Dense_Residual(36, 36, o4)
-    output_b4 = Dense(output_shapes["Out4"]["general"][0],\
-                          activation="softmax",\
-                          name="Target4")(o4)
-
-
+                          name="Target")(zo)
     model = keras.models.Model(inputs=[input_b1, input_b2, input_b3, input_b4],\
-                               outputs=[output_b1, output_b2, output_b3, output_b4])
+                               outputs=[output_layer1])
     print(model.summary())
     return model

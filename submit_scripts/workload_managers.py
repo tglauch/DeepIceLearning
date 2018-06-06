@@ -34,7 +34,7 @@ def make_slurm(executable, request_gpus, request_memory, condor_folder, file_loc
 
 # Please do not ident!!!
     submit_info = '#!/usr/bin/env bash\n\
-#SBATCH --time=72:00:00\n\
+#SBATCH --time=48:00:00\n\
 #SBATCH --partition=gpu\n\
 #SBATCH --gres=gpu:{req_gpus}\n\
 #SBATCH --mem={req_mem} \n\
