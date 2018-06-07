@@ -223,9 +223,6 @@ if __name__ == "__main__":
 	    hit_DOMs_list.append(hitDOMs)
 	hit_vals.extend(hit_DOMs_list)
 ##################################################################################
-    print "TEST \n"
-    print var
-    print br
     dtype = np.dtype([(var + '_truth', np.float64)\
                       for br in out_shapes.keys() \
                       for var in out_shapes[br].keys()\

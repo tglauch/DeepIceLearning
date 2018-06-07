@@ -207,14 +207,46 @@ if __name__ == "__main__":
             h5file.root, 'charge_100ns', tables.Float64Atom(),
             (0, input_shape[0], input_shape[1], input_shape[2], 1),
             title="Sum of the Charge during the first 100ns per DOM")
+        time_10pct = h5file.create_earray(
+            h5file.root, 'time_10pct', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="Time at which 10 percent of charge is deposited")
         time_20pct = h5file.create_earray(
             h5file.root, 'time_20pct', tables.Float64Atom(),
             (0, input_shape[0], input_shape[1], input_shape[2], 1),
             title="Time at which 20 percent of charge is deposited")
+        time_30pct = h5file.create_earray(
+            h5file.root, 'time_30pct', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="Time at which 30 percent of charge is deposited")
+        time_40pct = h5file.create_earray(
+            h5file.root, 'time_40pct', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="Time at which 40 percent of charge is deposited")
         time_50pct = h5file.create_earray(
             h5file.root, 'time_50pct', tables.Float64Atom(),
             (0, input_shape[0], input_shape[1], input_shape[2], 1),
             title="Time at which 50 percent of charge is deposited")
+        time_60pct = h5file.create_earray(
+            h5file.root, 'time_60pct', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="Time at which 60 percent of charge is deposited")
+        time_70pct = h5file.create_earray(
+            h5file.root, 'time_70pct', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="Time at which 70 percent of charge is deposited")
+        time_80pct = h5file.create_earray(
+            h5file.root, 'time_80pct', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="Time at which 80 percent of charge is deposited")
+        time_90pct = h5file.create_earray(
+            h5file.root, 'time_90pct', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="Time at which 90 percent of charge is deposited")
+        time_100pct = h5file.create_earray(
+            h5file.root, 'time_100pct', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="Time at which 100 percent of charge is deposited")
         reco_vals = tables.Table(h5file.root, 'reco_vals',
                                  description=dtype)
         h5file.root._v_attrs.shape = input_shape
@@ -324,9 +356,25 @@ if __name__ == "__main__":
                         (1, input_shape[0], input_shape[1], input_shape[2], 1))
                     charge_100ns_arr = np.zeros(
                         (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                    time_10pct_arr = np.zeros(
+                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
                     time_20pct_arr = np.zeros(
                         (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                    time_30pct_arr = np.zeros(
+                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                    time_40pct_arr = np.zeros(
+                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
                     time_50pct_arr = np.zeros(
+                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                    time_60pct_arr = np.zeros(
+                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                    time_70pct_arr = np.zeros(
+                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                    time_80pct_arr = np.zeros(
+                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                    time_90pct_arr = np.zeros(
+                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                    time_100pct_arr = np.zeros(
                         (1, input_shape[0], input_shape[1], input_shape[2], 1))        
 
         
@@ -349,8 +397,16 @@ if __name__ == "__main__":
                              skew(times),\
                              np.sum(charges[times<100]),\
                              np.sum(charges[times<500]),\
+                             time_of_percentage(charges, times, 10),\
                              time_of_percentage(charges, times, 20),\
-                             time_of_percentage(charges, times, 50)
+                             time_of_percentage(charges, times, 30),\
+                             time_of_percentage(charges, times, 40),\
+                             time_of_percentage(charges, times, 50),\
+                             time_of_percentage(charges, times, 60),\
+                             time_of_percentage(charges, times, 70),\
+                             time_of_percentage(charges, times, 80),\
+                             time_of_percentage(charges, times, 90),\
+                             time_of_percentage(charges, times, 100)
                              )
                     #print "Checkpoint B"
                     for dom in DOM_list:
@@ -378,10 +434,26 @@ if __name__ == "__main__":
                                         final_dict[dom][9]
                             charge_100ns_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
                                         final_dict[dom][10]
-                            time_20pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                            time_10pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
                                         final_dict[dom][11]
-                            time_50pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                            time_20pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
                                         final_dict[dom][12]
+                            time_30pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                        final_dict[dom][13]
+                            time_40pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                        final_dict[dom][14]
+                            time_50pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                        final_dict[dom][15]
+                            time_60pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                        final_dict[dom][16]
+                            time_70pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                        final_dict[dom][17]
+                            time_80pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                        final_dict[dom][18]
+                            time_90pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                        final_dict[dom][19]
+                            time_100pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                        final_dict[dom][20]
 
 
 
@@ -396,8 +468,16 @@ if __name__ == "__main__":
                     time_kurtosis.append(time_kurtosis_arr)
                     charge_500ns.append(charge_500ns_arr)
                     charge_100ns.append(charge_100ns_arr)
+                    time_10pct.append(time_10pct_arr)
                     time_20pct.append(time_20pct_arr)
+                    time_30pct.append(time_30pct_arr)
+                    time_40pct.append(time_40pct_arr)
                     time_50pct.append(time_50pct_arr)
+                    time_60pct.append(time_60pct_arr)
+                    time_70pct.append(time_70pct_arr)
+                    time_80pct.append(time_80pct_arr)
+                    time_90pct.append(time_90pct_arr)
+                    time_100pct.append(time_100pct_arr)
                        
                     reco_vals.append(np.array(reco_arr))
                     #print "End Point"
@@ -419,8 +499,16 @@ if __name__ == "__main__":
         time_kurtosis.flush()
         charge_500ns.flush()
         charge_100ns.flush()
+        time_10pct.flush()
         time_20pct.flush()
+        time_30pct.flush()
+        time_40pct.flush()
         time_50pct.flush()
+        time_60pct.flush()
+        time_70pct.flush()
+        time_80pct.flush()
+        time_90pct.flush()
+        time_100pct.flush()
 
         print reco_vals
         reco_vals.flush()
