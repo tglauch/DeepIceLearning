@@ -66,19 +66,13 @@ def classificationTag(physics_frame):
     elif abs(neutrino.pdg_encoding) == 16: # primary particle is a tau neutrino
         listChildren = I3Tree.children(I3Tree.first_child(neutrino))
         if not listChildren: # without this, the function collapses
-            if energy > 10**6: # more than 1 PeV, due to energy in GeV
-                classificationTag = 3
-            else:
-                classificationTag = 1
+            classificationTag = 3
         else:
             for i in listChildren:
                 if abs(i.pdg_encoding) == 13:
-                     classificationTag = 2
+                    classificationTag = 2
                 else:
-                    if energy > 10**6: # more than 1 PeV, due to energy in GeV
-                        classificationTag = 3
-                    else:
-                        classificationTag = 1
+                    classificationTag = 3
     else:
         print "Error: primary particle wasnt a neutrino"
     # classificationTag = 1 means cascade
@@ -126,5 +120,21 @@ def coincidenceLabel(physics_frame):
     return coincidence
 
 
-
+def tau_decay_length(physics_frame):
+    ParticelList = [12, 14, 16]
+    I3Tree = physics_frame['I3MCTree']
+    primary_list = I3Tree.get_primaries()
+    if len(primary_list) == 1:
+        neutrino = I3Tree[0]
+    else:
+        for p in primary_list:
+            pdg = p.pdg_encoding
+            if abs(pdg) in ParticelList:
+                neutrino = p
+    if abs(neutrino.pdg_encoding) == 16:
+        lepton = I3Tree.children(neutrino)[0]
+        tau_decay_length = lepton.length
+    else:
+        tau_decay_length = "NO TAU"
+    return tau_decay_length
 

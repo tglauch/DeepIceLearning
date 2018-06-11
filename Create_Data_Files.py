@@ -199,14 +199,30 @@ if __name__ == "__main__":
             h5file.root, 'time_moment_2', tables.Float64Atom(),
             (0, input_shape[0], input_shape[1], input_shape[2], 1),
             title="second moment of time")
-        charge_500ns = h5file.create_earray(
-            h5file.root, 'charge_500ns', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Sum of the Charge during the first 500ns per DOM")
         charge_100ns = h5file.create_earray(
             h5file.root, 'charge_100ns', tables.Float64Atom(),
             (0, input_shape[0], input_shape[1], input_shape[2], 1),
             title="Sum of the Charge during the first 100ns per DOM")
+        charge_200ns = h5file.create_earray(
+            h5file.root, 'charge_200ns', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="Sum of the Charge during the first 200ns per DOM")
+        charge_300ns = h5file.create_earray(
+            h5file.root, 'charge_300ns', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="Sum of the Charge during the first 300ns per DOM")
+        charge_400ns = h5file.create_earray(
+            h5file.root, 'charge_400ns', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="Sum of the Charge during the first 400ns per DOM")
+        charge_500ns = h5file.create_earray(
+            h5file.root, 'charge_500ns', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="Sum of the Charge during the first 500ns per DOM")
+        charge_600ns = h5file.create_earray(
+            h5file.root, 'charge_600ns', tables.Float64Atom(),
+            (0, input_shape[0], input_shape[1], input_shape[2], 1),
+            title="Sum of the Charge during the first 600ns per DOM")
         time_10pct = h5file.create_earray(
             h5file.root, 'time_10pct', tables.Float64Atom(),
             (0, input_shape[0], input_shape[1], input_shape[2], 1),
@@ -294,20 +310,38 @@ if __name__ == "__main__":
                         continue
                     #try to open the I3MCTree, if not possible skip frame
                     try:
-                        ash = physics_event['I3MCTree']
+                        I3Tree = physics_event['I3MCTree']
                     except Exception:
                         print "Problem with the I3MCTree"
                         TreeProblem +=1
                         continue
+                    # Possibility to only choose events with neutrinos as primary
                     ParticelList = [12, 14, 16]
                     if dataset_configparser.get('Basics', 'onlyneutrinoasprimary') == "True":
                         if abs(int(eval('physics_event{}'.format(dataset_configparser.get('firstParticle', 'variable'))))) not in ParticelList:
                                 framesNotNeutrinoPrimary +=1
                                 continue
+                    # Possibility to define a maximal energy
                     energy_cutoff = int(dataset_configparser.get('Basics', 'energy_cutoff'))
                     if calc_depositedE(physics_event) > energy_cutoff:
                         frameToHighDepositedEnergy +=1
                         continue
+
+                    # Possibility to define a minimal energy requierment for taus only
+                    #First we need the neutrino
+                    primary_list = I3Tree.get_primaries()
+                    if len(primary_list) == 1:
+                        neutrino = I3Tree[0]
+                    else:
+                        for p in primary_list:
+                            pdg = p.pdg_encoding
+                            if abs(pdg) in ParticelList:
+                                neutrino = p
+                    minimal_tau_energy = int(dataset_configparser.get('Basics', 'minimal_tau_energy'))
+                    if abs(neutrino.pdg_encoding) == 16:
+                        if calc_depositedE(physics_event) < minimal_tau_energy:
+                            continue 
+
                     reco_arr = []
                     for k, cur_var in enumerate(data_source):
                         if cur_var[0] == 'variable':
@@ -352,9 +386,17 @@ if __name__ == "__main__":
                         (1, input_shape[0], input_shape[1], input_shape[2], 1))
                     time_kurtosis_arr = np.zeros(
                         (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                    charge_100ns_arr = np.zeros(
+                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                    charge_200ns_arr = np.zeros(
+                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                    charge_300ns_arr = np.zeros(
+                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                    charge_400ns_arr = np.zeros(
+                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
                     charge_500ns_arr = np.zeros(
                         (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                    charge_100ns_arr = np.zeros(
+                    charge_600ns_arr = np.zeros(
                         (1, input_shape[0], input_shape[1], input_shape[2], 1))
                     time_10pct_arr = np.zeros(
                         (1, input_shape[0], input_shape[1], input_shape[2], 1))
@@ -396,7 +438,11 @@ if __name__ == "__main__":
                              moment(times, moment=2),\
                              skew(times),\
                              np.sum(charges[times<100]),\
+                             np.sum(charges[times<200]),\
+                             np.sum(charges[times<300]),\
+                             np.sum(charges[times<400]),\
                              np.sum(charges[times<500]),\
+                             np.sum(charges[times<600]),\
                              time_of_percentage(charges, times, 10),\
                              time_of_percentage(charges, times, 20),\
                              time_of_percentage(charges, times, 30),\
@@ -430,30 +476,38 @@ if __name__ == "__main__":
                                         final_dict[dom][7]
                             time_kurtosis_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
                                         final_dict[dom][8] 
-                            charge_500ns_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                        final_dict[dom][9]
                             charge_100ns_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                        final_dict[dom][9]
+                            charge_200ns_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
                                         final_dict[dom][10]
-                            time_10pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                        final_dict[dom][11]
-                            time_20pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                            charge_300ns_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                        final_dict[dom[11]
+                            charge_400ns_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
                                         final_dict[dom][12]
-                            time_30pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                            charge_500ns_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
                                         final_dict[dom][13]
-                            time_40pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                            charge_600ns_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
                                         final_dict[dom][14]
-                            time_50pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                            time_10pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
                                         final_dict[dom][15]
-                            time_60pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                            time_20pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
                                         final_dict[dom][16]
-                            time_70pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                            time_30pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
                                         final_dict[dom][17]
-                            time_80pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                            time_40pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
                                         final_dict[dom][18]
-                            time_90pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                            time_50pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
                                         final_dict[dom][19]
-                            time_100pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                            time_60pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
                                         final_dict[dom][20]
+                            time_70pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                        final_dict[dom][21]
+                            time_80pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                        final_dict[dom][22]
+                            time_90pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                        final_dict[dom][23]
+                            time_100pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                        final_dict[dom][24]
 
 
 
@@ -466,8 +520,12 @@ if __name__ == "__main__":
                     num_pulses.append(num_pulses_arr)
                     time_moment_2.append(time_moment_2_arr)
                     time_kurtosis.append(time_kurtosis_arr)
-                    charge_500ns.append(charge_500ns_arr)
                     charge_100ns.append(charge_100ns_arr)
+                    charge_200ns.append(charge_200ns_arr)
+                    charge_300ns.append(charge_300ns_arr)
+                    charge_400ns.append(charge_400ns_arr)
+                    charge_500ns.append(charge_500ns_arr)
+                    charge_600ns.append(charge_600ns_arr)
                     time_10pct.append(time_10pct_arr)
                     time_20pct.append(time_20pct_arr)
                     time_30pct.append(time_30pct_arr)
@@ -497,8 +555,12 @@ if __name__ == "__main__":
         num_pulses.flush()
         time_moment_2.flush()
         time_kurtosis.flush()
-        charge_500ns.flush()
         charge_100ns.flush()
+        charge_200ns.flush()
+        charge_300ns.flush()
+        charge_400ns.flush()
+        charge_500ns.flush()
+        charge_600ns.flush()
         time_10pct.flush()
         time_20pct.flush()
         time_30pct.flush()
