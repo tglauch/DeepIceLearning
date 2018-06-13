@@ -37,7 +37,7 @@ import time
 
 def time_of_percentage(charges, times, percentage):
     charges = charges.tolist()
-    cut = np.sum(charges)/(100/percentage)
+    cut = np.sum(charges)/(100./percentage)
     sum=0
     for i in charges:
         sum = sum + i
@@ -275,7 +275,9 @@ if __name__ == "__main__":
         skipped_frames = 0
         TreeProblem = 0
         framesNotNeutrinoPrimary = 0
+        frameToLessHitDOMs = 0
         frameToHighDepositedEnergy = 0
+        frameToLessDepositedEnergy = 0
         statusInFilelist=0
         event_files = []
         #print "##################################"
@@ -315,32 +317,65 @@ if __name__ == "__main__":
                         print "Problem with the I3MCTree"
                         TreeProblem +=1
                         continue
+
+                    ##### Checking if the event allready occured (Event Splitting)
+                   # EventID = physics_event["I3EventHeader"].event_id
+                   # RunID   = physics_event["I3EventHeader"].run_id
+                    #EventID_list= []
+                    #if EventID 
+
+
+
+
+                    ##### Checking for wierd event structures
+                    if testing_event(physics_event) == -1:
+                        continue
+
+                    ###### Possible CUTS on the DATA #####
                     # Possibility to only choose events with neutrinos as primary
                     ParticelList = [12, 14, 16]
-                    if dataset_configparser.get('Basics', 'onlyneutrinoasprimary') == "True":
+                    if dataset_configparser.get('Cuts', 'only_neutrino_as_primary_cut') == "ON":
                         if abs(int(eval('physics_event{}'.format(dataset_configparser.get('firstParticle', 'variable'))))) not in ParticelList:
                                 framesNotNeutrinoPrimary +=1
                                 continue
                     # Possibility to define a maximal energy
-                    energy_cutoff = int(dataset_configparser.get('Basics', 'energy_cutoff'))
-                    if calc_depositedE(physics_event) > energy_cutoff:
-                        frameToHighDepositedEnergy +=1
-                        continue
+                    if dataset_configparser.get('Cuts', 'max_energy_cut') == "ON":
+                        energy_cutoff = int(dataset_configparser.get('Cuts', 'max_energy_cutoff'))
+                        if calc_depositedE(physics_event) > energy_cutoff:
+                            frameToHighDepositedEnergy +=1
+                            continue
 
                     # Possibility to define a minimal energy requierment for taus only
                     #First we need the neutrino
-                    primary_list = I3Tree.get_primaries()
-                    if len(primary_list) == 1:
-                        neutrino = I3Tree[0]
-                    else:
-                        for p in primary_list:
-                            pdg = p.pdg_encoding
-                            if abs(pdg) in ParticelList:
-                                neutrino = p
-                    minimal_tau_energy = int(dataset_configparser.get('Basics', 'minimal_tau_energy'))
-                    if abs(neutrino.pdg_encoding) == 16:
-                        if calc_depositedE(physics_event) < minimal_tau_energy:
-                            continue 
+                    if dataset_configparser.get('Cuts', 'minimal_tau_energy') == "ON":
+                        primary_list = I3Tree.get_primaries()
+                        if len(primary_list) == 1:
+                            neutrino = I3Tree[0]
+                        else:
+                            for p in primary_list:
+                                pdg = p.pdg_encoding
+                                if abs(pdg) in ParticelList:
+                                    neutrino = p
+                        minimal_tau_energy = int(dataset_configparser.get('Cuts', 'minimal_tau_energy'))
+                        if abs(neutrino.pdg_encoding) == 16:
+                            if calc_depositedE(physics_event) < minimal_tau_energy:
+                                continue 
+
+                   # Possibility to define a general minimal deposited Energy
+                   if dataset_configparser.get('Cuts', 'min_energy_cut') == "ON":
+                        energy_cutoff = int(dataset_configparser.get('Cuts', 'min_energy_cutoff'))
+                        if calc_depositedE(physics_event) < energy_cutoff:
+                            frameToLessDepositedEnergy +=1
+                            continue
+
+                   # Possibility to define a general minimal amount of hit DOMs
+                   if dataset_configparser.get('Cuts', 'min_hit_DOMs_cut') == "ON":
+                        hit_DOMs_cutoff = int(dataset_configparser.get('Cuts', 'min_hit_DOMs'))
+                        if calc_hitDOMs(physics_event) < hit_DOMS_cutoff:
+                            frameToLessHitDOMs +=1
+                            continue
+
+                   #######################################
 
                     reco_arr = []
                     for k, cur_var in enumerate(data_source):
@@ -454,7 +489,7 @@ if __name__ == "__main__":
                              time_of_percentage(charges, times, 90),\
                              time_of_percentage(charges, times, 100)
                              )
-                    #print "Checkpoint B"
+
                     for dom in DOM_list:
                         gpos = grid[dom]
                         if dom in final_dict:

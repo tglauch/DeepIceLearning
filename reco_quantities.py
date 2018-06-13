@@ -39,8 +39,8 @@ def calc_depositedE(physics_frame):
     return losses
 
 def calc_hitDOMs(physics_frame):
-    hitDOMS = 0
-    pulses = physics_frame["InIcePulses"]
+    hitDOMs = 0
+    pulses = physics_frame["InIceDSTPulses"]
     # apply the pulsemask --> make it an actual mapping of omkeys to pulses
     pulses = pulses.apply(physics_frame)
     for key, pulses in pulses:
@@ -81,19 +81,12 @@ def classificationTag(physics_frame):
     return classificationTag
 
 
-def starting(physics_frame):
+def starting(p_frame):
     gcdfile = "/data/sim/sim-new/downloads/GCD/GeoCalibDetectorStatus_2012.56063_V0.i3.gz"
     N = 0
-    ParticelList = [12, 14, 16]
-    I3Tree = physics_frame['I3MCTree']
+    I3Tree = p_frame['I3MCTree']
+    neutrino = get_the_right_particle(p_frame)
     primary_list = I3Tree.get_primaries()
-    if len(primary_list) == 1:
-        neutrino = I3Tree[0]
-    else:
-        for p in primary_list:
-            pdg = p.pdg_encoding
-            if abs(pdg) in ParticelList:
-                neutrino = p
     surface = icecube.MuonGun.ExtrudedPolygon.from_file(gcdfile, padding=-N)
     intersections = surface.intersection(neutrino.pos + neutrino.length*neutrino.dir, neutrino.dir)
     if intersections.first <= 0 and intersections.second > 0:
@@ -120,21 +113,151 @@ def coincidenceLabel(physics_frame):
     return coincidence
 
 
-def tau_decay_length(physics_frame):
-    ParticelList = [12, 14, 16]
-    I3Tree = physics_frame['I3MCTree']
-    primary_list = I3Tree.get_primaries()
-    if len(primary_list) == 1:
-        neutrino = I3Tree[0]
-    else:
-        for p in primary_list:
-            pdg = p.pdg_encoding
-            if abs(pdg) in ParticelList:
-                neutrino = p
+def tau_decay_length(p_frame):
+    I3Tree = p_frame['I3MCTree']    
+    neutrino = get_the_right_particle(p_frame)    
     if abs(neutrino.pdg_encoding) == 16:
-        lepton = I3Tree.children(neutrino)[0]
-        tau_decay_length = lepton.length
+        return I3Tree.children(neutrino)[0].length
     else:
-        tau_decay_length = "NO TAU"
-    return tau_decay_length
+        return -1
+
+
+# calculates if the particle is in or near the detector
+# if this is the case it further states weather the event is starting, stopping or through-going
+def has_signature(p):
+    intersections = surface.intersection(p.pos, p.dir)
+    if p.is_neutrino:
+        return -1
+    if not np.isfinite(intersections.first):
+        return -1
+    if p.is_cascade:
+        if intersections.first <= 0 and intersections.second > 0:
+            return 0 # starting event
+        else:
+            return -1 # no hits
+    elif p.is_track:
+        if intersections.first <= 0 and intersections.second > 0:
+            return 0 # starting event
+        elif intersections.first > 0 and intersections.second > 0:
+            if p.length <= intersections.first:
+                return -1 # no hit
+            elif p.length > intersections.second:
+                return 1 #through-going event
+            else:
+                return 2 #stopping event
+        else:
+            return -1
+
+
+def get_the_right_particle(p_frame):
+    nu_pdg = [12, 14, 16, -12, -14, -16]
+    I3Tree = p_frame['I3MCTree']
+    #find first neutrino as seed for find_particle 
+    for p in I3Tree.get_primaries():
+        if p.pdg_encoding in nu_pdg:
+            break
+    p_list  = find_particle(p, I3Tree)
+    if len(p_list) == 0 or len(p_list)>1:
+        return -1
+    else:
+        return p_list[0]
+
+def testing_event(p_frame):
+    nu_pdg = [12, 14, 16, -12, -14, -16]
+    I3Tree = p_frame['I3MCTree']
+    neutrino = get_the_right_particle(p_frame)
+    if neutrino == -1:
+        return -1
+    else:
+        children = I3Tree.children(neutrino)
+        p_types = [np.abs(child.pdg_encoding) for child in children]
+        p_strings = [child.type_string for child in children]
+
+        if not np.any([p_type in nu_pdg for p_type in p_types]) \
+            and not ((11 in p_types) or (13 in p_types) or (15 in p_types)):
+            return -1 # kick the event
+        else:
+            return 0 # everything fine 
+			
+# returns a list of neutrinos, that children interact with the detector, determines after the level, where one is found
+def find_particle(p, I3Tree):
+    t_list = []
+    nu_pdg = [12, 14, 16, -12, -14, -16]
+    children = I3Tree.children(p)
+    IC_hit = np.any([(has_signature(tp)!=-1) for tp in children])
+    if IC_hit:
+        if not p.pdg_encoding in nu_pdg:
+            return [I3Tree.parent(p)]
+        else:
+            return [p]
+    elif len(children)>0:
+        for child in children:
+            t_list = np.concatenate([t_list, find_particle(child, I3Tree)])
+        return t_list
+    else:
+        return []
+
+# Generation of the Classification Label	
+def classify(p_frame):
+    nu_pdg = [12, 14, 16, -12, -14, -16]
+    I3Tree = p_frame['I3MCTree']
+    #for p in I3Tree.get_primaries():
+    #    if p.pdg_encoding in nu_pdg:
+    #        break
+    #p_list  = find_particle(p, I3Tree)
+    #if len(p_list) == 0 or len(p_list)>1:
+    #    return -1
+    neutrino = get_the_right_particle(p_frame)
+    children = I3Tree.children(neutrino)
+    p_types = [np.abs(child.pdg_encoding) for child in children]
+    p_strings = [child.type_string for child in children]
+    
+    #if not np.any([p_type in nu_pdg for p_type in p_types]) \
+    #   and not ((11 in p_types) or (13 in p_types) or (15 in p_types)):
+    #    return -1
+    
+    if np.any([p_type in nu_pdg for p_type in p_types]):
+        return 0 # is NC event
+    else:
+        if (11 in p_types):
+            return 1 # Cascade 
+        elif (13 in p_types):
+            mu_ind = p_types.index(13)
+            had_ind = p_strings.index('Hadrons')
+            if has_signature(children[had_ind]) == 0:
+                return 3 #Starting Track
+            elif has_signature(children[mu_ind]) == 1:
+                return 2 # Through Going Track
+            elif has_signature(children[mu_ind]) == 2:
+                return 4 ## Stopping Track
+        elif (15 in p_types):
+            tau_ind = p_types.index(15)
+            had_ind = p_strings.index('Hadrons')
+            tau_child = I3Tree.children(children[tau_ind])[-1]
+            if np.abs(tau_child.pdg_encoding) == 13:
+                if has_signature(children[had_ind]) == 0:
+                    return 3 # Starting Track
+                elif has_signature(tau_child) == 1:
+                    return 2 # Through Going Track
+                elif has_signature(tau_child) == 2:
+                    return 4 # Stopping Track
+            
+            else:
+                if children[tau_ind].length < 5:
+                    return 1 # Cascade
+                if has_signature(children[had_ind]) == 0 and has_signature(tau_child) == 0: 
+                    return 5 # Double Bang
+                elif has_signature(children[had_ind]) == 0 and has_signature(tau_child) == -1:
+                    return 3 # Starting Track
+                elif has_signature(children[had_ind]) == -1  and has_signature(tau_child) == 0:
+                    return 6 # Stopping Tau
+
+nomenclature = {-1: 'no Hit',
+               0: 'NC',
+               1: 'Cascade',
+               2: 'Through-Going Track',
+               3: 'Starting Track',
+               4: 'Stopping Track',
+               5: 'Double Bang',
+               6: 'Stopping Tau'}
 
