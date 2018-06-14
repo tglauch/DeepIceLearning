@@ -63,8 +63,8 @@ if not os.path.exists(PROCESS_DIR):
 
 WORKDIR = os.path.join(PROCESS_DIR, "jobs/")
 script = os.path.join(
-    "/data/user/mkronmueller/code/DeepIceLearning", 
-    #main_parser.get("Basics", "thisfolder"),\
+    #"/data/user/mkronmueller/code/DeepIceLearning", 
+    main_parser.get("Basics", "thisfolder"),\
     args.__dict__["create_script"])
 dag_name = args.__dict__["name"]
 dagFile = os.path.join(
@@ -108,7 +108,7 @@ if not Resc:
     if folderlist == 'allinmcpath': 
         folderlist = []
         for i in xrange(len(basepath)):
-            check_sys = os.path.isdir(os.path.join(basepath[i], "00000-00999//clsim-base-4.0.3.0.99_eff"))
+            check_sys = os.path.isdir(os.path.join(basepath[i], "00000-00999/clsim-base-4.0.3.0.99_eff"))
             print "Check for systematic dataset: {}".format(check_sys)
             if check_sys: 
                 a = [subfolder + "/clsim-base-4.0.3.0.99_eff" for subfolder in os.listdir(basepath[i])
@@ -164,10 +164,10 @@ if not Resc:
                                          for single_file in i3_files]
                     run_filelist.extend(b)
 #################################################################################################
-            #run_filelist = run_filelist[:5]
+            run_filelist = run_filelist[:5]
 #################################################################################################
             if filesperjob == -1:
-                if factor_list[j] == 1:
+                if factor_list[j] == 10:
                     with open(os.path.join(outfolder,
                                            'File_{}.pickle'.format(ii)), 'w+') as f:
                         pickle.dump(run_filelist, f)

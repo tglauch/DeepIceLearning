@@ -269,7 +269,14 @@ if __name__ == "__main__":
         print('Created a new HDF File with the Settings:')
         print(h5file)
         print(h5file.root)
-    
+   
+#####################################################
+        fail_file_path = dataset_configparser.get('Basics', 'fail_file')
+        if not os.path.exists(fail_file_path):
+            os.makedirs(fail_file_path)
+	fail_file = os.path.join(fail_file_path, "fail_file.npy")
+        open(fail_file, "w")
+#####################################################
         np.save('grid.npy', grid)
         TotalEventCounter = 0
         skipped_frames = 0
@@ -309,12 +316,20 @@ if __name__ == "__main__":
                         physics_event = a.pop_physics()
                     except Exception:
                         print "Frame not poped"
+                        report = [0, 0, "FramePopProblem"]
+                        np.save(fail_file, report)
                         continue
+ 
+                    EventID = physics_event["I3EventHeader"].event_id
+		    RunID   = physics_event["I3EventHeader"].run_id
+
                     #try to open the I3MCTree, if not possible skip frame
                     try:
                         I3Tree = physics_event['I3MCTree']
                     except Exception:
                         print "Problem with the I3MCTree"
+                        report = [RunID, EventID, "TreeProblem"]
+                        np.save(fail_file, report)
                         TreeProblem +=1
                         continue
 
@@ -329,6 +344,8 @@ if __name__ == "__main__":
 
                     ##### Checking for wierd event structures
                     if testing_event(physics_event) == -1:
+			report = [RunID, EventID, "EventTestingFailed"]
+                        np.save(fail_file, report)
                         continue
 
                     ###### Possible CUTS on the DATA #####
@@ -336,12 +353,16 @@ if __name__ == "__main__":
                     ParticelList = [12, 14, 16]
                     if dataset_configparser.get('Cuts', 'only_neutrino_as_primary_cut') == "ON":
                         if abs(int(eval('physics_event{}'.format(dataset_configparser.get('firstParticle', 'variable'))))) not in ParticelList:
-                                framesNotNeutrinoPrimary +=1
+                                report = [RunID, EventID, "NeutrinoPrimaryCut"]
+                                np.save(fail_file, report)
+				framesNotNeutrinoPrimary +=1
                                 continue
                     # Possibility to define a maximal energy
                     if dataset_configparser.get('Cuts', 'max_energy_cut') == "ON":
                         energy_cutoff = int(dataset_configparser.get('Cuts', 'max_energy_cutoff'))
                         if calc_depositedE(physics_event) > energy_cutoff:
+		            report = [RunID, EventID, "MaximalEnergyCut"]
+                            np.save(fail_file, report)
                             frameToHighDepositedEnergy +=1
                             continue
 
@@ -359,6 +380,8 @@ if __name__ == "__main__":
                         minimal_tau_energy = int(dataset_configparser.get('Cuts', 'minimal_tau_energy'))
                         if abs(neutrino.pdg_encoding) == 16:
                             if calc_depositedE(physics_event) < minimal_tau_energy:
+                                report = [RunID, EventID, "MinimalTauEnergyCut"]
+                                np.save(fail_file, report)
                                 continue 
 
                    # Possibility to define a general minimal deposited Energy
@@ -366,6 +389,8 @@ if __name__ == "__main__":
                         energy_cutoff = int(dataset_configparser.get('Cuts', 'min_energy_cutoff'))
                         if calc_depositedE(physics_event) < energy_cutoff:
                             frameToLessDepositedEnergy +=1
+                            report = [RunID, EventID, "MinimalEnergyCut"]
+                            np.save(fail_file, report)
                             continue
 
                    # Possibility to define a general minimal amount of hit DOMs
@@ -373,6 +398,8 @@ if __name__ == "__main__":
                         hit_DOMs_cutoff = int(dataset_configparser.get('Cuts', 'min_hit_DOMs'))
                         if calc_hitDOMs(physics_event) < hit_DOMS_cutoff:
                             frameToLessHitDOMs +=1
+                            report = [RunID, EventID, "HitDOMsCut"]
+                            np.save(fail_file, report)
                             continue
 
                    #######################################
@@ -619,3 +646,4 @@ if __name__ == "__main__":
         print "Script is at its END"
         h5file.root._v_attrs.len = TotalEventCounter
     h5file.close()
+    fail_file.close()
