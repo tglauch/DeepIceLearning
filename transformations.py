@@ -76,7 +76,7 @@ def time_prepare(x):
     ret[ret == np.inf] = replace_with
     return ret
 
-def oneHotEncode_EventType(x):
+def oneHotEncode_EventType_simple(x):
     """
     This function one hot encodes the input for the event types cascade, tracks, doubel-bang
     """
@@ -92,7 +92,7 @@ def oneHotEncode_EventType(x):
         onehot_encoded.append(value)
     return onehot_encoded
 
-def oneHotEncode_noDoubleBang(x):
+def oneHotEncode_EventType_noDoubleBang_simple(x):
     """
     This function one hot encodes the input
     """
@@ -134,6 +134,49 @@ def oneHotEncode_01(x):
     return onehot_encoded
 
 
+def oneHotEncode_EventType(x):
+    """
+    This function one hot encodes the input for the event types cascade, tracks, doubel-bang
+    """
+    # define universe of possible input values
+    onehot_encoded = []
+    # universe has to defined depending on the problem, in this implementation integers are neccesary
+    universe = [0, 1, 2, 3, 4, 5, 6]
+    for i in range(len(universe)):
+        if x == universe[i]:
+            value = 1.
+        else:
+            value = 0.
+        onehot_encoded.append(value)
+    return onehot_encoded
+
+def oneHotEncode_EventType_generalize(x):
+    """
+    This function one hot encodes the input for the event types cascade, tracks, doubel-bang
+    """
+    # define universe of possible input values
+    fail = [0., 0., 0.]
+    cascade = [1., 0., 0.]
+    track = [0., 1., 0.]
+    doublebang = [0., 0., 1.]
+    # map x to possible classes
+    if x == 0: #NC
+        onehot_encoded = cascade
+    elif x == 1: #Cascade
+        onehot_encoded = cascade
+    elif x == 2: #Through-Going Track
+        onehot_encoded = track
+    elif x == 3: #Starting Track
+        onehot_encoded = track
+    elif x == 4: #Stopping Track
+        onehot_encoded = track
+    elif x == 5: #Double Bang
+        onehot_encoded = doublebang
+    elif x == 6: #Stopping Tau
+        onehot_encoded = double bang
+    else:
+	onehot_encoded = fail 
+    return onehot_encoded
 
 
 
