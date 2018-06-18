@@ -155,14 +155,13 @@ if __name__ == "__main__":
 
     if os.path.exists(outfile):
         os.remove(outfile)
-    
+
     dtype, data_source = fu.read_variables(dataset_configparser)
     dtype_len = len(dtype)
     FILTERS = tables.Filters(complib='zlib', complevel=9)
     with tables.open_file(
         outfile, mode="w", title="Events for training the NN",
             filters=FILTERS) as h5file:
-    
         charge = h5file.create_earray(
             h5file.root, 'charge', tables.Float64Atom(),
             (0, input_shape[0], input_shape[1], input_shape[2], 1),
@@ -199,30 +198,6 @@ if __name__ == "__main__":
             h5file.root, 'time_moment_2', tables.Float64Atom(),
             (0, input_shape[0], input_shape[1], input_shape[2], 1),
             title="second moment of time")
-#        charge_100ns = h5file.create_earray(
-#            h5file.root, 'charge_100ns', tables.Float64Atom(),
-#            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-#            title="Sum of the Charge during the first 100ns per DOM")
-#        charge_200ns = h5file.create_earray(
-#            h5file.root, 'charge_200ns', tables.Float64Atom(),
-#            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-#            title="Sum of the Charge during the first 200ns per DOM")
-#        charge_300ns = h5file.create_earray(
-#            h5file.root, 'charge_300ns', tables.Float64Atom(),
-#            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-#            title="Sum of the Charge during the first 300ns per DOM")
-#        charge_400ns = h5file.create_earray(
-#            h5file.root, 'charge_400ns', tables.Float64Atom(),
-#            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-#            title="Sum of the Charge during the first 400ns per DOM")
-#        charge_500ns = h5file.create_earray(
-#            h5file.root, 'charge_500ns', tables.Float64Atom(),
-#            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-#            title="Sum of the Charge during the first 500ns per DOM")
-#        charge_600ns = h5file.create_earray(
-#            h5file.root, 'charge_600ns', tables.Float64Atom(),
-#            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-#            title="Sum of the Charge during the first 600ns per DOM")
         time_10pct = h5file.create_earray(
             h5file.root, 'time_10pct', tables.Float64Atom(),
             (0, input_shape[0], input_shape[1], input_shape[2], 1),
@@ -309,156 +284,38 @@ if __name__ == "__main__":
         print('Created a new HDF File with the Settings:')
         print(h5file)
         print(h5file.root)
-   
-#####################################################
-        fail_file_path = dataset_configparser.get('Basics', 'fail_file')
-        if not os.path.exists(fail_file_path):
-            os.makedirs(fail_file_path)
-	fail_file = os.path.join(fail_file_path, "fail_file.npy")
-        open(fail_file, "w")
-#####################################################
+
         np.save('grid.npy', grid)
         TotalEventCounter = 0
         skipped_frames = 0
-        TreeProblem = 0
-        framesNotNeutrinoPrimary = 0
-        frameToLessHitDOMs = 0
-        frameToHighDepositedEnergy = 0
-        frameToLessDepositedEnergy = 0
-        statusInFilelist=0
+        statusInFilelist = 0
         event_files = []
-        #print "##################################"
-        #print len(filelist[0])
-        #print len(filelist[1])
-        #print args['filelist']
-        #print "##################################"
         starttime = time.time()
         while statusInFilelist < len(filelist[0]):
             timestamp = time.time()
-            print "Time for {} Sets of {} I3-Files: {}".format(statusInFilelist ,len(args['filelist']), starttime-timestamp)
-            event_files = []
-            counterSim=0
+            print "Time for {} Sets of {} I3-Files: {}".\
+                format(statusInFilelist, len(args['filelist']), starttime - timestamp)
+            events = dict()
+            events['reco_vals'] = []
+            events['waveforms'] = []
+            events['pulses'] = []
+            counterSim = 0
             while counterSim < len(args['filelist']):
                 try:
-                    event_files.append(dataio.I3File(filelist[counterSim][statusInFilelist], "r"))
-                    counterSim = counterSim+1
+                    produce_data_dict(filelist[counterSim][statusInFilelist],
+                                      geometry_file)
+                    counterSim = counterSim + 1
                 except Exception:
-                    statusInFilelist += 1       
+                    statusInFilelist += 1
                     continue
-            statusInFilelist += 1
-            # shuffeling of the files
-            while not len(event_files) == 0: 
-                TotalEventCounter +=1
-                a=random.choice(event_files) 
-                #eventsToProcess=random.randint(1, 4)
-                if a.more():
-                    try:
-                        physics_event = a.pop_physics()
-                    except Exception:
-                        print "Frame not poped"
-                        report = [0, 0, "FramePopProblem"]
-                        np.save(fail_file, report)
-                        continue
- 
-                    EventID = physics_event["I3EventHeader"].event_id
-		    RunID   = physics_event["I3EventHeader"].run_id
+                statusInFilelist += 1
+                # shuffeling of the files
+                num_events = len(events['reco_vals'])
+                shuff = np.random.choice(num_events, num_events, replace=False)
+                for i in shuff:
+                    TotalEventCounter += 1
+                    reco_arr = events['reco_vals'][i]
 
-                    #try to open the I3MCTree, if not possible skip frame
-                    try:
-                        I3Tree = physics_event['I3MCTree']
-                    except Exception:
-                        print "Problem with the I3MCTree"
-                        report = [RunID, EventID, "TreeProblem"]
-                        np.save(fail_file, report)
-                        TreeProblem +=1
-                        continue
-
-                    ##### Checking for wierd event structures
-                    if testing_event(physics_event) == -1:
-			report = [RunID, EventID, "EventTestingFailed"]
-                        np.save(fail_file, report)
-                        continue
-
-                    ###### Possible CUTS on the DATA #####
-                    # Possibility to only choose events with neutrinos as primary
-                    ParticelList = [12, 14, 16]
-                    if dataset_configparser.get('Cuts', 'only_neutrino_as_primary_cut') == "ON":
-                        if abs(int(eval('physics_event{}'.format(dataset_configparser.get('firstParticle', 'variable'))))) not in ParticelList:
-                                report = [RunID, EventID, "NeutrinoPrimaryCut"]
-                                np.save(fail_file, report)
-				framesNotNeutrinoPrimary +=1
-                                continue
-                    # Possibility to define a maximal energy
-                    if dataset_configparser.get('Cuts', 'max_energy_cut') == "ON":
-                        energy_cutoff = int(dataset_configparser.get('Cuts', 'max_energy_cutoff'))
-                        if calc_depositedE(physics_event) > energy_cutoff:
-		            report = [RunID, EventID, "MaximalEnergyCut"]
-                            np.save(fail_file, report)
-                            frameToHighDepositedEnergy +=1
-                            continue
-
-                    # Possibility to define a minimal energy requierment for taus only
-                    #First we need the neutrino
-                    if dataset_configparser.get('Cuts', 'minimal_tau_energy') == "ON":
-                        primary_list = I3Tree.get_primaries()
-                        if len(primary_list) == 1:
-                            neutrino = I3Tree[0]
-                        else:
-                            for p in primary_list:
-                                pdg = p.pdg_encoding
-                                if abs(pdg) in ParticelList:
-                                    neutrino = p
-                        minimal_tau_energy = int(dataset_configparser.get('Cuts', 'minimal_tau_energy'))
-                        if abs(neutrino.pdg_encoding) == 16:
-                            if calc_depositedE(physics_event) < minimal_tau_energy:
-                                report = [RunID, EventID, "MinimalTauEnergyCut"]
-                                np.save(fail_file, report)
-                                continue 
-
-                    # Possibility to define a general minimal deposited Energy
-                    if dataset_configparser.get('Cuts', 'min_energy_cut') == "ON":
-                        energy_cutoff = int(dataset_configparser.get('Cuts', 'min_energy_cutoff'))
-                        if calc_depositedE(physics_event) < energy_cutoff:
-                            frameToLessDepositedEnergy +=1
-                            report = [RunID, EventID, "MinimalEnergyCut"]
-                            np.save(fail_file, report)
-                            continue
-
-                    # Possibility to define a general minimal amount of hit DOMs
-                    if dataset_configparser.get('Cuts', 'min_hit_DOMs_cut') == "ON":
-                        hit_DOMs_cutoff = int(dataset_configparser.get('Cuts', 'min_hit_DOMs'))
-                        if calc_hitDOMs(physics_event) < hit_DOMS_cutoff:
-                            frameToLessHitDOMs +=1
-                            report = [RunID, EventID, "HitDOMsCut"]
-                            np.save(fail_file, report)
-                            continue
-
-                   #######################################
-
-                    reco_arr = []
-                    for k, cur_var in enumerate(data_source):
-                        if cur_var[0] == 'variable':
-                            try:
-                                cur_value = eval(
-                                    'physics_event{}'.format(cur_var[1]))
-                            except Exception:
-                                skipped_frames += 1
-                                print('Attribute Error occured :{}'.
-                                      format(cur_var[1]))
-                                break
-                        if cur_var[0] == 'function':
-                            try:
-                                cur_value = eval(
-                                    cur_var[1].replace('(x)', '(physics_event)'))
-                            except Exception:
-                                skipped_frames += 1
-                                print(
-                                    'The given function {} is not implemented'.format(cur_var[1]))
-                                break
-                        if cur_value < cur_var[2][0] or cur_value > cur_var[2][1]:
-                            break
-                        else:
-                            reco_arr.append(cur_value)
                     if not len(reco_arr) == dtype_len:
                         continue
                     charge_arr = np.zeros(
@@ -469,8 +326,6 @@ if __name__ == "__main__":
                         (1, input_shape[0], input_shape[1], input_shape[2], 1))
                     charge_first_arr = np.zeros(
                         (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                    #av_charge_widths_arr = np.zeros(
-                    #    (1, input_shape[0], input_shape[1], input_shape[2], 1))
                     av_time_charges_arr = np.zeros(
                         (1, input_shape[0], input_shape[1], input_shape[2], 1))
                     num_pulses_arr = np.zeros(
@@ -479,18 +334,6 @@ if __name__ == "__main__":
                         (1, input_shape[0], input_shape[1], input_shape[2], 1))
                     time_kurtosis_arr = np.zeros(
                         (1, input_shape[0], input_shape[1], input_shape[2], 1))
-#                    charge_100ns_arr = np.zeros(
-#                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-#                    charge_200ns_arr = np.zeros(
-#                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-#                    charge_300ns_arr = np.zeros(
-#                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-#                    charge_400ns_arr = np.zeros(
-#                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-#                    charge_500ns_arr = np.zeros(
-#                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-#                    charge_600ns_arr = np.zeros(
-#                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
                     time_10pct_arr = np.zeros(
                         (1, input_shape[0], input_shape[1], input_shape[2], 1))
                     time_20pct_arr = np.zeros(
@@ -531,50 +374,45 @@ if __name__ == "__main__":
                         (1, input_shape[0], input_shape[1], input_shape[2], 1))
                     time_05pct_arr = np.zeros(
                         (1, input_shape[0], input_shape[1], input_shape[2], 1))
-        
-                    pulses = physics_event[pulsemap_key].apply(physics_event)
+
+                    pulses = events['pulses']
+                    waveforms = events['waveforms']
                     final_dict = dict()
                     for omkey in pulses.keys():
                         charges = np.array([p.charge for p in pulses[omkey][:]])
                         times = np.array([p.time for p in pulses[omkey][:]])
-                        #times_shifted = times-np.amin(times)
+                        waveform = waveforms[omkey]
                         widths = np.array([p.width for p in pulses[omkey][:]])
                         final_dict[(omkey.string, omkey.om)] = \
                             (np.sum(charges),
                              np.amin(times),
                              np.amax(times) - np.amin(times),
-                             charges[0],\
-                             np.average(charges,weights=1./widths),\
-                             np.average(times, weights=charges),\
-                             len(charges),\
-                             moment(times, moment=2),\
-                             skew(times),\
-                             time_of_percentage(charges, times, 10),\
-                             time_of_percentage(charges, times, 20),\
-                             time_of_percentage(charges, times, 30),\
-                             time_of_percentage(charges, times, 40),\
-                             time_of_percentage(charges, times, 50),\
-                             time_of_percentage(charges, times, 60),\
-                             time_of_percentage(charges, times, 70),\
-                             time_of_percentage(charges, times, 80),\
-                             time_of_percentage(charges, times, 90),\
-                             time_of_percentage(charges, times, 100),\
-                             time_of_percentage(charges, times, 15),\
-                             time_of_percentage(charges, times, 25),\
-                             time_of_percentage(charges, times, 35),\
-                             time_of_percentage(charges, times, 45),\
-                             time_of_percentage(charges, times, 55),\
-                             time_of_percentage(charges, times, 65),\
-                             time_of_percentage(charges, times, 75),\
-                             time_of_percentage(charges, times, 85),\
-                             time_of_percentage(charges, times, 95),\
-                             time_of_percentage(charges, times, 05)
-#                             np.sum(charges[times<100]),\
-#                             np.sum(charges[times<200]),\
-#                             np.sum(charges[times<300]),\
-#                             np.sum(charges[times<400]),\
-#                             np.sum(charges[times<500]),\
-#                             np.sum(charges[times<600]),\
+                             charges[0],
+                             np.average(charges, weights=1. / widths),
+                             np.average(times, weights=charges),
+                             len(charges),
+                             moment(times, moment=2),
+                             skew(times),
+                             wf_quantiles(waveform, 10),
+                             wf_quantiles(waveform, 20),
+                             wf_quantiles(waveform, 30),
+                             wf_quantiles(waveform, 40),
+                             wf_quantiles(waveform, 50),
+                             wf_quantiles(waveform, 60),
+                             wf_quantiles(waveform, 70),
+                             wf_quantiles(waveform, 80),
+                             wf_quantiles(waveform, 90),
+                             wf_quantiles(waveform, 100),
+                             wf_quantiles(waveform, 15),
+                             wf_quantiles(waveform, 25),
+                             wf_quantiles(waveform, 35),
+                             wf_quantiles(waveform, 45),
+                             wf_quantiles(waveform, 55),
+                             wf_quantiles(waveform, 65),
+                             wf_quantiles(waveform, 75),
+                             wf_quantiles(waveform, 85),
+                             wf_quantiles(waveform, 95),
+                             wf_quantiles(waveform, 05)
                              )
 
                     for dom in DOM_list:
@@ -637,36 +475,17 @@ if __name__ == "__main__":
                             time_95pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
                                         final_dict[dom][27]
                             time_05pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                        final_dict[dom][28] 
-#                            charge_100ns_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-#                                        final_dict[dom][9]
-#                            charge_200ns_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-#                                        final_dict[dom][10]
-#                            charge_300ns_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-#                                        final_dict[dom[11]
-#                            charge_400ns_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-#                                        final_dict[dom][12]
-#                            charge_500ns_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-#                                        final_dict[dom][13]
-#                            charge_600ns_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-#                                        final_dict[dom][14]
+                                        final_dict[dom][28]
 
 
                     charge.append(np.array(charge_arr))
                     charge_first.append(np.array(charge_first_arr))
                     time_spread.append(np.array(time_spread_arr))
                     time_first.append(np.array(time_first_arr))
-                    #av_charge_widths.append(av_charge_widths_arr)
                     av_time_charges.append(av_time_charges_arr)
                     num_pulses.append(num_pulses_arr)
                     time_moment_2.append(time_moment_2_arr)
                     time_kurtosis.append(time_kurtosis_arr)
-#                    charge_100ns.append(charge_100ns_arr)
-#                    charge_200ns.append(charge_200ns_arr)
-#                    charge_300ns.append(charge_300ns_arr)
-#                    charge_400ns.append(charge_400ns_arr)
-#                    charge_500ns.append(charge_500ns_arr)
-#                    charge_600ns.append(charge_600ns_arr)
                     time_10pct.append(time_10pct_arr)
                     time_20pct.append(time_20pct_arr)
                     time_30pct.append(time_30pct_arr)
@@ -686,7 +505,7 @@ if __name__ == "__main__":
                     time_75pct.append(time_75pct_arr)
                     time_85pct.append(time_85pct_arr)
                     time_95pct.append(time_95pct_arr)
-                    time_05pct.append(time_05pct_arr)                       
+                    time_05pct.append(time_05pct_arr)                    
                     reco_vals.append(np.array(reco_arr))
                     #print "End Point"
                     #EventCounter +=1
@@ -700,17 +519,10 @@ if __name__ == "__main__":
         time_first.flush()
         charge_first.flush()
         time_spread.flush()
-        #av_charge_widths.flush()
         av_time_charges.flush()
         num_pulses.flush()
         time_moment_2.flush()
         time_kurtosis.flush()
-#        charge_100ns.flush()
-#        charge_200ns.flush()
-#        charge_300ns.flush()
-#        charge_400ns.flush()
-#        charge_500ns.flush()
-#        charge_600ns.flush()
         time_10pct.flush()
         time_20pct.flush()
         time_30pct.flush()
