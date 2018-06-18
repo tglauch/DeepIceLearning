@@ -139,7 +139,7 @@ def produce_data_dict(i3_file):
                    ATWDSaturationMargin=123,
                    FADCSaturationMargin=0,)
     tray.AddModule(save_to_array, 'save', Streams=[icetray.I3Frame.Physics])
-    tray.Execute(7)
+    tray.Execute()
     tray.Finish()
     return
 
@@ -420,7 +420,6 @@ if __name__ == "__main__":
 	    print('--------- Run {} ------- Countersim is {} -----'.format(statusInFilelist, counterSim))
             statusInFilelist += 1
             # shuffeling of the files
-            print(len(events['reco_vals']))
             num_events = len(events['reco_vals'])
             shuff = np.random.choice(num_events, num_events, replace=False)
             for i in shuff:
@@ -495,10 +494,10 @@ if __name__ == "__main__":
                         charges = np.array([p.charge for p in pulses[omkey][:]])
                         times = np.array([p.time for p in pulses[omkey][:]])
                         widths = np.array([p.width for p in pulses[omkey][:]])
-		              else:
-                        widths = [0]
-                        times = [0]
-                        charges = [0]
+		    else:
+                        widths = np.array([0])
+                        times = np.array([0])
+                        charges = np.array([0])
                     waveform = waveforms[omkey]
                     final_dict[(omkey.string, omkey.om)] = \
                         (np.sum(charges),
@@ -625,37 +624,37 @@ if __name__ == "__main__":
                 time_05pct.append(time_05pct_arr)
                 reco_vals.append(np.array(reco_arr))
 
-        charge.flush()
-        time_first.flush()
-        charge_first.flush()
-        time_spread.flush()
-        av_time_charges.flush()
-        num_pulses.flush()
-        time_moment_2.flush()
-        time_kurtosis.flush()
-        time_10pct.flush()
-        time_20pct.flush()
-        time_30pct.flush()
-        time_40pct.flush()
-        time_50pct.flush()
-        time_60pct.flush()
-        time_70pct.flush()
-        time_80pct.flush()
-        time_90pct.flush()
-        time_100pct.flush()
-        time_15pct.flush()
-        time_25pct.flush()
-        time_35pct.flush()
-        time_45pct.flush()
-        time_55pct.flush()
-        time_65pct.flush()
-        time_75pct.flush()
-        time_85pct.flush()
-        time_95pct.flush()
-        time_05pct.flush()
+            print('Flush')
+            charge.flush()
+            time_first.flush()
+            charge_first.flush()
+            time_spread.flush()
+            av_time_charges.flush()
+            num_pulses.flush()
+            time_moment_2.flush()
+            time_kurtosis.flush()
+            time_10pct.flush()
+            time_20pct.flush()
+            time_30pct.flush()
+            time_40pct.flush()
+            time_50pct.flush()
+            time_60pct.flush()
+            time_70pct.flush()
+            time_80pct.flush()
+            time_90pct.flush()
+            time_100pct.flush()
+            time_15pct.flush()
+            time_25pct.flush()
+            time_35pct.flush()
+            time_45pct.flush()
+            time_55pct.flush()
+            time_65pct.flush()
+            time_75pct.flush()
+            time_85pct.flush()
+            time_95pct.flush()
+            time_05pct.flush()
 
-        print reco_vals
-        reco_vals.flush()
+            reco_vals.flush()
         print"\n ###########################################################"
         print('###### Run Summary ###########')
         print('Processed: {} Frames \n Skipped {} \ Frames with Attribute Error \n To high depoited Energy {}'.format(TotalEventCounter, skipped_frames, frameToHighDepositedEnergy))
@@ -666,4 +665,3 @@ if __name__ == "__main__":
         print "Script is at its END"
         h5file.root._v_attrs.len = TotalEventCounter
     h5file.close()
-    fail_file.close()
