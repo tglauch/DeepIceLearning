@@ -291,6 +291,7 @@ if __name__ == "__main__":
         statusInFilelist = 0
         event_files = []
         starttime = time.time()
+        print len(filelist[0]) 
         while statusInFilelist < len(filelist[0]):
             timestamp = time.time()
             print "Time for {} Sets of {} I3-Files: {}".\
@@ -310,6 +311,7 @@ if __name__ == "__main__":
                     continue
                 statusInFilelist += 1
                 # shuffeling of the files
+                print(len(events['reco_vals']))
                 num_events = len(events['reco_vals'])
                 shuff = np.random.choice(num_events, num_events, replace=False)
                 for i in shuff:
@@ -507,13 +509,6 @@ if __name__ == "__main__":
                     time_95pct.append(time_95pct_arr)
                     time_05pct.append(time_05pct_arr)                    
                     reco_vals.append(np.array(reco_arr))
-                    #print "End Point"
-                    #EventCounter +=1
-                else:
-                    print "no more in a"
-                    event_files.remove(a)
-                #TotalEventCounter = TotalEventCounter + EventCounter
-
 
         charge.flush()
         time_first.flush()
