@@ -399,10 +399,10 @@ if __name__ == "__main__":
             events['pulses'] = []
             counterSim = 0
             while counterSim < len(args['filelist']):
-                fu.produce_data_dict(filelist[counterSim][statusInFilelist],
+                produce_data_dict(filelist[counterSim][statusInFilelist],
                                       geometry_file, dataset_configparser )
                 try:
-                    fu.produce_data_dict(filelist[counterSim][statusInFilelist],
+                    produce_data_dict(filelist[counterSim][statusInFilelist],
                                          geometry_file, dataset_configparser)
                     counterSim = counterSim + 1
                 except Exception:
