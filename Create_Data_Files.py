@@ -139,7 +139,7 @@ def produce_data_dict(i3_file):
                    ATWDSaturationMargin=123,
                    FADCSaturationMargin=0,)
     tray.AddModule(save_to_array, 'save', Streams=[icetray.I3Frame.Physics])
-    tray.Execute(5)
+    tray.Execute(7)
     tray.Finish()
     return
 
@@ -409,15 +409,16 @@ if __name__ == "__main__":
                     produce_data_dict(filelist[counterSim][statusInFilelist])
                     counterSim = counterSim + 1
                 except Exception:
-                    statusInFilelist += 1
                     continue
+	    print('--------- Run {} ------- Countersim is {} -----'.format(statusInFilelist, counterSim))
             statusInFilelist += 1
             # shuffeling of the files
             print(len(events['reco_vals']))
             num_events = len(events['reco_vals'])
             shuff = np.random.choice(num_events, num_events, replace=False)
             for i in shuff:
-                TotalEventCounter += 1
+                print i
+		TotalEventCounter += 1
                 reco_arr = events['reco_vals'][i]
                 if not len(reco_arr) == dtype_len:
                     continue
@@ -482,17 +483,22 @@ if __name__ == "__main__":
                 pulses = events['pulses'][i]
                 waveforms = events['waveforms'][i]
                 final_dict = dict()
-                for omkey in pulses.keys():
-                    charges = np.array([p.charge for p in pulses[omkey][:]])
-                    times = np.array([p.time for p in pulses[omkey][:]])
+                for omkey in waveforms.keys():
+                    if omkey in pulses.keys():
+                        charges = np.array([p.charge for p in pulses[omkey][:]])
+                        times = np.array([p.time for p in pulses[omkey][:]])
+                        widths = np.array([p.width for p in pulses[omkey][:]])
+		    else:
+                        widths = [0]
+                        times = [0]
+                        charges = [0]
                     waveform = waveforms[omkey]
-                    widths = np.array([p.width for p in pulses[omkey][:]])
                     final_dict[(omkey.string, omkey.om)] = \
                         (np.sum(charges),
                          np.amin(times),
                          np.amax(times) - np.amin(times),
                          charges[0],
-                         np.average(charges, weights=1. / widths),
+                         np.average(charges), # weights=1. / widths),
                          np.average(times, weights=charges),
                          len(charges),
                          moment(times, moment=2),
