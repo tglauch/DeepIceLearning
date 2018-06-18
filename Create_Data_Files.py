@@ -187,6 +187,13 @@ def cuts(phy_event):
             return False
     return True
 
+
+def average(x, y):
+    if len(y) == 0 or np.sum(y)==0:
+        return 0
+    else:
+        return np.average(x, weights=y) 
+
 ##########
 
 if __name__ == "__main__":
@@ -488,7 +495,7 @@ if __name__ == "__main__":
                         charges = np.array([p.charge for p in pulses[omkey][:]])
                         times = np.array([p.time for p in pulses[omkey][:]])
                         widths = np.array([p.width for p in pulses[omkey][:]])
-		    else:
+		              else:
                         widths = [0]
                         times = [0]
                         charges = [0]
@@ -498,8 +505,8 @@ if __name__ == "__main__":
                          np.amin(times),
                          np.amax(times) - np.amin(times),
                          charges[0],
-                         np.average(charges), # weights=1. / widths),
-                         np.average(times, weights=charges),
+                         average(charges, 1. / widths),
+                         average(times, charges),
                          len(charges),
                          moment(times, moment=2),
                          skew(times),
