@@ -43,7 +43,7 @@ def read_variables(cfg_parser):
     dtype = []
     data_source = []
     for i, key in enumerate(cfg_parser.keys()):
-        if key == 'DEFAULT' or key == 'Basics':
+        if key == 'DEFAULT' or key == 'Basics' or key =='Cuts':
             continue
         cut = [-np.inf, np.inf]
         if 'min' in cfg_parser[key].keys():

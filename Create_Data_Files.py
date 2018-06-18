@@ -93,9 +93,9 @@ if __name__ == "__main__":
     for a in args.keys():
         print(str(a) + ": " + str(args[a]))
     print"############################################\n "
-    
+
     geo = dataio.I3File(geometry_file).pop_frame()['I3Geometry'].omgeo
-    
+
     input_shape_par = dataset_configparser.get('Basics', 'input_shape')
     if input_shape_par != "auto":
         input_shape = eval(input_shape_par)
@@ -103,18 +103,18 @@ if __name__ == "__main__":
     else:
         input_shape = [12, 11, 61]
         grid, DOM_list = fu.make_autoHexGrid(geo)
-    
+
     # Create HDF5 File ##########
     if not os.path.exists(outfolder):
         os.makedirs(outfolder)
-    
+
     # Read filelist and define outfile
     # spezial version fpr filelists that are txt, was implemented for testing
     if str(dataset_configparser.get('Basics', 'filelist_typ')) == "txt":
         if len(args['filelist']) > 1:
-            filelist=[]
+            filelist = []
             for i in xrange(len(args['filelist'])):
-                a=[]
+                a = []
                 flist = open(args['filelist'][i], 'r')
                 for line in flist:
                     a.append(line.rstrip())
