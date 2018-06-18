@@ -81,13 +81,11 @@ def classificationTag(physics_frame):
     return classificationTag
 
 
-def starting(p_frame):
-    gcdfile = "/data/sim/sim-new/downloads/GCD/GeoCalibDetectorStatus_2012.56063_V0.i3.gz"
-    N = 0
+def starting(p_frame, gcdfile):
     I3Tree = p_frame['I3MCTree']
     neutrino = get_the_right_particle(p_frame)
     primary_list = I3Tree.get_primaries()
-    surface = icecube.MuonGun.ExtrudedPolygon.from_file(gcdfile, padding=-N)
+    surface = icecube.MuonGun.ExtrudedPolygon.from_file(gcdfile, padding=25)
     intersections = surface.intersection(neutrino.pos + neutrino.length*neutrino.dir, neutrino.dir)
     if intersections.first <= 0 and intersections.second > 0:
         starting = 0 # starting event
@@ -124,7 +122,8 @@ def tau_decay_length(p_frame):
 
 # calculates if the particle is in or near the detector
 # if this is the case it further states weather the event is starting, stopping or through-going
-def has_signature(p):
+def has_signature(p, gcdfile):
+    surface = MuonGun.ExtrudedPolygon.from_file(gcdfile, padding=25)
     intersections = surface.intersection(p.pos, p.dir)
     if p.is_neutrino:
         return -1
@@ -149,14 +148,14 @@ def has_signature(p):
             return -1
 
 
-def get_the_right_particle(p_frame):
+def get_the_right_particle(p_frame, gcdfile):
     nu_pdg = [12, 14, 16, -12, -14, -16]
     I3Tree = p_frame['I3MCTree']
     #find first neutrino as seed for find_particle 
     for p in I3Tree.get_primaries():
         if p.pdg_encoding in nu_pdg:
             break
-    p_list  = find_particle(p, I3Tree)
+    p_list  = find_particle(p, I3Tree, gcdfile)
     if len(p_list) == 0 or len(p_list)>1:
         return -1
     else:
@@ -180,11 +179,11 @@ def testing_event(p_frame):
             return 0 # everything fine 
 			
 # returns a list of neutrinos, that children interact with the detector, determines after the level, where one is found
-def find_particle(p, I3Tree):
+def find_particle(p, I3Tree, gcdfile):
     t_list = []
     nu_pdg = [12, 14, 16, -12, -14, -16]
     children = I3Tree.children(p)
-    IC_hit = np.any([(has_signature(tp)!=-1) for tp in children])
+    IC_hit = np.any([(has_signature(tp, gcdfile)!=-1) for tp in children])
     if IC_hit:
         if not p.pdg_encoding in nu_pdg:
             return [I3Tree.parent(p)]
@@ -192,13 +191,15 @@ def find_particle(p, I3Tree):
             return [p]
     elif len(children)>0:
         for child in children:
-            t_list = np.concatenate([t_list, find_particle(child, I3Tree)])
+            t_list = np.concatenate([t_list, find_particle(child, I3Tree, gcdfile)])
         return t_list
     else:
         return []
 
+
+
 # Generation of the Classification Label	
-def classify(p_frame):
+def classify(p_frame, gcdfile):
     nu_pdg = [12, 14, 16, -12, -14, -16]
     I3Tree = p_frame['I3MCTree']
     #for p in I3Tree.get_primaries():
@@ -224,32 +225,32 @@ def classify(p_frame):
         elif (13 in p_types):
             mu_ind = p_types.index(13)
             had_ind = p_strings.index('Hadrons')
-            if has_signature(children[had_ind]) == 0:
+            if has_signature(children[had_ind], gcdfile) == 0:
                 return 3 #Starting Track
-            elif has_signature(children[mu_ind]) == 1:
+            elif has_signature(children[mu_ind], gcdfile) == 1:
                 return 2 # Through Going Track
-            elif has_signature(children[mu_ind]) == 2:
+            elif has_signature(children[mu_ind], gcdfile) == 2:
                 return 4 ## Stopping Track
         elif (15 in p_types):
             tau_ind = p_types.index(15)
             had_ind = p_strings.index('Hadrons')
             tau_child = I3Tree.children(children[tau_ind])[-1]
             if np.abs(tau_child.pdg_encoding) == 13:
-                if has_signature(children[had_ind]) == 0:
+                if has_signature(children[had_ind], gcdfile) == 0:
                     return 3 # Starting Track
-                elif has_signature(tau_child) == 1:
+                elif has_signature(tau_child, gcdfile) == 1:
                     return 2 # Through Going Track
-                elif has_signature(tau_child) == 2:
+                elif has_signature(tau_child, gcdfile) == 2:
                     return 4 # Stopping Track
             
             else:
                 if children[tau_ind].length < 5:
                     return 1 # Cascade
-                if has_signature(children[had_ind]) == 0 and has_signature(tau_child) == 0: 
+                if has_signature(children[had_ind], gcdfile) == 0 and has_signature(tau_child, gcdfile) == 0: 
                     return 5 # Double Bang
-                elif has_signature(children[had_ind]) == 0 and has_signature(tau_child) == -1:
+                elif has_signature(children[had_ind], gcdfile) == 0 and has_signature(tau_child, gcdfile) == -1:
                     return 3 # Starting Track
-                elif has_signature(children[had_ind]) == -1  and has_signature(tau_child) == 0:
+                elif has_signature(children[had_ind], gcdfile) == -1  and has_signature(tau_child, gcdfile) == 0:
                     return 6 # Stopping Tau
 
 nomenclature = {-1: 'no Hit',

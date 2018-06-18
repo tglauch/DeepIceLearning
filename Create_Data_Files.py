@@ -302,9 +302,11 @@ if __name__ == "__main__":
             events['pulses'] = []
             counterSim = 0
             while counterSim < len(args['filelist']):
+                fu.produce_data_dict(filelist[counterSim][statusInFilelist],
+                                      geometry_file, dataset_configparser )
                 try:
-                    produce_data_dict(filelist[counterSim][statusInFilelist],
-                                      geometry_file)
+                    fu.produce_data_dict(filelist[counterSim][statusInFilelist],
+                                         geometry_file, dataset_configparser)
                     counterSim = counterSim + 1
                 except Exception:
                     statusInFilelist += 1
@@ -317,9 +319,9 @@ if __name__ == "__main__":
                 for i in shuff:
                     TotalEventCounter += 1
                     reco_arr = events['reco_vals'][i]
-
                     if not len(reco_arr) == dtype_len:
                         continue
+
                     charge_arr = np.zeros(
                         (1, input_shape[0], input_shape[1], input_shape[2], 1))
                     time_first_arr = np.zeros(

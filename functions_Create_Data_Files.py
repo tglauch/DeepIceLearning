@@ -14,7 +14,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from icecube import dataio, icetray
+from icecube import dataio, icetray, WaveCalibrator
 from I3Tray import *
 from scipy.stats import moment, skew, kurtosis
 import numpy as np
@@ -271,7 +271,7 @@ def save_to_array(phy_frame):
 
 
 
-def produce_data_dict(i3_file, geo_file):
+def produce_data_dict(i3_file, geo_file, cfg_parser):
     # IceTray script that wraps around an i3file and fills the events dict that is initialized outside the function
     tray = I3Tray()
     tray.AddModule("I3Reader", "source",
@@ -280,7 +280,7 @@ def produce_data_dict(i3_file, geo_file):
     tray.AddModule("Delete",
                    "old_keys_cleanup",
                    keys=['CalibratedWaveformRange'])
-    tray.AddModule(cuts, 'cuts', Streams=[icetray.I3Frame.Physics])
+    tray.AddModule(cuts, 'cuts', key=cfg_parser,  Streams=[icetray.I3Frame.Physics])
     tray.AddModule("I3WaveCalibrator", "sedan",
                    Launches="InIceRawData",
                    Waveforms="CalibratedWaveforms",
@@ -293,12 +293,12 @@ def produce_data_dict(i3_file, geo_file):
     return
 
 
-def cuts(phy_event):
-    cuts = dataset_configparser['Cuts']
+def cuts(phy_event, key):
+    cuts = key['Cuts']
     #### Checking for wierd event structures
-    if testing_event(phy_event) == -1:
-        report = [RunID, EventID, "EventTestingFailed"]
-        return False
+#    if testing_event(phy_event) == -1:
+#        report = [RunID, EventID, "EventTestingFailed"]
+#        return False
     ParticelList = [12, 14, 16]
     if cuts['only_neutrino_as_primary_cut'] == "ON":
         if abs(phy_event['MCPrimary'].pdg_encoding) not in ParticelList:
