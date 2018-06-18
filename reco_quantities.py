@@ -38,6 +38,7 @@ def calc_depositedE(physics_frame):
             losses += p.energy 
     return losses
 
+
 def calc_hitDOMs(physics_frame):
     hitDOMs = 0
     pulses = physics_frame["InIceDSTPulses"]
@@ -46,6 +47,7 @@ def calc_hitDOMs(physics_frame):
     for key, pulses in pulses:
         hitDOMs += 1   
     return hitDOMs
+
 
 def classificationTag(physics_frame):
     energy = calc_depositedE(physics_frame)
@@ -83,27 +85,28 @@ def classificationTag(physics_frame):
 
 def starting(p_frame, gcdfile):
     I3Tree = p_frame['I3MCTree']
-    neutrino = get_the_right_particle(p_frame)
+    neutrino = get_the_right_particle(p_frame, gcdfile)
     primary_list = I3Tree.get_primaries()
     surface = icecube.MuonGun.ExtrudedPolygon.from_file(gcdfile, padding=25)
-    intersections = surface.intersection(neutrino.pos + neutrino.length*neutrino.dir, neutrino.dir)
+    intersections = surface.intersection(neutrino.pos + neutrino.length * neutrino.dir, neutrino.dir)
     if intersections.first <= 0 and intersections.second > 0:
-        starting = 0 # starting event
+        starting = 0  # starting event
     else:
-        starting = 1 # through-going or stopping event
+        starting = 1  # through-going or stopping event
     return starting
+
 
 def up_or_down(physics_frame):
     zenith = physics_frame["LineFit"].dir.zenith
-    if zenith > 1.5*np.pi or zenith < 0.5*np.pi:
-        up_or_down = 1 # down-going
+    if zenith > 1.5 * np.pi or zenith < 0.5 * np.pi:
+        up_or_down = 1  # down-going
     else:
-        up_or_down = 0 # up-going    
+        up_or_down = 0  # up-going
     return up_or_down
 
 
 def coincidenceLabel(physics_frame):
-    primary_list = physics_frame["I3MCTree"].get_primaries() 
+    primary_list = physics_frame["I3MCTree"].get_primaries()
     if len(primary_list) > 1:
         coincidence = 1
     else:
@@ -113,7 +116,7 @@ def coincidenceLabel(physics_frame):
 
 def tau_decay_length(p_frame):
     I3Tree = p_frame['I3MCTree']    
-    neutrino = get_the_right_particle(p_frame)    
+    neutrino = get_the_right_particle(p_frame, gcdfile)    
     if abs(neutrino.pdg_encoding) == 16:
         return I3Tree.children(neutrino)[0].length
     else:
@@ -161,10 +164,11 @@ def get_the_right_particle(p_frame, gcdfile):
     else:
         return p_list[0]
 
-def testing_event(p_frame):
+
+def testing_event(p_frame, gcdfile):
     nu_pdg = [12, 14, 16, -12, -14, -16]
     I3Tree = p_frame['I3MCTree']
-    neutrino = get_the_right_particle(p_frame)
+    neutrino = get_the_right_particle(p_frame, gcdfile)
     if neutrino == -1:
         return -1
     else:
@@ -174,10 +178,10 @@ def testing_event(p_frame):
 
         if not np.any([p_type in nu_pdg for p_type in p_types]) \
             and not ((11 in p_types) or (13 in p_types) or (15 in p_types)):
-            return -1 # kick the event
+            return -1  # kick the event
         else:
-            return 0 # everything fine 
-			
+            return 0  # everything fine
+
 # returns a list of neutrinos, that children interact with the detector, determines after the level, where one is found
 def find_particle(p, I3Tree, gcdfile):
     t_list = []
@@ -208,7 +212,7 @@ def classify(p_frame, gcdfile):
     #p_list  = find_particle(p, I3Tree)
     #if len(p_list) == 0 or len(p_list)>1:
     #    return -1
-    neutrino = get_the_right_particle(p_frame)
+    neutrino = get_the_right_particle(p_frame, gcdfile)
     children = I3Tree.children(neutrino)
     p_types = [np.abs(child.pdg_encoding) for child in children]
     p_strings = [child.type_string for child in children]
@@ -261,4 +265,15 @@ nomenclature = {-1: 'no Hit',
                4: 'Stopping Track',
                5: 'Double Bang',
                6: 'Stopping Tau'}
+
+def time_of_percentage(charges, times, percentage):
+    charges = charges.tolist()
+    cut = np.sum(charges)/(100./percentage)
+    sum=0
+    for i in charges:
+        sum = sum + i
+        if sum > cut:
+            tim = times[charges.index(i)]
+            break
+    return tim
 

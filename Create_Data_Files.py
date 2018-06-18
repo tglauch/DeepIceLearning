@@ -33,22 +33,12 @@ import random
 import functions_Create_Data_Files as fu
 import time
 
+
 ##### used for later calculations
 
-def time_of_percentage(charges, times, percentage):
-    charges = charges.tolist()
-    cut = np.sum(charges)/(100./percentage)
-    sum=0
-    for i in charges:
-        sum = sum + i
-        if sum > cut:
-            tim = times[charges.index(i)]
-            break
-    return tim
-
-##########
-
 # arguments given in the terminal
+
+
 def parseArguments():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -75,7 +65,7 @@ args = parseArguments().__dict__
 dataset_configparser = ConfigParser()
 try:
     dataset_configparser.read(args['dataset_config'])
-    print "Config is found {}".format(dataset_configparser) 
+    print "Config is found {}".format(dataset_configparser)
 except Exception:
     raise Exception('Config File is missing!!!!')
 
@@ -84,6 +74,113 @@ geometry_file = str(dataset_configparser.get('Basics', 'geometry_file'))
 outfolder = str(dataset_configparser.get('Basics', 'out_folder'))
 pulsemap_key = str(dataset_configparser.get('Basics', 'PulseSeriesMap'))
 
+
+def save_to_array(phy_frame):
+    # Function that saves the requested values in a dict of lists
+    reco_arr = []
+    wf = None
+    pulses = None
+    if phy_frame is None:
+        print('Physics Frame is None')
+        return False
+    for el in settings:
+        if el[1] == '["CalibratedWaveforms"]':
+            try:
+                wf = phy_frame["CalibratedWaveforms"]
+            except Exception:
+                print('uuupus {}'.format(el[1]))
+                return False
+        elif el[1] == '["InIceDSTPulses"]':
+            try:
+                pulses = phy_frame["InIceDSTPulses"].apply(phy_frame)
+            except Exception:
+                print('uuupus {}'.format(el[1]))
+                return False
+        elif el[0] == 'variable':
+            try:
+                reco_arr.append(eval('phy_frame{}'.format(el[1])))
+            except Exception:
+                print('uuupus {}'.format(el[1]))
+                return False
+        elif el[0] == 'function':
+            try:
+                reco_arr.append(eval(el[1].replace('(x)', '(phy_frame)')))
+            except Exception:
+                print('uuupus {}'.format(el[1]))
+                return False
+        if (wf is not None) and (pulses is not None):
+            events['waveforms'].append(wf)
+            events['pulses'].append(pulses)
+            events['reco_vals'].append(reco_arr)
+    return True
+
+
+def produce_data_dict(i3_file, geo_file):
+    # IceTray script that wraps around an i3file and fills the events dict that is initialized outside the function
+    tray = I3Tray()
+    tray.AddModule("I3Reader", "source",
+                   Filenamelist=[geo_file,
+                                 i3_file],)
+    tray.AddModule("Delete",
+                   "old_keys_cleanup",
+                   keys=['CalibratedWaveformRange'])
+    tray.AddModule(cuts, 'cuts', Streams=[icetray.I3Frame.Physics])
+    tray.AddModule("I3WaveCalibrator", "sedan",
+                   Launches="InIceRawData",
+                   Waveforms="CalibratedWaveforms",
+                   Errata="BorkedOMs",
+                   ATWDSaturationMargin=123,
+                   FADCSaturationMargin=0,)
+    tray.AddModule(save_to_array, 'save', Streams=[icetray.I3Frame.Physics])
+    tray.Execute()
+    tray.Finish()
+    return
+
+
+def cuts(phy_event):
+    cuts = dataset_configparser['Cuts']
+    #### Checking for wierd event structures
+    if testing_event(phy_event, geometry_file) == -1:
+        report = [RunID, EventID, "EventTestingFailed"]
+        return False
+    ParticelList = [12, 14, 16]
+    if cuts['only_neutrino_as_primary_cut'] == "ON":
+        if abs(phy_event['MCPrimary'].pdg_encoding) not in ParticelList:
+            report = [RunID, EventID, "NeutrinoPrimaryCut"]
+            return False
+    if cuts['max_energy_cut'] == "ON":
+        energy_cutoff = cuts['max_energy_cutoff']
+        if calc_depositedE(phy_event) > energy_cutoff:
+            report = [RunID, EventID, "MaximalEnergyCut"]
+            return False
+    if cuts['minimal_tau_energy'] == "ON":
+        I3Tree = phy['I3MCTree']
+        primary_list = I3Tree.get_primaries()
+        if len(primary_list) == 1:
+            neutrino = I3Tree[0]
+        else:
+            for p in primary_list:
+                pdg = p.pdg_encoding
+                if abs(pdg) in ParticelList:
+                    neutrino = p
+        minimal_tau_energy = int(cuts['minimal_tau_energy'])
+        if abs(neutrino.pdg_encoding) == 16:
+            if calc_depositedE(phy_event) < minimal_tau_energy:
+                report = [RunID, EventID, "MinimalTauEnergyCut"]
+                return False
+    if cuts['min_energy_cut'] == "ON":
+        energy_cutoff = int(cuts['min_energy_cutoff'])
+        if calc_depositedE(phy_event) < energy_cutoff:
+            report = [RunID, EventID, "MinimalEnergyCut"]
+            return False
+    if cuts['min_hit_DOMs_cut'] == "ON":
+        hit_DOMs_cutoff = cuts['min_hit_DOMs']
+        if calc_hitDOMs(phy_event) < hit_DOMS_cutoff:
+            report = [RunID, EventID, "HitDOMsCut"]
+            return False
+    return True
+
+##########
 
 if __name__ == "__main__":
 
