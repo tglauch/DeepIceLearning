@@ -411,206 +411,206 @@ if __name__ == "__main__":
                 except Exception:
                     statusInFilelist += 1
                     continue
-                statusInFilelist += 1
-                # shuffeling of the files
-                print(len(events['reco_vals']))
-                num_events = len(events['reco_vals'])
-                shuff = np.random.choice(num_events, num_events, replace=False)
-                for i in shuff:
-                    TotalEventCounter += 1
-                    reco_arr = events['reco_vals'][i]
-                    if not len(reco_arr) == dtype_len:
-                        continue
+            statusInFilelist += 1
+            # shuffeling of the files
+            print(len(events['reco_vals']))
+            num_events = len(events['reco_vals'])
+            shuff = np.random.choice(num_events, num_events, replace=False)
+            for i in shuff:
+                TotalEventCounter += 1
+                reco_arr = events['reco_vals'][i]
+                if not len(reco_arr) == dtype_len:
+                    continue
 
-                    charge_arr = np.zeros(
-                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                    time_first_arr = np.zeros(
-                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                    time_spread_arr = np.zeros(
-                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                    charge_first_arr = np.zeros(
-                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                    av_time_charges_arr = np.zeros(
-                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                    num_pulses_arr = np.zeros(
-                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                    time_moment_2_arr = np.zeros(
-                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                    time_kurtosis_arr = np.zeros(
-                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                    time_10pct_arr = np.zeros(
-                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                    time_20pct_arr = np.zeros(
-                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                    time_30pct_arr = np.zeros(
-                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                    time_40pct_arr = np.zeros(
-                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                    time_50pct_arr = np.zeros(
-                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                    time_60pct_arr = np.zeros(
-                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                    time_70pct_arr = np.zeros(
-                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                    time_80pct_arr = np.zeros(
-                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                    time_90pct_arr = np.zeros(
-                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                    time_100pct_arr = np.zeros(
-                        (1, input_shape[0], input_shape[1], input_shape[2], 1))        
-                    time_15pct_arr = np.zeros(
-                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                    time_25pct_arr = np.zeros(
-                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                    time_35pct_arr = np.zeros(
-                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                    time_45pct_arr = np.zeros(
-                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                    time_55pct_arr = np.zeros(
-                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                    time_65pct_arr = np.zeros(
-                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                    time_75pct_arr = np.zeros(
-                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                    time_85pct_arr = np.zeros(
-                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                    time_95pct_arr = np.zeros(
-                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                    time_05pct_arr = np.zeros(
-                        (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                charge_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                time_first_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                time_spread_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                charge_first_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                av_time_charges_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                num_pulses_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                time_moment_2_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                time_kurtosis_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                time_10pct_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                time_20pct_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                time_30pct_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                time_40pct_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                time_50pct_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                time_60pct_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                time_70pct_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                time_80pct_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                time_90pct_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                time_100pct_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))        
+                time_15pct_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                time_25pct_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                time_35pct_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                time_45pct_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                time_55pct_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                time_65pct_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                time_75pct_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                time_85pct_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                time_95pct_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                time_05pct_arr = np.zeros(
+                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
 
-                    pulses = events['pulses'][i]
-                    waveforms = events['waveforms'][i]
-                    final_dict = dict()
-                    for omkey in pulses.keys():
-                        charges = np.array([p.charge for p in pulses[omkey][:]])
-                        times = np.array([p.time for p in pulses[omkey][:]])
-                        waveform = waveforms[omkey]
-                        widths = np.array([p.width for p in pulses[omkey][:]])
-                        final_dict[(omkey.string, omkey.om)] = \
-                            (np.sum(charges),
-                             np.amin(times),
-                             np.amax(times) - np.amin(times),
-                             charges[0],
-                             np.average(charges, weights=1. / widths),
-                             np.average(times, weights=charges),
-                             len(charges),
-                             moment(times, moment=2),
-                             skew(times),
-                             fu.wf_quantiles(waveform, .10)['ATWD'],
-                             fu.wf_quantiles(waveform, .20)['ATWD'],
-                             fu.wf_quantiles(waveform, .30)['ATWD'],
-                             fu.wf_quantiles(waveform, .40)['ATWD'],
-                             fu.wf_quantiles(waveform, .50)['ATWD'],
-                             fu.wf_quantiles(waveform, .60)['ATWD'],
-                             fu.wf_quantiles(waveform, .70)['ATWD'],
-                             fu.wf_quantiles(waveform, .80)['ATWD'],
-                             fu.wf_quantiles(waveform, .90)['ATWD'],
-                             fu.wf_quantiles(waveform, .99)['ATWD'],
-                             fu.wf_quantiles(waveform, .15)['ATWD'],
-                             fu.wf_quantiles(waveform, .25)['ATWD'],
-                             fu.wf_quantiles(waveform, .35)['ATWD'],
-                             fu.wf_quantiles(waveform, .45)['ATWD'],
-                             fu.wf_quantiles(waveform, .55)['ATWD'],
-                             fu.wf_quantiles(waveform, .65)['ATWD'],
-                             fu.wf_quantiles(waveform, .75)['ATWD'],
-                             fu.wf_quantiles(waveform, .85)['ATWD'],
-                             fu.wf_quantiles(waveform, .95)['ATWD'],
-                             fu.wf_quantiles(waveform, .05)['ATWD'],
-                             )
+                pulses = events['pulses'][i]
+                waveforms = events['waveforms'][i]
+                final_dict = dict()
+                for omkey in pulses.keys():
+                    charges = np.array([p.charge for p in pulses[omkey][:]])
+                    times = np.array([p.time for p in pulses[omkey][:]])
+                    waveform = waveforms[omkey]
+                    widths = np.array([p.width for p in pulses[omkey][:]])
+                    final_dict[(omkey.string, omkey.om)] = \
+                        (np.sum(charges),
+                         np.amin(times),
+                         np.amax(times) - np.amin(times),
+                         charges[0],
+                         np.average(charges, weights=1. / widths),
+                         np.average(times, weights=charges),
+                         len(charges),
+                         moment(times, moment=2),
+                         skew(times),
+                         fu.wf_quantiles(waveform, .10)['ATWD'],
+                         fu.wf_quantiles(waveform, .20)['ATWD'],
+                         fu.wf_quantiles(waveform, .30)['ATWD'],
+                         fu.wf_quantiles(waveform, .40)['ATWD'],
+                         fu.wf_quantiles(waveform, .50)['ATWD'],
+                         fu.wf_quantiles(waveform, .60)['ATWD'],
+                         fu.wf_quantiles(waveform, .70)['ATWD'],
+                         fu.wf_quantiles(waveform, .80)['ATWD'],
+                         fu.wf_quantiles(waveform, .90)['ATWD'],
+                         fu.wf_quantiles(waveform, .99)['ATWD'],
+                         fu.wf_quantiles(waveform, .15)['ATWD'],
+                         fu.wf_quantiles(waveform, .25)['ATWD'],
+                         fu.wf_quantiles(waveform, .35)['ATWD'],
+                         fu.wf_quantiles(waveform, .45)['ATWD'],
+                         fu.wf_quantiles(waveform, .55)['ATWD'],
+                         fu.wf_quantiles(waveform, .65)['ATWD'],
+                         fu.wf_quantiles(waveform, .75)['ATWD'],
+                         fu.wf_quantiles(waveform, .85)['ATWD'],
+                         fu.wf_quantiles(waveform, .95)['ATWD'],
+                         fu.wf_quantiles(waveform, .05)['ATWD'],
+                         )
 
-                    for dom in DOM_list:
-                        gpos = grid[dom]
-                        if dom in final_dict:
-                            charge_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
-                                final_dict[dom][0]
-                            charge_first_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
-                                final_dict[dom][3]
-                            time_spread_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
-                                final_dict[dom][2]
-                            time_first_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                    final_dict[dom][1]
-                            #av_charge_widths_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                            #        final_dict[dom][4]
-                            av_time_charges_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                    final_dict[dom][5]
-                            num_pulses_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                    final_dict[dom][6]
-                            time_moment_2_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                        final_dict[dom][7]
-                            time_kurtosis_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                        final_dict[dom][8]
-                            time_10pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                        final_dict[dom][9]
-                            time_20pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                        final_dict[dom][10]
-                            time_30pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                        final_dict[dom][11]
-                            time_40pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                        final_dict[dom][12]
-                            time_50pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                        final_dict[dom][13]
-                            time_60pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                        final_dict[dom][14]
-                            time_70pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                        final_dict[dom][15]
-                            time_80pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                        final_dict[dom][16]
-                            time_90pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                        final_dict[dom][17]
-                            time_100pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                        final_dict[dom][18]
-                            time_15pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                        final_dict[dom][19]
-                            time_25pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                        final_dict[dom][20]
-                            time_35pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                        final_dict[dom][21]
-                            time_45pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                        final_dict[dom][22]
-                            time_55pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                        final_dict[dom][23]
-                            time_65pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                        final_dict[dom][24]
-                            time_75pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                        final_dict[dom][25]
-                            time_85pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                        final_dict[dom][26]
-                            time_95pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                        final_dict[dom][27]
-                            time_05pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                        final_dict[dom][28]
+                for dom in DOM_list:
+                    gpos = grid[dom]
+                    if dom in final_dict:
+                        charge_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
+                            final_dict[dom][0]
+                        charge_first_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
+                            final_dict[dom][3]
+                        time_spread_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
+                            final_dict[dom][2]
+                        time_first_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                final_dict[dom][1]
+                        #av_charge_widths_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                        #        final_dict[dom][4]
+                        av_time_charges_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                final_dict[dom][5]
+                        num_pulses_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                final_dict[dom][6]
+                        time_moment_2_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                    final_dict[dom][7]
+                        time_kurtosis_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                    final_dict[dom][8]
+                        time_10pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                    final_dict[dom][9]
+                        time_20pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                    final_dict[dom][10]
+                        time_30pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                    final_dict[dom][11]
+                        time_40pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                    final_dict[dom][12]
+                        time_50pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                    final_dict[dom][13]
+                        time_60pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                    final_dict[dom][14]
+                        time_70pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                    final_dict[dom][15]
+                        time_80pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                    final_dict[dom][16]
+                        time_90pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                    final_dict[dom][17]
+                        time_100pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                    final_dict[dom][18]
+                        time_15pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                    final_dict[dom][19]
+                        time_25pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                    final_dict[dom][20]
+                        time_35pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                    final_dict[dom][21]
+                        time_45pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                    final_dict[dom][22]
+                        time_55pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                    final_dict[dom][23]
+                        time_65pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                    final_dict[dom][24]
+                        time_75pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                    final_dict[dom][25]
+                        time_85pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                    final_dict[dom][26]
+                        time_95pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                    final_dict[dom][27]
+                        time_05pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                    final_dict[dom][28]
 
 
-                    charge.append(np.array(charge_arr))
-                    charge_first.append(np.array(charge_first_arr))
-                    time_spread.append(np.array(time_spread_arr))
-                    time_first.append(np.array(time_first_arr))
-                    av_time_charges.append(av_time_charges_arr)
-                    num_pulses.append(num_pulses_arr)
-                    time_moment_2.append(time_moment_2_arr)
-                    time_kurtosis.append(time_kurtosis_arr)
-                    time_10pct.append(time_10pct_arr)
-                    time_20pct.append(time_20pct_arr)
-                    time_30pct.append(time_30pct_arr)
-                    time_40pct.append(time_40pct_arr)
-                    time_50pct.append(time_50pct_arr)
-                    time_60pct.append(time_60pct_arr)
-                    time_70pct.append(time_70pct_arr)
-                    time_80pct.append(time_80pct_arr)
-                    time_90pct.append(time_90pct_arr)
-                    time_100pct.append(time_100pct_arr)
-                    time_15pct.append(time_15pct_arr)
-                    time_25pct.append(time_25pct_arr)
-                    time_35pct.append(time_35pct_arr)
-                    time_45pct.append(time_45pct_arr)
-                    time_55pct.append(time_55pct_arr)
-                    time_65pct.append(time_65pct_arr)
-                    time_75pct.append(time_75pct_arr)
-                    time_85pct.append(time_85pct_arr)
-                    time_95pct.append(time_95pct_arr)
-                    time_05pct.append(time_05pct_arr)
-                    reco_vals.append(np.array(reco_arr))
+                charge.append(np.array(charge_arr))
+                charge_first.append(np.array(charge_first_arr))
+                time_spread.append(np.array(time_spread_arr))
+                time_first.append(np.array(time_first_arr))
+                av_time_charges.append(av_time_charges_arr)
+                num_pulses.append(num_pulses_arr)
+                time_moment_2.append(time_moment_2_arr)
+                time_kurtosis.append(time_kurtosis_arr)
+                time_10pct.append(time_10pct_arr)
+                time_20pct.append(time_20pct_arr)
+                time_30pct.append(time_30pct_arr)
+                time_40pct.append(time_40pct_arr)
+                time_50pct.append(time_50pct_arr)
+                time_60pct.append(time_60pct_arr)
+                time_70pct.append(time_70pct_arr)
+                time_80pct.append(time_80pct_arr)
+                time_90pct.append(time_90pct_arr)
+                time_100pct.append(time_100pct_arr)
+                time_15pct.append(time_15pct_arr)
+                time_25pct.append(time_25pct_arr)
+                time_35pct.append(time_35pct_arr)
+                time_45pct.append(time_45pct_arr)
+                time_55pct.append(time_55pct_arr)
+                time_65pct.append(time_65pct_arr)
+                time_75pct.append(time_75pct_arr)
+                time_85pct.append(time_85pct_arr)
+                time_95pct.append(time_95pct_arr)
+                time_05pct.append(time_05pct_arr)
+                reco_vals.append(np.array(reco_arr))
 
         charge.flush()
         time_first.flush()
