@@ -15,13 +15,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from icecube import dataclasses, dataio, icetray
+from icecube import dataclasses, dataio, icetray, MuonGun
 from icecube.icetray import I3Units
 import icecube.MuonGun
 import numpy as np
 
 
-def calc_depositedE(physics_frame):
+def calc_depositedE(physics_frame, gcd_file):
     I3Tree = physics_frame['I3MCTree']
     losses = 0
     for p in I3Tree:
@@ -39,7 +39,7 @@ def calc_depositedE(physics_frame):
     return losses
 
 
-def calc_hitDOMs(physics_frame):
+def calc_hitDOMs(physics_frame, gcd_file):
     hitDOMs = 0
     pulses = physics_frame["InIceDSTPulses"]
     # apply the pulsemask --> make it an actual mapping of omkeys to pulses
@@ -47,40 +47,6 @@ def calc_hitDOMs(physics_frame):
     for key, pulses in pulses:
         hitDOMs += 1   
     return hitDOMs
-
-
-def classificationTag(physics_frame):
-    energy = calc_depositedE(physics_frame)
-    ParticelList = [12, 14, 16]
-    I3Tree = physics_frame['I3MCTree']
-    primary_list = I3Tree.get_primaries()
-    if len(primary_list) == 1:
-        neutrino = I3Tree[0]
-    else:
-        for p in primary_list:
-            pdg = p.pdg_encoding
-            if abs(pdg) in ParticelList:
-                neutrino = p
-    if abs(neutrino.pdg_encoding) == 12: # primary particle is a electron neutrino
-        classificationTag = 1
-    elif abs(neutrino.pdg_encoding) == 14: # primary particle is a muon neutrino
-        classificationTag = 2
-    elif abs(neutrino.pdg_encoding) == 16: # primary particle is a tau neutrino
-        listChildren = I3Tree.children(I3Tree.first_child(neutrino))
-        if not listChildren: # without this, the function collapses
-            classificationTag = 3
-        else:
-            for i in listChildren:
-                if abs(i.pdg_encoding) == 13:
-                    classificationTag = 2
-                else:
-                    classificationTag = 3
-    else:
-        print "Error: primary particle wasnt a neutrino"
-    # classificationTag = 1 means cascade
-    # classificationTag = 2 means track
-    # classificationTag = 3 means double bang
-    return classificationTag
 
 
 def starting(p_frame, gcdfile):
@@ -96,7 +62,7 @@ def starting(p_frame, gcdfile):
     return starting
 
 
-def up_or_down(physics_frame):
+def up_or_down(physics_frame, gcdfile):
     zenith = physics_frame["LineFit"].dir.zenith
     if zenith > 1.5 * np.pi or zenith < 0.5 * np.pi:
         up_or_down = 1  # down-going
@@ -105,7 +71,7 @@ def up_or_down(physics_frame):
     return up_or_down
 
 
-def coincidenceLabel(physics_frame):
+def coincidenceLabel(physics_frame, gcdfile):
     primary_list = physics_frame["I3MCTree"].get_primaries()
     if len(primary_list) > 1:
         coincidence = 1
@@ -114,7 +80,7 @@ def coincidenceLabel(physics_frame):
     return coincidence
 
 
-def tau_decay_length(p_frame):
+def tau_decay_length(p_frame, gcdfile):
     I3Tree = p_frame['I3MCTree']    
     neutrino = get_the_right_particle(p_frame, gcdfile)    
     if abs(neutrino.pdg_encoding) == 16:

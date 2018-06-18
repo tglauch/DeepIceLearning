@@ -15,7 +15,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 from icecube import dataio, icetray, WaveCalibrator
-from I3Tray import *
 from scipy.stats import moment, skew, kurtosis
 import numpy as np
 import math
@@ -232,14 +231,15 @@ def analyze_grid(grid):
 
 
 ### calculate a quantile
-def wf_quantiles(wfs, quantile, srcs=['ATWD']):
-    ret = []
+def wf_quantiles(wfs, quantile, srcs=['ATWD', 'FADC']):
+    ret = dict()
     src_loc = [wf.source.name for wf in wfs]
     for src in srcs:
+	ret[src] = 0
         if src not in src_loc:
             continue
         wf = wfs[src_loc.index(src)]
         t = wf.time + np.linspace(0, len(wf.waveform) * wf.bin_width, len(wf.waveform))
-        charge_pdf = np.cumsum(wf.waveform) / np.cumsum(wf.waveform)[-1]
-        ret.append(t[np.where(charge_pdf > quantile)[0][0]])
-    return ret[0]
+	charge_pdf = np.cumsum(wf.waveform) / np.cumsum(wf.waveform)[-1]
+	ret[src]=t[np.where(charge_pdf > quantile)[0][0]]
+    return ret

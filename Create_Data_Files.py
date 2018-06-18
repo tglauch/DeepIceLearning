@@ -20,6 +20,7 @@ small differences when processing data for the diffuse dataset
 '''
 
 from icecube import dataio, icetray
+from I3Tray import *
 from scipy.stats import moment, skew, kurtosis
 import numpy as np
 import math
@@ -73,8 +74,13 @@ except Exception:
 geometry_file = str(dataset_configparser.get('Basics', 'geometry_file'))
 outfolder = str(dataset_configparser.get('Basics', 'out_folder'))
 pulsemap_key = str(dataset_configparser.get('Basics', 'PulseSeriesMap'))
-
-
+dtype, settings = fu.read_variables(dataset_configparser)
+settings.append(('variable', '["CalibratedWaveforms"]'))
+settings.append(('variable', '["InIceDSTPulses"]'))
+events = dict()
+events['reco_vals'] = []
+events['waveforms'] = []
+events['pulses'] = []
 def save_to_array(phy_frame):
     # Function that saves the requested values in a dict of lists
     reco_arr = []
@@ -104,22 +110,23 @@ def save_to_array(phy_frame):
                 return False
         elif el[0] == 'function':
             try:
-                reco_arr.append(eval(el[1].replace('(x)', '(phy_frame)')))
+                reco_arr.append(eval(el[1].replace('(x)', '(phy_frame, geometry_file)')))
             except Exception:
                 print('uuupus {}'.format(el[1]))
                 return False
         if (wf is not None) and (pulses is not None):
+            print('Gut')
             events['waveforms'].append(wf)
             events['pulses'].append(pulses)
             events['reco_vals'].append(reco_arr)
     return True
 
 
-def produce_data_dict(i3_file, geo_file):
+def produce_data_dict(i3_file):
     # IceTray script that wraps around an i3file and fills the events dict that is initialized outside the function
     tray = I3Tray()
     tray.AddModule("I3Reader", "source",
-                   Filenamelist=[geo_file,
+                   Filenamelist=[geometry_file,
                                  i3_file],)
     tray.AddModule("Delete",
                    "old_keys_cleanup",
@@ -132,7 +139,7 @@ def produce_data_dict(i3_file, geo_file):
                    ATWDSaturationMargin=123,
                    FADCSaturationMargin=0,)
     tray.AddModule(save_to_array, 'save', Streams=[icetray.I3Frame.Physics])
-    tray.Execute()
+    tray.Execute(5)
     tray.Finish()
     return
 
@@ -141,17 +148,17 @@ def cuts(phy_event):
     cuts = dataset_configparser['Cuts']
     #### Checking for wierd event structures
     if testing_event(phy_event, geometry_file) == -1:
-        report = [RunID, EventID, "EventTestingFailed"]
+        #report = [RunID, EventID, "EventTestingFailed"]
         return False
     ParticelList = [12, 14, 16]
     if cuts['only_neutrino_as_primary_cut'] == "ON":
         if abs(phy_event['MCPrimary'].pdg_encoding) not in ParticelList:
-            report = [RunID, EventID, "NeutrinoPrimaryCut"]
+            #report = [RunID, EventID, "NeutrinoPrimaryCut"]
             return False
     if cuts['max_energy_cut'] == "ON":
         energy_cutoff = cuts['max_energy_cutoff']
         if calc_depositedE(phy_event) > energy_cutoff:
-            report = [RunID, EventID, "MaximalEnergyCut"]
+            #report = [RunID, EventID, "MaximalEnergyCut"]
             return False
     if cuts['minimal_tau_energy'] == "ON":
         I3Tree = phy['I3MCTree']
@@ -166,17 +173,17 @@ def cuts(phy_event):
         minimal_tau_energy = int(cuts['minimal_tau_energy'])
         if abs(neutrino.pdg_encoding) == 16:
             if calc_depositedE(phy_event) < minimal_tau_energy:
-                report = [RunID, EventID, "MinimalTauEnergyCut"]
+               #report = [RunID, EventID, "MinimalTauEnergyCut"]
                 return False
     if cuts['min_energy_cut'] == "ON":
         energy_cutoff = int(cuts['min_energy_cutoff'])
         if calc_depositedE(phy_event) < energy_cutoff:
-            report = [RunID, EventID, "MinimalEnergyCut"]
+            #report = [RunID, EventID, "MinimalEnergyCut"]
             return False
     if cuts['min_hit_DOMs_cut'] == "ON":
         hit_DOMs_cutoff = cuts['min_hit_DOMs']
         if calc_hitDOMs(phy_event) < hit_DOMS_cutoff:
-            report = [RunID, EventID, "HitDOMsCut"]
+            #report = [RunID, EventID, "HitDOMsCut"]
             return False
     return True
 
@@ -253,7 +260,6 @@ if __name__ == "__main__":
     if os.path.exists(outfile):
         os.remove(outfile)
 
-    dtype, data_source = fu.read_variables(dataset_configparser)
     dtype_len = len(dtype)
     FILTERS = tables.Filters(complib='zlib', complevel=9)
     with tables.open_file(
@@ -393,17 +399,14 @@ if __name__ == "__main__":
             timestamp = time.time()
             print "Time for {} Sets of {} I3-Files: {}".\
                 format(statusInFilelist, len(args['filelist']), starttime - timestamp)
-            events = dict()
             events['reco_vals'] = []
             events['waveforms'] = []
             events['pulses'] = []
             counterSim = 0
             while counterSim < len(args['filelist']):
-                produce_data_dict(filelist[counterSim][statusInFilelist],
-                                      geometry_file, dataset_configparser )
                 try:
-                    produce_data_dict(filelist[counterSim][statusInFilelist],
-                                         geometry_file, dataset_configparser)
+		    print('Attempt to read {}'.format(filelist[counterSim][statusInFilelist]))
+                    produce_data_dict(filelist[counterSim][statusInFilelist])
                     counterSim = counterSim + 1
                 except Exception:
                     statusInFilelist += 1
@@ -476,8 +479,8 @@ if __name__ == "__main__":
                     time_05pct_arr = np.zeros(
                         (1, input_shape[0], input_shape[1], input_shape[2], 1))
 
-                    pulses = events['pulses']
-                    waveforms = events['waveforms']
+                    pulses = events['pulses'][i]
+                    waveforms = events['waveforms'][i]
                     final_dict = dict()
                     for omkey in pulses.keys():
                         charges = np.array([p.charge for p in pulses[omkey][:]])
@@ -494,26 +497,26 @@ if __name__ == "__main__":
                              len(charges),
                              moment(times, moment=2),
                              skew(times),
-                             wf_quantiles(waveform, 10),
-                             wf_quantiles(waveform, 20),
-                             wf_quantiles(waveform, 30),
-                             wf_quantiles(waveform, 40),
-                             wf_quantiles(waveform, 50),
-                             wf_quantiles(waveform, 60),
-                             wf_quantiles(waveform, 70),
-                             wf_quantiles(waveform, 80),
-                             wf_quantiles(waveform, 90),
-                             wf_quantiles(waveform, 100),
-                             wf_quantiles(waveform, 15),
-                             wf_quantiles(waveform, 25),
-                             wf_quantiles(waveform, 35),
-                             wf_quantiles(waveform, 45),
-                             wf_quantiles(waveform, 55),
-                             wf_quantiles(waveform, 65),
-                             wf_quantiles(waveform, 75),
-                             wf_quantiles(waveform, 85),
-                             wf_quantiles(waveform, 95),
-                             wf_quantiles(waveform, 05)
+                             fu.wf_quantiles(waveform, .10)['ATWD'],
+                             fu.wf_quantiles(waveform, .20)['ATWD'],
+                             fu.wf_quantiles(waveform, .30)['ATWD'],
+                             fu.wf_quantiles(waveform, .40)['ATWD'],
+                             fu.wf_quantiles(waveform, .50)['ATWD'],
+                             fu.wf_quantiles(waveform, .60)['ATWD'],
+                             fu.wf_quantiles(waveform, .70)['ATWD'],
+                             fu.wf_quantiles(waveform, .80)['ATWD'],
+                             fu.wf_quantiles(waveform, .90)['ATWD'],
+                             fu.wf_quantiles(waveform, .99)['ATWD'],
+                             fu.wf_quantiles(waveform, .15)['ATWD'],
+                             fu.wf_quantiles(waveform, .25)['ATWD'],
+                             fu.wf_quantiles(waveform, .35)['ATWD'],
+                             fu.wf_quantiles(waveform, .45)['ATWD'],
+                             fu.wf_quantiles(waveform, .55)['ATWD'],
+                             fu.wf_quantiles(waveform, .65)['ATWD'],
+                             fu.wf_quantiles(waveform, .75)['ATWD'],
+                             fu.wf_quantiles(waveform, .85)['ATWD'],
+                             fu.wf_quantiles(waveform, .95)['ATWD'],
+                             fu.wf_quantiles(waveform, .05)['ATWD'],
                              )
 
                     for dom in DOM_list:
@@ -606,7 +609,7 @@ if __name__ == "__main__":
                     time_75pct.append(time_75pct_arr)
                     time_85pct.append(time_85pct_arr)
                     time_95pct.append(time_95pct_arr)
-                    time_05pct.append(time_05pct_arr)                    
+                    time_05pct.append(time_05pct_arr)
                     reco_vals.append(np.array(reco_arr))
 
         charge.flush()
