@@ -31,6 +31,9 @@ def parseArguments():
     parser.add_argument(
         "--ngpus",
         help="number of GPUs", default=1)
+    parser.add_argument(
+        "--model",
+        help="name of the model to apply", default="")
     args = parser.parse_args()
     return args
 
@@ -100,17 +103,39 @@ if __name__ == "__main__":
 
     DATA_DIR = args.__dict__['folder']
     print('Make prediction for model in {}'.format(DATA_DIR))
-    shelf = shelve.open(os.path.join(DATA_DIR, 'run_info.shlf'))
+    print DATA_DIR
 
-    if shelf['Files'] == ['all']:
+    # with numpy dict
+    run_info = np.load(os.path.join(DATA_DIR, 'run_info.npy'))[()]
+
+    if run_info['Files'] == ['all']:
         input_files = os.listdir(mc_location)
-    elif isinstance(shelf["Files"],list):
-        input_files = shelf['Files']
+    elif isinstance(run_info["Files"],list):
+        input_files = run_info['Files']
     else:
-        input_files = shelf['Files'].split(':')
-    conf_model_file = os.path.join(DATA_DIR,"model.py")
-    test_inds = shelf["Test_Inds"]
+        input_files = run_info['Files'].split(':')
+    conf_model_file = os.path.join(DATA_DIR, args.model)
+    print args.model
+    print "##############################################################"
+    #conf_model_file = "/scratch9/mkron/software/DeepIceLearning/Networks/classifikation_mk/classification_concatenate.py"
+    test_inds = run_info["Test_Inds"]
+
+    # Alternative wit a simple numpy dict is implemented instead, see above
+    #shelf = shelve.open(os.path.join(DATA_DIR, 'run_info.shlf'))
+
+    #if shelf['Files'] == ['all']:
+        #input_files = os.listdir(mc_location)
+    #elif isinstance(shelf["Files"],list):
+        #input_files = shelf['Files']
+    #else:
+        #input_files = shelf['Files'].split(':')
+    #conf_model_file = os.path.join(DATA_DIR,"model.py")
+    #test_inds = shelf["Test_Inds"]
+
+
     # create model (new implementation, functional API of Keras)
+    print '##########################################################'
+    print os.path.join(mc_location, input_files[0])
     base_model, inp_shapes, inp_trans, out_shapes, out_trans = \
         model_parse.parse_functional_model(
             conf_model_file,
@@ -130,6 +155,7 @@ if __name__ == "__main__":
             raise Exception(
                 'Multi GPU can only be used with tensorflow as Backend.')
     else:
+        print "BASE MODEL:  {}".format( base_model)
         model = read_NN_weights(args.__dict__, base_model)
 
     os.system("nvidia-smi")
@@ -142,6 +168,9 @@ if __name__ == "__main__":
                      for file_name in input_files]
     steps_per_epoch = math.ceil(np.sum([k[1] - k[0] for k in\
                                         test_inds])/args.batch_size)
+    if steps_per_epoch == 0:
+    	print "steps per epoch is 0, therefore manually set to 1"
+        steps_per_epoch = 1
 
     prediction = model.predict_generator(
                  generator(args.batch_size,\
@@ -154,10 +183,17 @@ if __name__ == "__main__":
                 steps = steps_per_epoch,\
                 verbose=1,\
                 max_q_size=2)
+    #print prediction 
+    #np.save(os.path.join(DATA_DIR, 'predictions_mk.npy'), prediction)
+
+
+
+
+
 
     ## write out muex etc for comparison later
     reference_outputs = model_parse.parse_reference_output(conf_model_file)
-    print('Reference output-vars: ', reference_outputs)
+    #print('Reference output-vars: ', reference_outputs)
     ## add to first out-branch:
     outbranch0 = out_shapes.keys()[0]
     for ref_out in reference_outputs:
@@ -165,27 +201,44 @@ if __name__ == "__main__":
     mc_truth = [[] for br in out_shapes.keys()\
                 for var in out_shapes[br].keys()\
                 if var!='general']
+    reco_vals = []
+    hit_vals = []
+
     for i, file_handler in enumerate(file_handlers):
         down = test_inds[i][0]
         up = test_inds[i][1]
+        #up_reduced = up - ((up-down)%300) #300 is batch size, is neccesary to get rid of overlap of the dataset
+        #print "pred: {}".format(len(prediction))
+        #print "up: {}".format(up)
+        #print "up_reduced: {}".format(up_reduced)
+        #temp_truth = file_handler['reco_vals'][down:up_reduced]
         temp_truth = file_handler['reco_vals'][down:up]
         for j, var in enumerate([var for br in out_shapes.keys() \
                                 for var in out_shapes[br].keys()\
                                 if var!='general']):
-            mc_truth[j].extend(temp_truth[var])
-
+              mc_truth[j].extend(temp_truth[var])
+        reco_vals.extend(temp_truth) 
+###################################################################################
+        hit_DOMs_list = []
+	for k in xrange(up-down):
+	    charge = file_handler["charge"][down+k]
+	    hitDOMs = np.count_nonzero(charge)
+	    hit_DOMs_list.append(hitDOMs)
+	hit_vals.extend(hit_DOMs_list)
+##################################################################################
     dtype = np.dtype([(var + '_truth', np.float64)\
                       for br in out_shapes.keys() \
                       for var in out_shapes[br].keys()\
                       if var!='general'])
     mc_truth = np.array(zip(*np.array(mc_truth)), dtype=dtype)
+    #mc_truth = np.array(zip(*np.array(mc_truth)))
 
     #write-out the mc_truth and the prediction separately to a joint pickle
     #file...we can also look for a nicer solution with dtypes again. but the
     #output-shape of prediction should be variable
     MANUAL_writeout_pred_and_exit= True
     if MANUAL_writeout_pred_and_exit:
-        pickle.dump({"mc_truth": mc_truth, "prediction": prediction},\
+        pickle.dump({"mc_truth": mc_truth, "prediction": prediction, "reco_vals": reco_vals, "HitDOMs": hit_vals},\
                     open(os.path.join(DATA_DIR, "prediction.pickle"),"wc"))
         print(' \n Finished .... Exiting.....')
         exit(0)

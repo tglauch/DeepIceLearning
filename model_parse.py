@@ -84,14 +84,16 @@ def parse_reference_output(cfg_file):
     return ref_outputs
 
 def parse_functional_model(cfg_file, exp_file):
-    try:
-        # fancy relative imports..
-        sys.path.append(os.path.dirname(cfg_file))
-        mname = os.path.splitext(os.path.basename(cfg_file))[0]
-        func_model_def = importlib.import_module(mname)
-        sys.path.pop()
-    except Exception:
-        raise Exception('Import of model.py failed: {}'.format(cfg_file))
+    # fancy relative imports..
+    sys.path.append(os.path.dirname(cfg_file))
+    #sys.path.append("/scratch9/mkron/software/DeepIceLearning/Networks/classifikation_mk/")
+    #sys.path.append("/scratch9/mkron/data/NN_out/run35/")
+    sys.path.append(os.getcwd()+"/"+os.path.dirname(cfg_file))
+    mname = os.path.splitext(os.path.basename(cfg_file))[0]
+    func_model_def = importlib.import_module(mname)
+    sys.path.pop()
+    # except Exception:
+    #    raise Exception('Import of model.py failed: {}'.format(cfg_file))
     inputs = func_model_def.inputs
     outputs = func_model_def.outputs
 
@@ -101,3 +103,5 @@ def parse_functional_model(cfg_file, exp_file):
     print(in_shapes)
     model = func_model_def.model(in_shapes, out_shapes)
     return model, in_shapes, in_trans, out_shapes, out_trans
+
+

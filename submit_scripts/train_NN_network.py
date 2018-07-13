@@ -68,10 +68,11 @@ request_memory = parser.get('GPU', 'request_memory')
 requirements = parser.get('GPU', 'requirements')
 project_name = args['project']
 thisfolder = parser.get("Basics", "thisfolder")
+model_name = parser.get("Basics", "model_name")
 if 'exclude_node' in parser_dict['GPU'].keys():
     exclude = parser.get('GPU', 'exclude_node')
 else:
-    exclude = ' '
+    exclude = 'nothing'
 
 if workload_manager not in ['slurm','condor','bsub']:
     raise NameError(
@@ -93,13 +94,16 @@ if args['continue'] != 'None':
     #arguments += '--continue {}'.format(args['continue'])
     save_path = args['continue']
     condor_out_folder = os.path.join(args['continue'], 'condor')
-    args["model"] = os.path.join(args['continue'], 'model.py')
+    #args["model"] = os.path.join(args['continue'], 'model.py')
+    args["model"] = os.path.join(args['continue'], model_name)
 else:
     today = str(datetime.datetime.now()).\
         replace(" ", "-").split(".")[0].replace(":", "-")
-
-    save_path = os.path.join(
-        train_location, '{}/{}'.format(project_name, today))
+    if 'save_path' in parser_dict['Basics'].keys():
+	save_path = parser.get('Basics', 'save_path')
+    else:
+        save_path = os.path.join(
+            train_location, '{}/{}'.format(project_name, today))
     condor_out_folder = os.path.join(save_path, 'condor')
 
     if not os.path.exists(condor_out_folder):
@@ -109,7 +113,17 @@ else:
 
 arguments += ' --ngpus {} '.format(request_gpus)
 if workload_manager == 'slurm':
-    submit_info = make_slurm("Neural_Network.py",\
+    if args['continue'] != 'None':
+                submit_info = make_slurm("NN_continue.sh",\
+                             request_gpus,\
+                             float(request_memory) * 1e3,\
+                             condor_out_folder,\
+                             train_location,\
+                             arguments,\
+                             thisfolder,\
+                             exclude)
+    else:
+        submit_info = make_slurm("NN.sh",\
                              request_gpus,\
                              float(request_memory) * 1e3,\
                              condor_out_folder,\
@@ -132,7 +146,7 @@ elif workload_manager == 'bsub':
                             thisfolder,\
                             arguments,\
                             apply_test = args["apply_test"],\
-                            request_cpus=12,
+                            request_cpus=22,
                             cfg_file = args["main_config"],
                             save_path = save_path)
 
@@ -145,9 +159,11 @@ with open(submitfile_full, "wc") as file:
 if not os.path.exists(os.path.join(save_path, 'config.cfg')):
     os.system("cp {} {} ".format(
         args["main_config"], os.path.join(save_path, 'config.cfg')))
-if not os.path.exists(os.path.join(save_path, 'model.py')):
+if not os.path.exists(os.path.join(save_path, model_name)):
+#if not os.path.exists(os.path.join(save_path, 'model.py')):
     os.system("cp {} {} ".format(
-        args["model"], os.path.join(save_path, 'model.py')))
+        #args["model"], os.path.join(save_path, 'model.py')))
+        args["model"], os.path.join(save_path, model_name)))
 
 if workload_manager == 'slurm':
     os.system("sbatch {}".format(submitfile_full))

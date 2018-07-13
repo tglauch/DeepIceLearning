@@ -26,9 +26,14 @@ def shift_min_to_zero(x):
 def sort_input(x):
     return np.sort(np.ndarray.flatten(x))
 
+def plus_one_log10(x):
+    tmp = x + 1.
+    return np.log10(tmp)
+
+
 def log_handle_zeros_flatten_top30(x):
-    tmp = np.where(x != 0, np.log10(x), 0)
-    return np.sort(np.ndarray.flatten(tmp))[-30:]
+    #tmp = np.where(x != 0, np.log10(x), 0)
+    return np.sort(np.ndarray.flatten(np.log10(1.+x)))[-30:]
 
 def log_handle_zeros(x):
     return np.where(x != 0, np.log10(x), 0)
@@ -70,3 +75,151 @@ def time_prepare(x):
     ret = (ret - time_np_arr_min) / (time_np_arr_max - time_np_arr_min)
     ret[ret == np.inf] = replace_with
     return ret
+
+def oneHotEncode_EventType_simple(x):
+    """
+    This function one hot encodes the input for the event types cascade, tracks, doubel-bang
+    """
+    # define universe of possible input values
+    onehot_encoded = []
+    # universe has to defined depending on the problem, in this implementation integers are neccesary
+    universe = [1, 2, 3]
+    for i in range(len(universe)):
+        if x == universe[i]:
+            value = 1.
+        else:
+            value = 0.
+        onehot_encoded.append(value)
+    return onehot_encoded
+
+def oneHotEncode_EventType_noDoubleBang_simple(x):
+    """
+    This function one hot encodes the input
+    """
+    # define universe of possible input values
+    onehot_encoded = []
+    # universe has to defined depending on the problem, in this implementation integers are neccesary
+    universe = [1, 2, 3]
+    for i in range(len(universe)):
+        if x == universe[i]:
+            value = 1.
+        else:
+            value = 0.
+        onehot_encoded.append(value)
+    if onehot_encoded == [0., 0., 1.]:
+        onehot_encoded = [1.0, 0.0, 0.0]
+    return onehot_encoded[:-1]
+
+def log_of_sum(x):
+    return np.log10(np.sum(x)+0.0001)
+
+def max_min_delta_log(x):
+    return np.log10(np.max(x)-np.min(x))
+
+
+def oneHotEncode_01(x):
+    """
+    This function one hot encodes the input for a binary label 
+    """
+    # define universe of possible input values
+    onehot_encoded = []
+    # universe has to defined depending on the problem, in this implementation integers are neccesary
+    universe = [0, 1]
+    for i in range(len(universe)):
+        if x == universe[i]:
+            value = 1.
+        else:
+            value = 0.
+        onehot_encoded.append(value)
+    return onehot_encoded
+
+
+def oneHotEncode_EventType_exact(x):
+    """
+    This function one hot encodes the input for the event types cascade, tracks, doubel-bang
+    """
+    # define universe of possible input values
+    onehot_encoded = []
+    # universe has to defined depending on the problem, in this implementation integers are neccesary
+    universe = [0, 1, 2, 3, 4, 5, 6]
+    for i in range(len(universe)):
+        if x == universe[i]:
+            value = 1.
+        else:
+            value = 0.
+        onehot_encoded.append(value)
+    return onehot_encoded
+
+def oneHotEncode_EventType(x):
+    """
+    This function one hot encodes the input for the event types cascade, tracks, doubel-bang
+    """
+    # define universe of possible input values
+    fail = [0., 0., 0.]
+    cascade = [1., 0., 0.]
+    track = [0., 1., 0.]
+    doublebang = [0., 0., 1.]
+    # map x to possible classes
+    if x == 0: #NC
+        onehot_encoded = cascade
+    elif x == 1: #Cascade
+        onehot_encoded = cascade
+    elif x == 2: #Through-Going Track
+        onehot_encoded = track
+    elif x == 3: #Starting Track
+        onehot_encoded = track
+    elif x == 4: #Stopping Track
+        onehot_encoded = track
+    elif x == 5: #Double Bang
+        onehot_encoded = doublebang
+    elif x == 6: #Stopping Tau
+        onehot_encoded = doublebang
+    elif x == 7: #Glashow Cascade
+        onehot_encoded = cascade
+    elif x == 8: #Glashow Track
+        onehot_encoded = track
+    elif x == 9: #Glashow Tau
+        onehot_encoded = cascade
+    else:
+	onehot_encoded = fail 
+    return onehot_encoded
+
+
+def oneHotEncode_EventType_stratingTrack(x):
+    """
+    This function one hot encodes the input for the event types cascade, tracks, doubel-bang
+    """
+    # define universe of possible input values
+    fail = [0., 0., 0., 0.]
+    cascade = [1., 0., 0., 0.]
+    track = [0., 1., 0., 0.]
+    doublebang = [0., 0., 1., 0.]
+    startingTrack = [0., 0., 0., 1.]
+    # map x to possible classes
+    if x == 0: #NC
+        onehot_encoded = cascade
+    elif x == 1: #Cascade
+        onehot_encoded = cascade
+    elif x == 2: #Through-Going Track
+        onehot_encoded = track
+    elif x == 3: #Starting Track
+        onehot_encoded = startingTrack
+    elif x == 4: #Stopping Track
+        onehot_encoded = track
+    elif x == 5: #Double Bang
+        onehot_encoded = doublebang
+    elif x == 6: #Stopping Tau
+        onehot_encoded = doublebang
+    elif x == 7: #Glashow Cascade
+        onehot_encoded = cascade
+    elif x == 8: #Glashow Track
+        onehot_encoded = track
+    elif x == 9: #Glashow Tau
+        onehot_encoded = cascade
+    else:
+        onehot_encoded = fail
+    return onehot_encoded
+
+#def time_interval_0.1_to_0.9(x):
+#    interval = np.percentile(x, 90)-np.percentile(x, 10)
+#    return interval

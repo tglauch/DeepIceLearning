@@ -116,7 +116,7 @@ def generator(batch_size, file_handlers, inds,
     #             for branch in out_branches]
     batch_out = [np.zeros((batch_size,) + branch[1])
                  for branch in out_branches]
-
+    #print batch_out
     cur_file = 0
     cur_event_id = inds[cur_file][0]
     cur_len = 0

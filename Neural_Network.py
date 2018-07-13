@@ -26,10 +26,7 @@ import sys
 import numpy.lib.recfunctions as rfn
 
 # Function Definitions #####################
-
-
 def parseArguments():
-
     """Parse the command line arguments
 
     Returns:
@@ -78,8 +75,8 @@ def parseArguments():
     args = parser.parse_args()
     return args
 
-# Read config and load keras stuff #############
 
+# Read config and load keras stuff #############
 
 print('Running on Hostcomputer {}'.format(socket.gethostname()))
 args = parseArguments()
@@ -137,6 +134,7 @@ if backend == 'tensorflow':
     from keras_exp.multigpu import make_parallel
 from functions import *
 from keras.utils import plot_model
+import individual_loss
 
 if __name__ == "__main__":
 
@@ -153,24 +151,39 @@ if __name__ == "__main__":
     # Setup the Training Objects and Variables ##############################
 
     # Continuing the training of a model ##############################
+    # Has to be changed because shelf was substituded
+    #if args.__dict__['continue'] != 'None':
+        #save_path = args.__dict__['continue']
+        #shelf = shelve.open(os.path.join(save_path, 'run_info.shlf'))
+        #mc_location = shelf['mc_location']
+        #input_files = shelf['Files']
+        #if input_files == "['all']":
+            #input_files = os.listdir(mc_location)
+        #conf_model_file = os.path.join(save_path, 'model.py')
+        #print "Continuing training. Loaded shelf : ", shelf
+        #print "Input files: ", input_files
+        #shelf.close()
 
+    # ALTERNATIVE TO SHELF, using a simple dict
     if args.__dict__['continue'] != 'None':
         save_path = args.__dict__['continue']
-        shelf = shelve.open(os.path.join(save_path, 'run_info.shlf'))
-        mc_location = shelf['mc_location']
-        input_files = shelf['Files']
+        run_info =  np.load(os.path.join(save_path, 'run_info.npy'))[()]
+        #mc_location = run_info['mc_location']
+        #################################################################
+        mc_location = parser.get('Basics', 'mc_path')
+        ###############################################################
+        input_files = run_info['Files']
         if input_files == "['all']":
             input_files = os.listdir(mc_location)
-        conf_model_file = os.path.join(save_path, 'model.py')
-        print "Continuing training. Loaded shelf : ", shelf
+        conf_model_file = args.__dict__['model']
+        print "Continuing training. Loaded dict : ", run_info
         print "Input files: ", input_files
-        shelf.close()
+
     # Build-up a new Model ###########################################
 
     else:
         mc_location = parser.get('Basics', 'mc_path')
         conf_model_file = args.__dict__['model']
-        # conf_model_file = os.path.join('Networks', args.__dict__['model'])
         if args.__dict__['input'] == 'all':
             input_files = [f for f in os.listdir(mc_location)
                            if os.path.isfile(
@@ -217,6 +230,8 @@ if __name__ == "__main__":
     test_inds = [(int(tot_len * (train_frac + valid_frac)), tot_len - 1)
                  for tot_len in file_len]
     print('Index ranges used for training: {}'.format(train_inds))
+    print('Index ranges used for validation: {}'.format(valid_inds))
+    print('Index ranges used for testing: {}'.format(test_inds))
 
     # create model (new implementation, functional API of Keras)
     base_model, inp_shapes, inp_trans, out_shapes, out_trans = \
@@ -224,11 +239,22 @@ if __name__ == "__main__":
             conf_model_file,
             os.path.join(mc_location, input_files[0]))
 
-    adam = keras.optimizers.Adam(
-        lr=float(parser.get('Training_Parameters', 'learning_rate')))
+
+    # Choosing the Optimizer
+    if parser.get('Training_Parameters', 'optimizer')=="Nadam":
+        print "Optimizer: Nadam"
+        optimizer_used = keras.optimizers.Nadam(
+             lr=float(parser.get('Training_Parameters', 'learning_rate')))
+    elif parser.get('Training_Parameters', 'optimizer')=="Adam":
+        optimizer_used = keras.optimizers.Adam(
+             lr=float(parser.get('Training_Parameters', 'learning_rate')))
+    else:
+        print "Optimizer unchoosen or unknown -> default: Adam"
+        optimizer_used = keras.optimizers.Adam(
+             lr=float(parser.get('Training_Parameters', 'learning_rate')))
 
     ngpus = args.__dict__['ngpus']
-    print'Use {} GPUS'.format(ngpus)
+    #print'Use {} GPUS'.format(ngpus)
     if ngpus > 1:
         if backend == 'tensorflow':
             with tf.device('/cpu:0'):
@@ -242,13 +268,44 @@ if __name__ == "__main__":
     else:
         model = read_NN_weights(args.__dict__, base_model)
 
+    # Choosing the Loss function
     loss_func = 'mean_squared_error'
     if parser.has_option('Training_Parameters', 'loss_function'):
         loss_func = parser.get('Training_Parameters', 'loss_function')
+        if loss_func == "weighted_categorial_crossentropy":
+            weights = parser.get('Training_Parameters', 'weights')
+            weights = np.array(weights.split(',')).astype(np.float)
+            loss_func = individual_loss.weighted_categorical_crossentropy(weights) 
+    print "Used Loss-Function {}".format(loss_func)
+###########################################################################################
+    if parser.has_option('Multi_Task_Learning', 'ON/OFF') == "ON":
+        if parser.has_option('Multi_Task_Learning', 'CustomLoss') == "ON":
+            #extra_parameter_1 = XX
+            #extra_parameter_2 =
+            #custom = [individual_loss.event_type_and_energy_weighted_loss(extra_parameter_1, extra_parameter_2), "categorial_crossentropy", "categorial_crossentropy", "categorial_crossentropy"] 
+            
+##############################################################################################
+            weights = parser.get('Multi_Task_Learning', 'weights')
+            weights = np.array(weights.split(',')).astype(np.float)
+            custom = [individual_loss.weighted_categorical_crossentropy(weights), "categorial_crossentropy", "categorial_crossentropy", "categorial_crossentropy"]
+            
 
-    model.compile(
-        loss=loss_func, optimizer=adam, metrics=['accuracy'])
-
+############################################################################################################
+            model.compile(optimizer=optimizer_used,\
+                loss=custom,
+                loss_weights = parser.has_option('Multi_Task_Learning', 'loss_weights'))
+        else:   
+            model.compile(optimizer=optimizer_used,\
+               loss = parser.has_option('Multi_Task_Learning', 'loss'),\
+               loss_weights = parser.has_option('Multi_Task_Learning', 'loss_weights'))
+    else: 
+        if loss_func == "weighted_categorial_crossentropy":
+            model.compile(
+                loss=loss_func, optimizer=optimizer_used)
+        else:
+            model.compile(
+                loss=loss_func, optimizer=optimizer_used, metrics=['accuracy'])
+###########################################################################################
     os.system("nvidia-smi")
 
     # Save Run Information
@@ -259,6 +316,15 @@ if __name__ == "__main__":
             shelf['mc_location'] = mc_location
             shelf['Test_Inds'] = test_inds
             shelf.close()
+
+    # Alternative to Shelf
+    if not os.path.exists(os.path.join(save_path, "run_info.npy")):
+        if args.__dict__['continue'] == 'None':
+            run_info = dict()
+            run_info['Files'] = input_files
+            run_info['mc_location'] = mc_location
+            run_info['Test_Inds'] = test_inds
+            np.save(os.path.join(save_path, 'run_info.npy'), run_info)
 
 # Train the Model #########################################################
 
@@ -291,21 +357,29 @@ if __name__ == "__main__":
     #file_handlers = [tables.open_file(os.path.join(mc_location, file_name))
     #                 for file_name in input_files]
 
+    epoch_divider = int(parser.get('Training_Parameters', 'epoch_divider'))
     model.fit_generator(
         generator(
             batch_size, file_handlers, train_inds, inp_shapes,
             inp_trans, out_shapes, out_trans),
-        steps_per_epoch=math.ceil(
-            np.sum([k[1] - k[0] for k in train_inds]) / batch_size),
-        validation_data=generator(
+        steps_per_epoch=math.ceil(\
+            #(np.sum([k[1] - k[0] for k in train_inds]) / batch_size))/len(input_files),
+            (np.sum([k[1] - k[0] for k in train_inds]) / batch_size))/epoch_divider,
+        validation_data=generator(\
             batch_size, file_handlers, valid_inds, inp_shapes,
             inp_trans, out_shapes, out_trans, val_run=True),
-        validation_steps=math.ceil(
-            np.sum([k[1] - k[0] for k in valid_inds]) / batch_size),
+        validation_steps=math.ceil(\
+            np.sum([k[1] - k[0] for k in valid_inds]) / batch_size)/epoch_divider,
         callbacks=[CSV_log, early_stop, best_model, MemoryCallback()],
         epochs=int(parser.get('Training_Parameters', 'epochs')),
         verbose=int(parser.get('Training_Parameters', 'verbose')),
         max_q_size=int(parser.get('Training_Parameters', 'max_queue_size')))
+
+
+    # Saving a visualization of the model 
+    plot_model(model, to_file=os.path.join(save_path, 'model.pdf'))
+    print('\n Model Visualisation saved')
+
 
     # Saving the Final Model and Calculation/Saving of Result for Test Dataset ####
 
