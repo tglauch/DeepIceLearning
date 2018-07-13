@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 small differences when processing data for the diffuse dataset
 '''
 
-from icecube import dataio, icetray
+from icecube import dataio, icetray, WaveCalibrator
 from I3Tray import *
 from scipy.stats import moment, skew, kurtosis
 import numpy as np
@@ -33,13 +33,10 @@ import cPickle as pickle
 import random
 import functions_Create_Data_Files as fu
 import time
+import logging
 
-
-##### used for later calculations
 
 # arguments given in the terminal
-
-
 def parseArguments():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -69,6 +66,16 @@ try:
     print "Config is found {}".format(dataset_configparser)
 except Exception:
     raise Exception('Config File is missing!!!!')
+
+##### configer the logger
+logger = logging.getLogger('failed_frames')
+logger_path = str(dataset_configparser.get('Basics', 'logger_path'))
+hdlr = logging.FileHandler(os.path.join(logger_path, 'failed_frames.log'))
+formatter = logging.Formatter('%(message)s')
+hdlr.setFormatter(formatter)
+logger.addHandler(hdlr)
+logger.setLevel(logging.DEBUG)
+
 
 # File paths 
 geometry_file = str(dataset_configparser.get('Basics', 'geometry_file'))
@@ -112,6 +119,7 @@ def save_to_array(phy_frame):
             try:
                 reco_arr.append(eval(el[1].replace('(x)', '(phy_frame, geometry_file)')))
             except Exception:
+                #print eval(el[1].replace('(x)', '(phy_frame, geometry_file)'))
                 print('uuupus {}'.format(el[1]))
                 return False
         if (wf is not None) and (pulses is not None):
@@ -144,21 +152,29 @@ def produce_data_dict(i3_file):
     return
 
 
+
+#######################
 def cuts(phy_event):
     cuts = dataset_configparser['Cuts']
+    particle_type = phy_event['I3MCTree'][0].pdg_encoding
+    RunID =  phy_event['I3EventHeader'].run_id
+    EventID = phy_event['I3EventHeader'].event_id
     #### Checking for wierd event structures
     if testing_event(phy_event, geometry_file) == -1:
-        #report = [RunID, EventID, "EventTestingFailed"]
+        report = [particle_type, RunID, EventID, "EventTestingFailed"]
+        logger.info(report)
         return False
     ParticelList = [12, 14, 16]
     if cuts['only_neutrino_as_primary_cut'] == "ON":
         if abs(phy_event['MCPrimary'].pdg_encoding) not in ParticelList:
-            #report = [RunID, EventID, "NeutrinoPrimaryCut"]
+            report = [particle_type, RunID, EventID, "NeutrinoPrimaryCut"]
+            logger.info(report)
             return False
     if cuts['max_energy_cut'] == "ON":
         energy_cutoff = cuts['max_energy_cutoff']
         if calc_depositedE(phy_event) > energy_cutoff:
-            #report = [RunID, EventID, "MaximalEnergyCut"]
+            report = [particle_type, RunID, EventID, "MaximalEnergyCut"]
+            logger.info(report)
             return False
     if cuts['minimal_tau_energy'] == "ON":
         I3Tree = phy['I3MCTree']
@@ -173,19 +189,23 @@ def cuts(phy_event):
         minimal_tau_energy = int(cuts['minimal_tau_energy'])
         if abs(neutrino.pdg_encoding) == 16:
             if calc_depositedE(phy_event) < minimal_tau_energy:
-               #report = [RunID, EventID, "MinimalTauEnergyCut"]
+                report = [particle_type, RunID, EventID, "MinimalTauEnergyCut"]
+                flogger.info(report)
                 return False
     if cuts['min_energy_cut'] == "ON":
         energy_cutoff = int(cuts['min_energy_cutoff'])
         if calc_depositedE(phy_event) < energy_cutoff:
-            #report = [RunID, EventID, "MinimalEnergyCut"]
+            report = [particle_type, RunID, EventID, "MinimalEnergyCut"]
+            logger.info(report)
             return False
     if cuts['min_hit_DOMs_cut'] == "ON":
         hit_DOMs_cutoff = cuts['min_hit_DOMs']
         if calc_hitDOMs(phy_event) < hit_DOMS_cutoff:
-            #report = [RunID, EventID, "HitDOMsCut"]
+            report = [particle_type, RunID, EventID, "HitDOMsCut"]
+            logger.info(report)
             return False
     return True
+########################
 
 
 def average(x, y):
@@ -404,8 +424,8 @@ if __name__ == "__main__":
         print len(filelist[0]) 
         while statusInFilelist < len(filelist[0]):
             timestamp = time.time()
-            print "Time for {} Sets of {} I3-Files: {}".\
-                format(statusInFilelist, len(args['filelist']), starttime - timestamp)
+            #print "Time for {} Sets of {} I3-Files: {}".\
+            #    format(statusInFilelist, len(args['filelist']), starttime - timestamp)
             events['reco_vals'] = []
             events['waveforms'] = []
             events['pulses'] = []
@@ -593,7 +613,10 @@ if __name__ == "__main__":
                         time_05pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
                                     final_dict[dom][28]
 
-
+                try:
+                    reco_vals.append(np.array(reco_arr))
+                except Exception:
+                    continue
                 charge.append(np.array(charge_arr))
                 charge_first.append(np.array(charge_first_arr))
                 time_spread.append(np.array(time_spread_arr))
@@ -622,8 +645,7 @@ if __name__ == "__main__":
                 time_85pct.append(time_85pct_arr)
                 time_95pct.append(time_95pct_arr)
                 time_05pct.append(time_05pct_arr)
-                reco_vals.append(np.array(reco_arr))
-
+                
             print('Flush')
             charge.flush()
             time_first.flush()
@@ -657,9 +679,7 @@ if __name__ == "__main__":
             reco_vals.flush()
         print"\n ###########################################################"
         print('###### Run Summary ###########')
-        print('Processed: {} Frames \n Skipped {} \ Frames with Attribute Error \n To high depoited Energy {}'.format(TotalEventCounter, skipped_frames, frameToHighDepositedEnergy))
-        if dataset_configparser.get('Basics', 'onlyneutrinoasprimary') == "True":
-            print "\n No Neutrino as Primary {}".format(framesNotNeutrinoPrimary)
+        print('Processed: {} Frames \n Skipped {}'.format(TotalEventCounter, skipped_frames))
         print "\n Frames with a I3MCTree Problem {}".format(TreeProblem)
         print"############################################################\n " 
         print "Script is at its END"

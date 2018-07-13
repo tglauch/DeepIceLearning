@@ -92,7 +92,7 @@ def tau_decay_length(p_frame, gcdfile):
 # calculates if the particle is in or near the detector
 # if this is the case it further states weather the event is starting, stopping or through-going
 def has_signature(p, gcdfile):
-    surface = MuonGun.ExtrudedPolygon.from_file(gcdfile, padding=25)
+    surface = MuonGun.ExtrudedPolygon.from_file(gcdfile, padding=100)
     intersections = surface.intersection(p.pos, p.dir)
     if p.is_neutrino:
         return -1
@@ -138,6 +138,7 @@ def testing_event(p_frame, gcdfile):
     if neutrino == -1:
         return -1
     else:
+        #return 0
         children = I3Tree.children(neutrino)
         p_types = [np.abs(child.pdg_encoding) for child in children]
         p_strings = [child.type_string for child in children]
@@ -172,65 +173,56 @@ def find_particle(p, I3Tree, gcdfile):
 def classify(p_frame, gcdfile):
     nu_pdg = [12, 14, 16, -12, -14, -16]
     I3Tree = p_frame['I3MCTree']
-    #for p in I3Tree.get_primaries():
-    #    if p.pdg_encoding in nu_pdg:
-    #        break
-    #p_list  = find_particle(p, I3Tree)
-    #if len(p_list) == 0 or len(p_list)>1:
-    #    return -1
     neutrino = get_the_right_particle(p_frame, gcdfile)
     children = I3Tree.children(neutrino)
     p_types = [np.abs(child.pdg_encoding) for child in children]
     p_strings = [child.type_string for child in children]
-    
-    #if not np.any([p_type in nu_pdg for p_type in p_types]) \
-    #   and not ((11 in p_types) or (13 in p_types) or (15 in p_types)):
-    #    return -1
-    
-    if np.any([p_type in nu_pdg for p_type in p_types]):
-        return 0 # is NC event
+
+    if p_frame['I3MCWeightDict']['InteractionType'] == 3\
+        and (len(p_types)==1 and p_strings[0] == 'Hadrons'):
+            return 7 ##Glashow Cascade
+    if np.any([p_type in nu_pdg for p_type in p_types]) \
+        and not (p_frame['I3MCWeightDict']['InteractionType'] == 3):
+        return 0 ## is NC event
     else:
         if (11 in p_types):
-            return 1 # Cascade 
-        elif (13 in p_types):
+            return 1 ## Cascade 
+        if (13 in p_types):
             mu_ind = p_types.index(13)
-            had_ind = p_strings.index('Hadrons')
-            if has_signature(children[had_ind], gcdfile) == 0:
+            if not 'Hadrons' in p_strings:
+                if has_signature(children[mu_ind], gcdfile)==0:
+                    return 8 ##Glashow Track
+            if has_signature(children[mu_ind], gcdfile) == 0:
                 return 3 #Starting Track
-            elif has_signature(children[mu_ind], gcdfile) == 1:
+            if has_signature(children[mu_ind], gcdfile) == 1:
                 return 2 # Through Going Track
-            elif has_signature(children[mu_ind], gcdfile) == 2:
+            if has_signature(children[mu_ind], gcdfile) == 2:
                 return 4 ## Stopping Track
-        elif (15 in p_types):
+        if (15 in p_types):
             tau_ind = p_types.index(15)
+            if not 'Hadrons' in p_strings:
+                if has_signature(children[tau_ind], gcdfile)==0:
+                    return 9 ##Glashow Tau
             had_ind = p_strings.index('Hadrons')
             tau_child = I3Tree.children(children[tau_ind])[-1]
             if np.abs(tau_child.pdg_encoding) == 13:
-                if has_signature(children[had_ind], gcdfile) == 0:
+                if has_signature(tau_child, gcdfile) == 0:
                     return 3 # Starting Track
-                elif has_signature(tau_child, gcdfile) == 1:
+                if has_signature(tau_child, gcdfile) == 1:
                     return 2 # Through Going Track
-                elif has_signature(tau_child, gcdfile) == 2:
+                if has_signature(tau_child, gcdfile) == 2:
                     return 4 # Stopping Track
             
             else:
-                if children[tau_ind].length < 5:
-                    return 1 # Cascade
-                if has_signature(children[had_ind], gcdfile) == 0 and has_signature(tau_child, gcdfile) == 0: 
+                if children[tau_ind].length < 10: ##### Achtung Hardcode tau decay length!!!!!!!!
+                    return 1
+                if has_signature(children[tau_ind], gcdfile) == 0 and has_signature(tau_child, gcdfile) == 0: 
                     return 5 # Double Bang
-                elif has_signature(children[had_ind], gcdfile) == 0 and has_signature(tau_child, gcdfile) == -1:
+                if has_signature(children[tau_ind], gcdfile) == 0 and has_signature(tau_child, gcdfile) == -1:
                     return 3 # Starting Track
-                elif has_signature(children[had_ind], gcdfile) == -1  and has_signature(tau_child, gcdfile) == 0:
-                    return 6 # Stopping Tau
-
-nomenclature = {-1: 'no Hit',
-               0: 'NC',
-               1: 'Cascade',
-               2: 'Through-Going Track',
-               3: 'Starting Track',
-               4: 'Stopping Track',
-               5: 'Double Bang',
-               6: 'Stopping Tau'}
+                if has_signature(children[tau_ind], gcdfile) == -1  and has_signature(tau_child, gcdfile) == 0:
+                    return 6 # Stopping Tau   
+############################################
 
 def time_of_percentage(charges, times, percentage):
     charges = charges.tolist()

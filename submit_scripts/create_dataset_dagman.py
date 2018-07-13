@@ -64,7 +64,7 @@ if not os.path.exists(PROCESS_DIR):
 WORKDIR = os.path.join(PROCESS_DIR, "jobs/")
 script = os.path.join(
     #"/data/user/mkronmueller/code/DeepIceLearning", 
-    main_parser.get("Basics", "thisfolder"),\
+    dataset_parser.get("Basics", "thisfolder"),\
     args.__dict__["create_script"])
 dag_name = args.__dict__["name"]
 dagFile = os.path.join(
@@ -164,37 +164,46 @@ if not Resc:
                                          for single_file in i3_files]
                     run_filelist.extend(b)
 #################################################################################################
-            run_filelist = run_filelist[:5]
+            #run_filelist = run_filelist[:5]
 #################################################################################################
+            #if filesperjob == -1:
+            #    if factor_list[j] == 10:
+            #        with open(os.path.join(outfolder,
+            #                               'File_{}.pickle'.format(ii)), 'w+') as f:
+            #            pickle.dump(run_filelist, f)
+            #        #file_bunches.append('File_{}'.format(i))
+            #        run_filelist = []
+            #    else:
+            #        size_chunk = len(run_filelist)/factor_list[j]+1
+            #        for k in xrange(factor_list[j]):
+            #            run_filelist_k = run_filelist[k*(size_chunk) : ((k+1)*size_chunk)-1]
+            #            with open(os.path.join(outfolder,
+            #                                   'File_{}.pickle'.format(ii*factor_list[j]+k)), 'w+') as f:
+            #                pickle.dump(run_filelist_k, f)
+            #        run_filelist = []
             if filesperjob == -1:
-                if factor_list[j] == 10:
+                filesjob = 50
+                run_filelist = [run_filelist[i:i + filesjob] for i in np.arange(
+                                    0, len(run_filelist), filesjob+1)] 
+#                run_filelist = [run_filelist[i:i + filesjob]
+#                                if (i + filesjob) < len(run_filelist)
+#                                else run_filelist[i:] for i in np.arange(
+#                                    0, len(run_filelist), filesjob)]
+                for numberInRunFilelist, single_filelist in enumerate(run_filelist):
+                    #print "ii {}".format(ii)
+                    #print "number for pickle {}".format(ii*20+numberInRunFilelist)
+                    #print "Number intern {}".format(numberInRunFilelist)
+		    #print "singe_filelist {}".format(single_filelist)
                     with open(os.path.join(outfolder,
-                                           'File_{}.pickle'.format(ii)), 'w+') as f:
-                        pickle.dump(run_filelist, f)
-                    #file_bunches.append('File_{}'.format(i))
-                    run_filelist = []
-                else:
-                    size_chunk = len(run_filelist)/factor_list[j]+1
-                    for k in xrange(factor_list[j]):
-                        run_filelist_k = run_filelist[k*(size_chunk) : ((k+1)*size_chunk)-1]
-                        with open(os.path.join(outfolder,
-                                               'File_{}.pickle'.format(ii*factor_list[j]+k)), 'w+') as f:
-                            pickle.dump(run_filelist_k, f)
-                    run_filelist = []
-        if filesperjob != -1:
-            run_filelist = [run_filelist[i:i + filesperjob]
-                            if (i + filesperjob) < len(run_filelist)
-                            else run_filelist[i:] for i in np.arange(
-                                0, len(run_filelist), filesperjob)]
-            for numberInRunFilelist, single_filelist in enumerate(run_filelist):
-                with open(os.path.join(outfolder,
-                                       'File_{}.pickle'.format(numberInRunFilelist)), 'w+') as f:
-                    pickle.dump(run_filelist[0], f)
+                                           'File_{}.pickle'.format(ii*20+numberInRunFilelist)), 'w+') as f:
+                        pickle.dump(single_filelist, f)
+                run_filelist = []   
                 #file_bunches.append('File_{}'.format(i))
         #list_file_bunches.append(file_bunches)
 #################### if Job number is set by hand ################
     misty = 0
-    while misty <= 199: #### bad quick fix
+    while misty <= 999: #### bad quick fix
+    #while misty <= 199: #### bad quick fix
         file_bunches.append('File_{}'.format(misty))
         misty +=1
 ###################################################################

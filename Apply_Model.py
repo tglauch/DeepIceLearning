@@ -168,6 +168,9 @@ if __name__ == "__main__":
                      for file_name in input_files]
     steps_per_epoch = math.ceil(np.sum([k[1] - k[0] for k in\
                                         test_inds])/args.batch_size)
+    if steps_per_epoch == 0:
+    	print "steps per epoch is 0, therefore manually set to 1"
+        steps_per_epoch = 1
 
     prediction = model.predict_generator(
                  generator(args.batch_size,\
@@ -228,7 +231,7 @@ if __name__ == "__main__":
                       for var in out_shapes[br].keys()\
                       if var!='general'])
     mc_truth = np.array(zip(*np.array(mc_truth)), dtype=dtype)
-    #hit_vals = np.array(zip(*np.array(hit_vals)), dtype=dtype)
+    #mc_truth = np.array(zip(*np.array(mc_truth)))
 
     #write-out the mc_truth and the prediction separately to a joint pickle
     #file...we can also look for a nicer solution with dtypes again. but the

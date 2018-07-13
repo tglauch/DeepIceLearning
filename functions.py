@@ -116,7 +116,7 @@ def generator(batch_size, file_handlers, inds,
     #             for branch in out_branches]
     batch_out = [np.zeros((batch_size,) + branch[1])
                  for branch in out_branches]
-    print batch_out
+    #print batch_out
     cur_file = 0
     cur_event_id = inds[cur_file][0]
     cur_len = 0
@@ -208,7 +208,7 @@ def generator(batch_size, file_handlers, inds,
             up_to = inds[0][1]
         else:
             if temp_cur_file != cur_file:
-                #print('\n Read File Number {} \n'.format(temp_cur_file + 1))
+                print('\n Read File Number {} \n'.format(temp_cur_file + 1))
                 if not val_run:
                     print(' \n CPU RAM Usage {:.2f} GB'.
                           format(resource.getrusage(

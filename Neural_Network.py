@@ -357,23 +357,23 @@ if __name__ == "__main__":
     #file_handlers = [tables.open_file(os.path.join(mc_location, file_name))
     #                 for file_name in input_files]
 
+    epoch_divider = int(parser.get('Training_Parameters', 'epoch_divider'))
     model.fit_generator(
         generator(
             batch_size, file_handlers, train_inds, inp_shapes,
             inp_trans, out_shapes, out_trans),
-        steps_per_epoch=math.ceil(
-            (np.sum([k[1] - k[0] for k in train_inds]) / batch_size))/len(input_files),
-        validation_data=generator(
+        steps_per_epoch=math.ceil(\
+            #(np.sum([k[1] - k[0] for k in train_inds]) / batch_size))/len(input_files),
+            (np.sum([k[1] - k[0] for k in train_inds]) / batch_size))/epoch_divider,
+        validation_data=generator(\
             batch_size, file_handlers, valid_inds, inp_shapes,
             inp_trans, out_shapes, out_trans, val_run=True),
-        validation_steps=math.ceil(
-            np.sum([k[1] - k[0] for k in valid_inds]) / batch_size),
+        validation_steps=math.ceil(\
+            np.sum([k[1] - k[0] for k in valid_inds]) / batch_size)/epoch_divider,
         callbacks=[CSV_log, early_stop, best_model, MemoryCallback()],
         epochs=int(parser.get('Training_Parameters', 'epochs')),
         verbose=int(parser.get('Training_Parameters', 'verbose')),
         max_q_size=int(parser.get('Training_Parameters', 'max_queue_size')))
-
-
 
 
     # Saving a visualization of the model 
