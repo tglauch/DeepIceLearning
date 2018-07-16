@@ -36,7 +36,7 @@ import time
 import logging
 
 def replace_with_var(x):
-    y = x.replace('c', 'charges').replace('t', 'times').replace('w', 'width')
+    y = x.replace('c', 'charges').replace('t', 'times').replace('w', 'widths')
     return y
 
 
@@ -51,6 +51,10 @@ def parseArguments():
         "--files",
         help="files to be processed",
         type=str, nargs="+", required=False)
+    parser.add_argument(
+        "--max_num_events",
+        help="The maximum number of frames to be processed",
+        type=int,  default=-1)    
     parser.add_argument(
         "--filelist",
         help="Path to a filelist to be processed",
@@ -101,8 +105,8 @@ for key in x.keys():
 for key in y.keys():
     inputs.append((key, replace_with_var(y[key])))
 for q in z['quantiles'].split(','):
-    inputs.append(('fu.wf_quantiles(waveform, {})[\'{}\']'.
-                  format(q, z['type'])))
+    inputs.append(('{}_{}_pct_charge_quantile'.format(z['type'], q.strip().replace('.','_')),
+                   'fu.wf_quantiles(waveform, {})[\'{}\']'.format(q, z['type'])))    
 
 # This is the dictionary used to store the input data
 events = dict()
@@ -160,7 +164,7 @@ def save_to_array(phy_frame):
     return
 
 
-def produce_data_dict(i3_file):
+def produce_data_dict(i3_file, num_events):
     """IceTray script that wraps around an i3file and fills the events dict
        that is initialized outside the function
 
@@ -185,7 +189,10 @@ def produce_data_dict(i3_file):
                    ATWDSaturationMargin=123,
                    FADCSaturationMargin=0,)
     tray.AddModule(save_to_array, 'save', Streams=[icetray.I3Frame.Physics])
-    tray.Execute()
+    if num_events==-1:
+        tray.Execute()
+    else:
+        tray.Execute(num_events)
     tray.Finish()
     return
 
@@ -294,8 +301,8 @@ if __name__ == "__main__":
             filelist = pickle.load(open(args['filelist'], 'r'))
             outfile = args['filelist'].replace('.pickle', '.h5')
     elif args['files'] is not None:
-        filelist = args['files']
-        outfile = filelist[0].replace('.i3.bz2', '.h5')
+        filelist = [args['files']]
+        outfile = os.path.join(outfolder,filelist[0][0].split('/')[-1].replace('.i3.bz2', '.h5'))
 
     else:
         raise Exception('No input files given')
@@ -307,8 +314,9 @@ if __name__ == "__main__":
     with tables.open_file(
         outfile, mode="w", title="Events for training the NN",
             filters=FILTERS) as h5file:
-        inp_features = []
+        input_features = []
         for inp in inputs:
+            print 'Generate Input Feature {}'.format(inp[0])
             feature = h5file.create_earray(
                 h5file.root, inp[0], tables.Float64Atom(),
                 (0, input_shape[0], input_shape[1], input_shape[2], 1),
@@ -335,10 +343,10 @@ if __name__ == "__main__":
             events['waveforms'] = []
             events['pulses'] = []
             counterSim = 0
-            while counterSim < len(args['filelist']):
+            while counterSim < len(filelist):
                 try:
                     print('Attempt to read {}'.format(filelist[counterSim][statusInFilelist]))
-                    produce_data_dict(filelist[counterSim][statusInFilelist])
+                    produce_data_dict(filelist[counterSim][statusInFilelist], args['max_num_events'])
                     counterSim = counterSim + 1
                 except Exception:
                     continue
@@ -347,6 +355,7 @@ if __name__ == "__main__":
             statusInFilelist += 1
             # shuffeling of the files
             num_events = len(events['reco_vals'])
+            print('The I3 File has {} events'.format(num_events))
             shuff = np.random.choice(num_events, num_events, replace=False)
             for i in shuff:
                 print i
