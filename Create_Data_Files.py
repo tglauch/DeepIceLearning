@@ -74,6 +74,8 @@ except Exception:
 # configer the logger
 logger = logging.getLogger('failed_frames')
 logger_path = str(dataset_configparser.get('Basics', 'logger_path'))
+if not os.path.exists(logger_path):
+    os.makedirs(logger_path)
 hdlr = logging.FileHandler(os.path.join(logger_path, 'failed_frames.log'))
 formatter = logging.Formatter('%(message)s')
 hdlr.setFormatter(formatter)
@@ -99,7 +101,6 @@ for key in x.keys():
 for key in y.keys():
     inputs.append((key, replace_with_var(y[key])))
 for q in z['quantiles'].split(','):
-    print q
     inputs.append(('fu.wf_quantiles(waveform, {})[\'{}\']'.
                   format(q, z['type'])))
 
