@@ -280,36 +280,8 @@ if __name__ == "__main__":
     if not os.path.exists(outfolder):
         os.makedirs(outfolder)
 
-    # Read filelist and define outfile
-    # spezial version fpr filelists that are txt, was implemented for testing
-    if str(dataset_configparser.get('Basics', 'filelist_typ')) == "txt":
-        if len(args['filelist']) > 1:
-            filelist = []
-            for i in xrange(len(args['filelist'])):
-                a = []
-                flist = open(args['filelist'][i], 'r')
-                for line in flist:
-                    a.append(line.rstrip())
-                pickle.dump(a, open("saveee.p", "wb"))
-                a = pickle.load(open("saveee.p", "rb"))
-                filelist.append(a)
-            outfile = args['filelist'][0].replace('.txt', '.h5')
-
-        elif args['filelist'] is not None:
-            filelist = []
-            flist = open(args['filelist'], 'r')
-            for line in flist:
-                filelist.append(line.rstrip())
-            pickle.dump(filelist, open("save.p", "wb"))
-            filelist = pickle.load(open("save.p", "rb"))
-            outfile = args['filelist'].replace('.txt', '.h5')
-
-        elif args['files'] is not None:
-            filelist = args['files']
-            outfile = filelist[0].replace('.i3.bz2', '.h5')
-
     # default version, when using the submit script
-    elif str(dataset_configparser.get('Basics', 'filelist_typ')) == "pickle":
+    if args['filelist'] is not None:
         if len(args['filelist']) > 1:
             filelist = []
             for i in xrange(len(args['filelist'])):
@@ -321,6 +293,9 @@ if __name__ == "__main__":
         elif args['filelist'] is not None:
             filelist = pickle.load(open(args['filelist'], 'r'))
             outfile = args['filelist'].replace('.pickle', '.h5')
+    elif args['files'] is not None:
+        filelist = args['files']
+        outfile = filelist[0].replace('.i3.bz2', '.h5')
 
     else:
         raise Exception('No input files given')
