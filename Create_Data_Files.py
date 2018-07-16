@@ -36,6 +36,11 @@ import time
 import logging
 
 
+def replace_with_var(x):
+    y = x.replace('c', 'charges').replace('t', 'times').replace('w', 'width')
+    return y
+
+
 # arguments given in the terminal
 def parseArguments():
     parser = argparse.ArgumentParser()
@@ -67,7 +72,7 @@ try:
 except Exception:
     raise Exception('Config File is missing!!!!')
 
-##### configer the logger
+# configer the logger
 logger = logging.getLogger('failed_frames')
 logger_path = str(dataset_configparser.get('Basics', 'logger_path'))
 hdlr = logging.FileHandler(os.path.join(logger_path, 'failed_frames.log'))
@@ -77,19 +82,44 @@ logger.addHandler(hdlr)
 logger.setLevel(logging.DEBUG)
 
 
-# File paths 
+# File paths
 geometry_file = str(dataset_configparser.get('Basics', 'geometry_file'))
 outfolder = str(dataset_configparser.get('Basics', 'out_folder'))
 pulsemap_key = str(dataset_configparser.get('Basics', 'PulseSeriesMap'))
 dtype, settings = fu.read_variables(dataset_configparser)
 settings.append(('variable', '["CalibratedWaveforms"]'))
 settings.append(('variable', '["InIceDSTPulses"]'))
+
+# Parse Input Features
+x = dataset_configparser['Input_Charges']
+y = dataset_configparser['Input_Times']
+z = dataset_configparser['Input_Waveforms1']
+inputs = []
+for key in x.keys():
+    inputs.append((key, replace_with_var(x[key])))
+for key in y.keys():
+    inputs.append((key, replace_with_var(y[key])))
+for q in z['quantiles'].split(','):
+    print q
+    inputs.append(('fu.wf_quantiles(waveform, {})[\'{}\']'.
+                  format(q, z['type'])))
+
+# This is the dictionary used to store the input data
 events = dict()
 events['reco_vals'] = []
 events['waveforms'] = []
 events['pulses'] = []
+
+
 def save_to_array(phy_frame):
-    # Function that saves the requested values in a dict of lists
+    """Save the waveforms pulses and reco vals to lists.
+
+    Args:
+        phy_frame, and I3 Physics Frame
+    Returns:
+        True (IceTray standard)
+    """
+
     reco_arr = []
     wf = None
     pulses = None
@@ -117,9 +147,9 @@ def save_to_array(phy_frame):
                 return False
         elif el[0] == 'function':
             try:
-                reco_arr.append(eval(el[1].replace('(x)', '(phy_frame, geometry_file)')))
+                reco_arr.append(
+                    eval(el[1].replace('(x)', '(phy_frame, geometry_file)')))
             except Exception:
-                #print eval(el[1].replace('(x)', '(phy_frame, geometry_file)'))
                 print('uuupus {}'.format(el[1]))
                 return False
         if (wf is not None) and (pulses is not None):
@@ -127,11 +157,19 @@ def save_to_array(phy_frame):
             events['waveforms'].append(wf)
             events['pulses'].append(pulses)
             events['reco_vals'].append(reco_arr)
-    return True
+    return
 
 
 def produce_data_dict(i3_file):
-    # IceTray script that wraps around an i3file and fills the events dict that is initialized outside the function
+    """IceTray script that wraps around an i3file and fills the events dict
+       that is initialized outside the function
+
+    Args:
+        i3_file, and IceCube I3File
+    Returns:
+        True (IceTray standard)
+    """
+
     tray = I3Tray()
     tray.AddModule("I3Reader", "source",
                    Filenamelist=[geometry_file,
@@ -152,32 +190,38 @@ def produce_data_dict(i3_file):
     return
 
 
+def cuts(phy_frame):
+    """Performe a pre-selection of events according
+       to the cuts defined in the config file
 
-#######################
-def cuts(phy_event):
+    Args:
+        phy_frame, and IceCube I3File
+    Returns:
+        True (IceTray standard)
+    """
     cuts = dataset_configparser['Cuts']
-    particle_type = phy_event['I3MCTree'][0].pdg_encoding
-    RunID =  phy_event['I3EventHeader'].run_id
-    EventID = phy_event['I3EventHeader'].event_id
-    #### Checking for wierd event structures
-    if testing_event(phy_event, geometry_file) == -1:
+    particle_type = phy_frame['I3MCTree'][0].pdg_encoding
+    RunID = phy_frame['I3EventHeader'].run_id
+    EventID = phy_frame['I3EventHeader'].event_id
+    # Checking for wierd event structures
+    if testing_event(phy_frame, geometry_file) == -1:
         report = [particle_type, RunID, EventID, "EventTestingFailed"]
         logger.info(report)
         return False
     ParticelList = [12, 14, 16]
     if cuts['only_neutrino_as_primary_cut'] == "ON":
-        if abs(phy_event['MCPrimary'].pdg_encoding) not in ParticelList:
+        if abs(phy_frame['MCPrimary'].pdg_encoding) not in ParticelList:
             report = [particle_type, RunID, EventID, "NeutrinoPrimaryCut"]
             logger.info(report)
             return False
     if cuts['max_energy_cut'] == "ON":
         energy_cutoff = cuts['max_energy_cutoff']
-        if calc_depositedE(phy_event) > energy_cutoff:
+        if calc_depositedE(phy_frame) > energy_cutoff:
             report = [particle_type, RunID, EventID, "MaximalEnergyCut"]
             logger.info(report)
             return False
     if cuts['minimal_tau_energy'] == "ON":
-        I3Tree = phy['I3MCTree']
+        I3Tree = phy_frame['I3MCTree']
         primary_list = I3Tree.get_primaries()
         if len(primary_list) == 1:
             neutrino = I3Tree[0]
@@ -188,42 +232,39 @@ def cuts(phy_event):
                     neutrino = p
         minimal_tau_energy = int(cuts['minimal_tau_energy'])
         if abs(neutrino.pdg_encoding) == 16:
-            if calc_depositedE(phy_event) < minimal_tau_energy:
+            if calc_depositedE(phy_frame) < minimal_tau_energy:
                 report = [particle_type, RunID, EventID, "MinimalTauEnergyCut"]
                 flogger.info(report)
                 return False
     if cuts['min_energy_cut'] == "ON":
         energy_cutoff = int(cuts['min_energy_cutoff'])
-        if calc_depositedE(phy_event) < energy_cutoff:
+        if calc_depositedE(phy_frame) < energy_cutoff:
             report = [particle_type, RunID, EventID, "MinimalEnergyCut"]
             logger.info(report)
             return False
     if cuts['min_hit_DOMs_cut'] == "ON":
-        hit_DOMs_cutoff = cuts['min_hit_DOMs']
-        if calc_hitDOMs(phy_event) < hit_DOMS_cutoff:
+        if calc_hitDOMs(phy_frame) < cuts['min_hit_DOMs']:
             report = [particle_type, RunID, EventID, "HitDOMsCut"]
             logger.info(report)
             return False
     return True
-########################
 
 
 def average(x, y):
-    if len(y) == 0 or np.sum(y)==0:
+    if len(y) == 0 or np.sum(y) == 0:
         return 0
     else:
-        return np.average(x, weights=y) 
+        return np.average(x, weights=y)
 
-##########
 
 if __name__ == "__main__":
 
     # Raw print arguments
-    print"\n ############################################"
+    print("\n---------------------")
     print("You are running the script with arguments: ")
     for a in args.keys():
         print(str(a) + ": " + str(args[a]))
-    print"############################################\n "
+    print("---------------------\n")
 
     geo = dataio.I3File(geometry_file).pop_frame()['I3Geometry'].omgeo
 
@@ -249,35 +290,35 @@ if __name__ == "__main__":
                 flist = open(args['filelist'][i], 'r')
                 for line in flist:
                     a.append(line.rstrip())
-                pickle.dump( a, open( "saveee.p", "wb" ) )
-                a = pickle.load( open( "saveee.p", "rb" ) )
+                pickle.dump(a, open("saveee.p", "wb"))
+                a = pickle.load(open("saveee.p", "rb"))
                 filelist.append(a)
-            outfile = args['filelist'][0].replace('.txt', '.h5') 
-        
-        elif args['filelist'] != None:
-            filelist=[]
+            outfile = args['filelist'][0].replace('.txt', '.h5')
+
+        elif args['filelist'] is not None:
+            filelist = []
             flist = open(args['filelist'], 'r')
             for line in flist:
                 filelist.append(line.rstrip())
-            pickle.dump( filelist, open( "save.p", "wb" ) )
-            filelist = pickle.load( open( "save.p", "rb" ) )
+            pickle.dump(filelist, open("save.p", "wb"))
+            filelist = pickle.load(open("save.p", "rb"))
             outfile = args['filelist'].replace('.txt', '.h5')
 
-        elif args['files'] != None:
+        elif args['files'] is not None:
             filelist = args['files']
             outfile = filelist[0].replace('.i3.bz2', '.h5')
 
     # default version, when using the submit script
     elif str(dataset_configparser.get('Basics', 'filelist_typ')) == "pickle":
         if len(args['filelist']) > 1:
-            filelist=[]
+            filelist = []
             for i in xrange(len(args['filelist'])):
                 a = pickle.load(open(args['filelist'][i], 'r'))
                 filelist.append(a)
-            #path of outfile could be changed to a new folder for a  better overview
+            # path of outfile could be changed to a new folder for a  better overview
             outfile = args['filelist'][0].replace('.pickle', '.h5')
-            
-        elif args['filelist'] != None:
+
+        elif args['filelist'] is not None:
             filelist = pickle.load(open(args['filelist'], 'r'))
             outfile = args['filelist'].replace('.pickle', '.h5')
 
@@ -287,130 +328,21 @@ if __name__ == "__main__":
     if os.path.exists(outfile):
         os.remove(outfile)
 
-    dtype_len = len(dtype)
     FILTERS = tables.Filters(complib='zlib', complevel=9)
     with tables.open_file(
         outfile, mode="w", title="Events for training the NN",
             filters=FILTERS) as h5file:
-        charge = h5file.create_earray(
-            h5file.root, 'charge', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Sum(Charges per Dom)")
-        time_first = h5file.create_earray(
-            h5file.root, 'time', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Times of the first pulse")
-        time_spread = h5file.create_earray(
-            h5file.root, 'time_spread', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Time delay between first and last pulse")
-        charge_first = h5file.create_earray(
-            h5file.root, 'first_charge', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="amplitude of the first charge")
-        av_time_charges = h5file.create_earray(
-            h5file.root, 'av_time_charges', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Weighted time average (charges)")
-        num_pulses = h5file.create_earray(
-            h5file.root, 'num_pulses', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Number of pulses")
-        time_quartercharge = h5file.create_earray(
-            h5file.root, 'time_quartercharge', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title=" Time where quarter of the total charge was detected ")
-        time_kurtosis = h5file.create_earray(
-            h5file.root, 'time_kurtosis', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="kurtosis of the time distr. of the pulses")
-        time_moment_2 = h5file.create_earray(
-            h5file.root, 'time_moment_2', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="second moment of time")
-        time_10pct = h5file.create_earray(
-            h5file.root, 'time_10pct', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Time at which 10 percent of charge is deposited")
-        time_20pct = h5file.create_earray(
-            h5file.root, 'time_20pct', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Time at which 20 percent of charge is deposited")
-        time_30pct = h5file.create_earray(
-            h5file.root, 'time_30pct', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Time at which 30 percent of charge is deposited")
-        time_40pct = h5file.create_earray(
-            h5file.root, 'time_40pct', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Time at which 40 percent of charge is deposited")
-        time_50pct = h5file.create_earray(
-            h5file.root, 'time_50pct', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Time at which 50 percent of charge is deposited")
-        time_60pct = h5file.create_earray(
-            h5file.root, 'time_60pct', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Time at which 60 percent of charge is deposited")
-        time_70pct = h5file.create_earray(
-            h5file.root, 'time_70pct', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Time at which 70 percent of charge is deposited")
-        time_80pct = h5file.create_earray(
-            h5file.root, 'time_80pct', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Time at which 80 percent of charge is deposited")
-        time_90pct = h5file.create_earray(
-            h5file.root, 'time_90pct', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Time at which 90 percent of charge is deposited")
-        time_100pct = h5file.create_earray(
-            h5file.root, 'time_100pct', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Time at which 100 percent of charge is deposited")
-        time_15pct = h5file.create_earray(
-            h5file.root, 'time_15pct', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Time at which 15 percent of charge is deposited")
-        time_25pct = h5file.create_earray(
-            h5file.root, 'time_25pct', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Time at which 25 percent of charge is deposited")
-        time_35pct = h5file.create_earray(
-            h5file.root, 'time_35pct', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Time at which 35 percent of charge is deposited")
-        time_45pct = h5file.create_earray(
-            h5file.root, 'time_45pct', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Time at which 45 percent of charge is deposited")
-        time_55pct = h5file.create_earray(
-            h5file.root, 'time_55pct', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Time at which 55 percent of charge is deposited")
-        time_65pct = h5file.create_earray(
-            h5file.root, 'time_65pct', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Time at which 65 percent of charge is deposited")
-        time_75pct = h5file.create_earray(
-            h5file.root, 'time_75pct', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Time at which 75 percent of charge is deposited")
-        time_85pct = h5file.create_earray(
-            h5file.root, 'time_85pct', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Time at which 85 percent of charge is deposited")
-        time_95pct = h5file.create_earray(
-            h5file.root, 'time_95pct', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Time at which 95 percent of charge is deposited")
-        time_05pct = h5file.create_earray(
-            h5file.root, 'time_05pct', tables.Float64Atom(),
-            (0, input_shape[0], input_shape[1], input_shape[2], 1),
-            title="Time at which 05 percent of charge is deposited")
+        inp_features = []
+        for inp in inputs:
+            feature = h5file.create_earray(
+                h5file.root, inp[0], tables.Float64Atom(),
+                (0, input_shape[0], input_shape[1], input_shape[2], 1),
+                title=inp[1])
+            input_features.append(feature)
         reco_vals = tables.Table(h5file.root, 'reco_vals',
                                  description=dtype)
         h5file.root._v_attrs.shape = input_shape
+
         print('Created a new HDF File with the Settings:')
         print(h5file)
         print(h5file.root)
@@ -421,90 +353,36 @@ if __name__ == "__main__":
         statusInFilelist = 0
         event_files = []
         starttime = time.time()
-        print len(filelist[0]) 
+        print len(filelist[0])
         while statusInFilelist < len(filelist[0]):
             timestamp = time.time()
-            #print "Time for {} Sets of {} I3-Files: {}".\
-            #    format(statusInFilelist, len(args['filelist']), starttime - timestamp)
             events['reco_vals'] = []
             events['waveforms'] = []
             events['pulses'] = []
             counterSim = 0
             while counterSim < len(args['filelist']):
                 try:
-		    print('Attempt to read {}'.format(filelist[counterSim][statusInFilelist]))
+                    print('Attempt to read {}'.format(filelist[counterSim][statusInFilelist]))
                     produce_data_dict(filelist[counterSim][statusInFilelist])
                     counterSim = counterSim + 1
                 except Exception:
                     continue
-	    print('--------- Run {} ------- Countersim is {} -----'.format(statusInFilelist, counterSim))
+            print('--- Run {} --- Countersim is {} --'.format(statusInFilelist,
+                                                              counterSim))
             statusInFilelist += 1
             # shuffeling of the files
             num_events = len(events['reco_vals'])
             shuff = np.random.choice(num_events, num_events, replace=False)
             for i in shuff:
                 print i
-		TotalEventCounter += 1
+                TotalEventCounter += 1
                 reco_arr = events['reco_vals'][i]
-                if not len(reco_arr) == dtype_len:
+                if not len(reco_arr) == len(dtype):
                     continue
-
-                charge_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                time_first_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                time_spread_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                charge_first_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                av_time_charges_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                num_pulses_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                time_moment_2_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                time_kurtosis_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                time_10pct_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                time_20pct_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                time_30pct_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                time_40pct_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                time_50pct_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                time_60pct_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                time_70pct_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                time_80pct_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                time_90pct_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                time_100pct_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))        
-                time_15pct_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                time_25pct_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                time_35pct_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                time_45pct_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                time_55pct_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                time_65pct_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                time_75pct_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                time_85pct_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                time_95pct_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
-                time_05pct_arr = np.zeros(
-                    (1, input_shape[0], input_shape[1], input_shape[2], 1))
+                try:
+                    reco_vals.append(np.array(reco_arr))
+                except Exception:
+                    continue
 
                 pulses = events['pulses'][i]
                 waveforms = events['waveforms'][i]
@@ -514,174 +392,34 @@ if __name__ == "__main__":
                         charges = np.array([p.charge for p in pulses[omkey][:]])
                         times = np.array([p.time for p in pulses[omkey][:]])
                         widths = np.array([p.width for p in pulses[omkey][:]])
-		    else:
+                    else:
                         widths = np.array([0])
                         times = np.array([0])
                         charges = np.array([0])
                     waveform = waveforms[omkey]
                     final_dict[(omkey.string, omkey.om)] = \
-                        (np.sum(charges),
-                         np.amin(times),
-                         np.amax(times) - np.amin(times),
-                         charges[0],
-                         average(charges, 1. / widths),
-                         average(times, charges),
-                         len(charges),
-                         moment(times, moment=2),
-                         skew(times),
-                         fu.wf_quantiles(waveform, .10)['ATWD'],
-                         fu.wf_quantiles(waveform, .20)['ATWD'],
-                         fu.wf_quantiles(waveform, .30)['ATWD'],
-                         fu.wf_quantiles(waveform, .40)['ATWD'],
-                         fu.wf_quantiles(waveform, .50)['ATWD'],
-                         fu.wf_quantiles(waveform, .60)['ATWD'],
-                         fu.wf_quantiles(waveform, .70)['ATWD'],
-                         fu.wf_quantiles(waveform, .80)['ATWD'],
-                         fu.wf_quantiles(waveform, .90)['ATWD'],
-                         fu.wf_quantiles(waveform, .99)['ATWD'],
-                         fu.wf_quantiles(waveform, .15)['ATWD'],
-                         fu.wf_quantiles(waveform, .25)['ATWD'],
-                         fu.wf_quantiles(waveform, .35)['ATWD'],
-                         fu.wf_quantiles(waveform, .45)['ATWD'],
-                         fu.wf_quantiles(waveform, .55)['ATWD'],
-                         fu.wf_quantiles(waveform, .65)['ATWD'],
-                         fu.wf_quantiles(waveform, .75)['ATWD'],
-                         fu.wf_quantiles(waveform, .85)['ATWD'],
-                         fu.wf_quantiles(waveform, .95)['ATWD'],
-                         fu.wf_quantiles(waveform, .05)['ATWD'],
-                         )
+                        [eval(inp[1]) for inp in inputs]
+                for inp_c, inp in enumerate(inputs):
+                    f_slice = np.zeros((1, input_shape[0], input_shape[1],
+                                        input_shape[2], 1))
+                    for dom in DOM_list:
+                        gpos = grid[dom]
+                        if dom in final_dict:
+                            f_slice[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                final_dict[dom][inp_c]
+                    input_features[inp_c] = f_slice
 
-                for dom in DOM_list:
-                    gpos = grid[dom]
-                    if dom in final_dict:
-                        charge_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
-                            final_dict[dom][0]
-                        charge_first_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
-                            final_dict[dom][3]
-                        time_spread_arr[0][gpos[0]][gpos[1]][gpos[2]][0] += \
-                            final_dict[dom][2]
-                        time_first_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                final_dict[dom][1]
-                        #av_charge_widths_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                        #        final_dict[dom][4]
-                        av_time_charges_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                final_dict[dom][5]
-                        num_pulses_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                final_dict[dom][6]
-                        time_moment_2_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                    final_dict[dom][7]
-                        time_kurtosis_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                    final_dict[dom][8]
-                        time_10pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                    final_dict[dom][9]
-                        time_20pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                    final_dict[dom][10]
-                        time_30pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                    final_dict[dom][11]
-                        time_40pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                    final_dict[dom][12]
-                        time_50pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                    final_dict[dom][13]
-                        time_60pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                    final_dict[dom][14]
-                        time_70pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                    final_dict[dom][15]
-                        time_80pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                    final_dict[dom][16]
-                        time_90pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                    final_dict[dom][17]
-                        time_100pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                    final_dict[dom][18]
-                        time_15pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                    final_dict[dom][19]
-                        time_25pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                    final_dict[dom][20]
-                        time_35pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                    final_dict[dom][21]
-                        time_45pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                    final_dict[dom][22]
-                        time_55pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                    final_dict[dom][23]
-                        time_65pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                    final_dict[dom][24]
-                        time_75pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                    final_dict[dom][25]
-                        time_85pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                    final_dict[dom][26]
-                        time_95pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                    final_dict[dom][27]
-                        time_05pct_arr[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                    final_dict[dom][28]
-
-                try:
-                    reco_vals.append(np.array(reco_arr))
-                except Exception:
-                    continue
-                charge.append(np.array(charge_arr))
-                charge_first.append(np.array(charge_first_arr))
-                time_spread.append(np.array(time_spread_arr))
-                time_first.append(np.array(time_first_arr))
-                av_time_charges.append(av_time_charges_arr)
-                num_pulses.append(num_pulses_arr)
-                time_moment_2.append(time_moment_2_arr)
-                time_kurtosis.append(time_kurtosis_arr)
-                time_10pct.append(time_10pct_arr)
-                time_20pct.append(time_20pct_arr)
-                time_30pct.append(time_30pct_arr)
-                time_40pct.append(time_40pct_arr)
-                time_50pct.append(time_50pct_arr)
-                time_60pct.append(time_60pct_arr)
-                time_70pct.append(time_70pct_arr)
-                time_80pct.append(time_80pct_arr)
-                time_90pct.append(time_90pct_arr)
-                time_100pct.append(time_100pct_arr)
-                time_15pct.append(time_15pct_arr)
-                time_25pct.append(time_25pct_arr)
-                time_35pct.append(time_35pct_arr)
-                time_45pct.append(time_45pct_arr)
-                time_55pct.append(time_55pct_arr)
-                time_65pct.append(time_65pct_arr)
-                time_75pct.append(time_75pct_arr)
-                time_85pct.append(time_85pct_arr)
-                time_95pct.append(time_95pct_arr)
-                time_05pct.append(time_05pct_arr)
-                
-            print('Flush')
-            charge.flush()
-            time_first.flush()
-            charge_first.flush()
-            time_spread.flush()
-            av_time_charges.flush()
-            num_pulses.flush()
-            time_moment_2.flush()
-            time_kurtosis.flush()
-            time_10pct.flush()
-            time_20pct.flush()
-            time_30pct.flush()
-            time_40pct.flush()
-            time_50pct.flush()
-            time_60pct.flush()
-            time_70pct.flush()
-            time_80pct.flush()
-            time_90pct.flush()
-            time_100pct.flush()
-            time_15pct.flush()
-            time_25pct.flush()
-            time_35pct.flush()
-            time_45pct.flush()
-            time_55pct.flush()
-            time_65pct.flush()
-            time_75pct.flush()
-            time_85pct.flush()
-            time_95pct.flush()
-            time_05pct.flush()
-
+            print('Flush data to HDF File')
+            for inp_feature in input_features:
+                inp_feature.flush()
             reco_vals.flush()
-        print"\n ###########################################################"
+
+        print("\n -----------------------------")
         print('###### Run Summary ###########')
-        print('Processed: {} Frames \n Skipped {}'.format(TotalEventCounter, skipped_frames))
-        print "\n Frames with a I3MCTree Problem {}".format(TreeProblem)
-        print"############################################################\n " 
-        print "Script is at its END"
+        print('Processed: {} Frames \n Skipped {}'.format(TotalEventCounter,
+                                                          skipped_frames))
+        print("\n Frames with a I3MCTree Problem {}".format(TreeProblem))
+        print("-----------------------------\n")
+        print("Finishing...")
         h5file.root._v_attrs.len = TotalEventCounter
     h5file.close()
