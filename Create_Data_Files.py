@@ -35,7 +35,6 @@ import functions_Create_Data_Files as fu
 import time
 import logging
 
-
 def replace_with_var(x):
     y = x.replace('c', 'charges').replace('t', 'times').replace('w', 'width')
     return y
