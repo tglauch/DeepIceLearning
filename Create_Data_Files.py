@@ -35,10 +35,23 @@ import functions_Create_Data_Files as fu
 import time
 import logging
 
-def replace_with_var(x):
-    y = x.replace('c', 'charges').replace('t', 'times').replace('w', 'widths')
-    return y
 
+def replace_with_var(x):
+    """Replace the config parser input names with var names 
+       in the Code.
+
+    Args:
+        Transformation performed on charge time or pulse widths
+    Returns:
+        Correctly formatted transformation for the code
+    """
+
+    if ('(' in x) and (')' in x): 
+        y = x[x.index('('):x.index(')')]
+        x = x.replace(y, y.replace('c', 'charges').replace('t', 'times').replace('w', 'widths'))
+    else:
+        x=x.replace('c', 'charges').replace('t', 'times').replace('w', 'widths')
+    return x
 
 # arguments given in the terminal
 def parseArguments():
@@ -101,9 +114,9 @@ y = dataset_configparser['Input_Times']
 z = dataset_configparser['Input_Waveforms1']
 inputs = []
 for key in x.keys():
-    inputs.append((key, replace_with_var(x[key])))
+    inputs.append((key, x[key]))
 for key in y.keys():
-    inputs.append((key, replace_with_var(y[key])))
+    inputs.append((key, y[key]))
 for q in z['quantiles'].split(','):
     inputs.append(('{}_{}_pct_charge_quantile'.format(z['type'], q.strip().replace('.','_')),
                    'fu.wf_quantiles(waveform, {})[\'{}\']'.format(q, z['type'])))    
@@ -321,6 +334,7 @@ if __name__ == "__main__":
                 h5file.root, inp[0], tables.Float64Atom(),
                 (0, input_shape[0], input_shape[1], input_shape[2], 1),
                 title=inp[1])
+            feature.flush()
             input_features.append(feature)
         reco_vals = tables.Table(h5file.root, 'reco_vals',
                                  description=dtype)
@@ -391,10 +405,11 @@ if __name__ == "__main__":
                         if dom in final_dict:
                             f_slice[0][gpos[0]][gpos[1]][gpos[2]][0] = \
                                 final_dict[dom][inp_c]
-                    input_features[inp_c] = f_slice
+                    input_features[inp_c].append(f_slice)
 
             print('Flush data to HDF File')
-            for inp_feature in input_features:
+            for inp_feature in input_features:	
+                print(type(inp_feature))   
                 inp_feature.flush()
             reco_vals.flush()
 
@@ -402,7 +417,6 @@ if __name__ == "__main__":
         print('###### Run Summary ###########')
         print('Processed: {} Frames \n Skipped {}'.format(TotalEventCounter,
                                                           skipped_frames))
-        print("\n Frames with a I3MCTree Problem {}".format(TreeProblem))
         print("-----------------------------\n")
         print("Finishing...")
         h5file.root._v_attrs.len = TotalEventCounter
