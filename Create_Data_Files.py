@@ -105,9 +105,10 @@ geometry_file = str(dataset_configparser.get('Basics', 'geometry_file'))
 outfolder = str(dataset_configparser.get('Basics', 'out_folder'))
 pulsemap_key = str(dataset_configparser.get('Basics', 'PulseSeriesMap'))
 dtype, settings = fu.read_variables(dataset_configparser)
+waveform_key = str(dataset_configparser.get('Basics', 'Waveforms'))
 settings.append(('variable', '["CalibratedWaveforms"]'))
-settings.append(('variable', '["InIceDSTPulses"]'))
-
+settings.append(('variable', '{}'.format(pulsemap_key)))
+print settings
 # Parse Input Features
 x = dataset_configparser['Input_Charges']
 y = dataset_configparser['Input_Times']
@@ -144,15 +145,15 @@ def save_to_array(phy_frame):
         print('Physics Frame is None')
         return False
     for el in settings:
-        if el[1] == '["CalibratedWaveforms"]':
+        if el[1] ==  '["CalibratedWaveforms"]':
             try:
                 wf = phy_frame["CalibratedWaveforms"]
             except Exception:
                 print('uuupus {}'.format(el[1]))
                 return False
-        elif el[1] == '["InIceDSTPulses"]':
+        elif el[1] == pulsemap_key:
             try:
-                pulses = phy_frame["InIceDSTPulses"].apply(phy_frame)
+                pulses = phy_frame[pulsemap_key].apply(phy_frame)
             except Exception:
                 print('uuupus {}'.format(el[1]))
                 return False
@@ -196,7 +197,7 @@ def produce_data_dict(i3_file, num_events):
                    keys=['CalibratedWaveformRange'])
     tray.AddModule(cuts, 'cuts', Streams=[icetray.I3Frame.Physics])
     tray.AddModule("I3WaveCalibrator", "sedan",
-                   Launches="InIceRawData",
+                   Launches=waveform_key,
                    Waveforms="CalibratedWaveforms",
                    Errata="BorkedOMs",
                    ATWDSaturationMargin=123,
