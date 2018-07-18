@@ -7,7 +7,7 @@ import sys
 from six.moves import configparser
 import socket
 import argparse
-import model_parse
+import lib.model_parse as mp
 import cPickle as pickle
 
 def parseArguments():
@@ -80,10 +80,10 @@ import keras
 from keras.models import Sequential, load_model
 import h5py
 import shelve
-from functions import generator
+from lib.functions import generator
 import math
 import numpy.lib.recfunctions as rfn
-from functions import read_NN_weights
+from lib.functions import read_NN_weights
 
 if __name__ == "__main__":
 
@@ -137,7 +137,7 @@ if __name__ == "__main__":
     print '##########################################################'
     print os.path.join(mc_location, input_files[0])
     base_model, inp_shapes, inp_trans, out_shapes, out_trans = \
-        model_parse.parse_functional_model(
+        mp.parse_functional_model(
             conf_model_file,
             os.path.join(mc_location, input_files[0]))
 
@@ -192,7 +192,7 @@ if __name__ == "__main__":
 
 
     ## write out muex etc for comparison later
-    reference_outputs = model_parse.parse_reference_output(conf_model_file)
+    reference_outputs = mp.parse_reference_output(conf_model_file)
     #print('Reference output-vars: ', reference_outputs)
     ## add to first out-branch:
     outbranch0 = out_shapes.keys()[0]

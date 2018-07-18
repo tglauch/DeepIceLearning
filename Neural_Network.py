@@ -21,7 +21,7 @@ import socket
 import argparse
 import h5py
 import tables
-import model_parse
+import lib.model_parse as mp
 import sys
 import numpy.lib.recfunctions as rfn
 
@@ -132,9 +132,9 @@ import shelve
 if backend == 'tensorflow':
     from keras_exp.multigpu import get_available_gpus
     from keras_exp.multigpu import make_parallel
-from functions import *
+from lib.functions import *
 from keras.utils import plot_model
-import individual_loss
+import lib.individual_loss
 
 if __name__ == "__main__":
 
@@ -235,7 +235,7 @@ if __name__ == "__main__":
 
     # create model (new implementation, functional API of Keras)
     base_model, inp_shapes, inp_trans, out_shapes, out_trans = \
-        model_parse.parse_functional_model(
+        mp.parse_functional_model(
             conf_model_file,
             os.path.join(mc_location, input_files[0]))
 
@@ -275,7 +275,7 @@ if __name__ == "__main__":
         if loss_func == "weighted_categorial_crossentropy":
             weights = parser.get('Training_Parameters', 'weights')
             weights = np.array(weights.split(',')).astype(np.float)
-            loss_func = individual_loss.weighted_categorical_crossentropy(weights) 
+            loss_func = lib.individual_loss.weighted_categorical_crossentropy(weights) 
     print "Used Loss-Function {}".format(loss_func)
 ###########################################################################################
     if parser.has_option('Multi_Task_Learning', 'ON/OFF') == "ON":
@@ -287,7 +287,7 @@ if __name__ == "__main__":
 ##############################################################################################
             weights = parser.get('Multi_Task_Learning', 'weights')
             weights = np.array(weights.split(',')).astype(np.float)
-            custom = [individual_loss.weighted_categorical_crossentropy(weights), "categorial_crossentropy", "categorial_crossentropy", "categorial_crossentropy"]
+            custom = [lib.individual_loss.weighted_categorical_crossentropy(weights), "categorial_crossentropy", "categorial_crossentropy", "categorial_crossentropy"]
             
 
 ############################################################################################################
