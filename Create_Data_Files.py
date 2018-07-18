@@ -28,10 +28,10 @@ import tables
 import argparse
 import os, sys
 from configparser import ConfigParser
-from reco_quantities import *
+from lib.reco_quantities import *
 import cPickle as pickle
 import random
-import functions_Create_Data_Files as fu
+import lib.functions_Create_Data_Files as fu
 import time
 import logging
 
