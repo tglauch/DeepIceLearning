@@ -11,10 +11,10 @@ from keras.utils import to_categorical
 import sys
 from collections import OrderedDict
 sys.path.append("..")
+sys.path.append("/scratch9/mkron/software/DeepIceLearning/lib")
 import transformations as tr
 #import block_units
 import numpy as np
-sys.path.append("/scratch9/mkron/software/DeepIceLearning/model_additions")
 import residual_unit as resid
 
 
