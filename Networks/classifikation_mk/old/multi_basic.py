@@ -11,10 +11,10 @@ from keras.utils import to_categorical
 import sys
 from collections import OrderedDict
 sys.path.append("..")
-sys.path.append("/scratch9/mkron/software/DeepIceLearning/lib")
 import transformations as tr
 #import block_units
 import numpy as np
+sys.path.append("/scratch9/mkron/software/DeepIceLearning/model_additions")
 import residual_unit as resid
 
 
@@ -22,19 +22,13 @@ import residual_unit as resid
 # define inputs for each branch
 inputs = OrderedDict()
 
-inputs["Branch1"] = {"variables": ["charge", "first_charge", "num_pulses", "time"],
-                     "transformations": [tr.centralize, tr.centralize,  tr.centralize, tr.centralize]}
+inputs["Branch1"] = {"variables": ["charge", "first_charge", "num_pulses", "charge_100ns", "charge_500ns", "time"],
+                     "transformations": [tr.centralize, tr.centralize, tr.centralize, tr.centralize, tr.centralize, tr.centralize]}
 inputs["Branch2"] = {"variables": ["charge"],
                      "transformations": [tr.log_of_sum]}
 
-inputs["Branch3"] = {"variables": ["time", "time_05pct", "time_10pct", "time_15pct", "time_20pct", "time_25pct", "time_30pct",\
-                                   "time_35pct", "time_40pct", "time_45pct", "time_50pct", "time_55pct", "time_60pct",\
-                                   "time_65pct", "time_70pct", "time_75pct", "time_80pct", "time_85pct", "time_90pct",\
-                                   "time_95pct", "time_100pct", "charge"],
-                     "transformations": [tr.waveform_offset, tr.waveform_offset, tr.waveform_offset, tr.waveform_offset, tr.waveform_offset, tr.waveform_offset,\
-                                         tr.waveform_offset, tr.waveform_offset, tr.waveform_offset, tr.waveform_offset, tr.waveform_offset, tr.waveform_offset,\
-                                         tr.waveform_offset, tr.waveform_offset, tr.waveform_offset, tr.waveform_offset, tr.waveform_offset, tr.waveform_offset,\
-                                         tr.waveform_offset, tr.waveform_offset, tr.waveform_offset, tr.waveform_offset]}
+inputs["Branch3"] = {"variables": ["time", "time_spread", "av_time_charges", "time_20pct", "time_50pct", "charge"],
+                     "transformations": [tr.centralize, tr.centralize, tr.centralize, tr.centralize, tr.centralize, tr.centralize]}
 inputs["Branch4"] = {"variables": ["time"],
                      "transformations": [tr.max_min_delta_log]}
 
@@ -42,14 +36,21 @@ inputs["Branch4"] = {"variables": ["time"],
 # define outputs for each branch
 outputs = OrderedDict()
 outputs["Out1"] = {"variables": ["ClassificationLabel"],
-#                   "transformations": [tr.oneHotEncode_EventType]}
-                   "transformations": [tr.oneHotEncode_EventType_stratingTrack]}
+                   "transformations": [tr.oneHotEncode_EventType]}
 
 outputs["Out2"] = {"variables": ["StartingLabel"],
                    "transformations": [tr.oneHotEncode_01]}
 
-outputs["Out3"] = {"variables": ["zenith"],
-                   "transformations": [tr.zenith_prep]}
+outputs["Out3"] = {"variables": ["CoincidenceLabel"],
+                   "transformations": [tr.oneHotEncode_01]}
+
+outputs["Out4"] = {"variables": ["UpDownLabel"],
+                   "transformations": [tr.oneHotEncode_01]}
+
+#outputs["Loss"] = {"variables": ["depositedE", "ClassificationLabel"],
+#                   "transformations": [tr.identity, tr.identity]}
+
+
 
 reference_outputs = []
 
@@ -67,11 +68,11 @@ def model(input_shapes, output_shapes):
     z1 = BatchNormalization()(z1)
     z1 = resid.Residual(72, 72, z1)
     z1 = BatchNormalization()(z1)
-    z1 = resid.Residual(72, 72, z1)
-    z1 = BatchNormalization()(z1)
-    z1 = resid.Residual(72, 72, z1)
-    z1 = BatchNormalization()(z1)
     z1 = resid.Residual(72, 32, z1)
+    z1 = BatchNormalization()(z1)
+    z1 = resid.Residual(32, 32, z1)
+    z1 = BatchNormalization()(z1)
+    z1 = resid.Residual(32, 32, z1)
     z1 = BatchNormalization()(z1)
     z1 = Flatten()(z1)
     z1 = Dense(64, **kwargs)(z1)
@@ -99,11 +100,11 @@ def model(input_shapes, output_shapes):
     z3 = BatchNormalization()(z3)
     z3 = resid.Residual(72, 72, z3)
     z3 = BatchNormalization()(z3)
-    z3 = resid.Residual(72, 72, z3)
-    z3 = BatchNormalization()(z3)
-    z3 = resid.Residual(72, 72, z3)
-    z3 = BatchNormalization()(z3)
     z3 = resid.Residual(72, 32, z3)
+    z3 = BatchNormalization()(z3)
+    z3 = resid.Residual(32, 32, z3)
+    z3 = BatchNormalization()(z3)
+    z3 = resid.Residual(32, 32, z3)
     z3 = BatchNormalization()(z3)
     z3 = Flatten()(z3)
     z3 = Dense(64, **kwargs)(z3)
@@ -133,12 +134,6 @@ def model(input_shapes, output_shapes):
     o1 = resid.Dense_Residual(36, 36, zo)
     o1 = resid.Dense_Residual(36, 36, o1)
     o1 = resid.Dense_Residual(36, 36, o1)
-    o1 = resid.Dense_Residual(36, 36, o1)
-    o1 = resid.Dense_Residual(36, 36, o1)
-    o1 = resid.Dense_Residual(36, 36, o1)
-    o1 = resid.Dense_Residual(36, 36, o1)
-    o1 = resid.Dense_Residual(36, 36, o1)
-    o1 = resid.Dense_Residual(36, 36, o1)    
     output_b1 = Dense(output_shapes["Out1"]["general"][0],\
                           activation="softmax",\
                           name="Target1")(o1)
@@ -158,20 +153,20 @@ def model(input_shapes, output_shapes):
     o3 = resid.Dense_Residual(36, 36, o3)
     o3 = resid.Dense_Residual(36, 36, o3)
     output_b3 = Dense(output_shapes["Out3"]["general"][0],\
-                          activation="sigmoid",\
+                          activation="softmax",\
                           name="Target3")(o3)
 
 
-#    # output 4
-#    o4 = resid.Dense_Residual(36, 36, zo)
-#    o4 = resid.Dense_Residual(36, 36, o4)
-#    o4 = resid.Dense_Residual(36, 36, o4)
-#    output_b4 = Dense(output_shapes["Out4"]["general"][0],\
-#                          activation="softmax",\
-#                          name="Target4")(o4)
+    # output 4
+    o4 = resid.Dense_Residual(36, 36, zo)
+    o4 = resid.Dense_Residual(36, 36, o4)
+    o4 = resid.Dense_Residual(36, 36, o4)
+    output_b4 = Dense(output_shapes["Out4"]["general"][0],\
+                          activation="softmax",\
+                          name="Target4")(o4)
 
 
     model = keras.models.Model(inputs=[input_b1, input_b2, input_b3, input_b4],\
-                               outputs=[output_b1, output_b2, output_b3])
+                               outputs=[output_b1, output_b2, output_b3, output_b4])
     print(model.summary())
     return model
