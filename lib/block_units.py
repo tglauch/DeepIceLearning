@@ -1,23 +1,75 @@
-#!/usr/bin/env python
-# coding: utf-8
-
+from keras.models import Model
 from keras.layers import *
-from keras.layers.merge import *
+from keras.layers.core import Activation, Layer
+
+'''
+Keras Customizable Residual Unit
+This is a simplified implementation of the basic (no bottlenecks) full pre-activation residual unit from He, K., Zhang, X., Ren, S., Sun, J., "Identity Mappings in Deep Residual Networks" (http://arxiv.org/abs/1603.05027v2).
+'''
+
+def conv_block(feat_maps_out, prev):
+    prev = BatchNormalization()(prev) # Specifying the axis and mode allows for later merging
+    prev = Activation('relu')(prev)
+    prev = Conv3D(feat_maps_out, (3, 3, 5), padding="same")(prev) 
+    prev = BatchNormalization()(prev) # Specifying the axis and mode allows for later merging
+    prev = Activation('relu')(prev)
+    prev = Conv3D(feat_maps_out, (3, 3, 5), padding="same")(prev)   
+ 
+    return prev
 
 
-def residual_unit(x0):
+def identitiy_fix_size(feat_maps_in, feat_maps_out, prev):
+    if feat_maps_in != feat_maps_out:
+        # This adds in a 1x1 convolution on shortcuts that map between an uneven amount of channels
+        prev = Conv3D(feat_maps_out, (1, 1, 1), padding='same')(prev)
+    return prev 
 
-    x = Convolution3D(64, (1, 1, 1), border_mode="same", activation="relu")(x0)
-    x = Convolution3D(64, (3, 3, 3), border_mode="same", activation="relu")(x0)
-    return add([x, x0])
+
+def Residual(feat_maps_in, feat_maps_out, prev_layer):
+    '''
+    A customizable residual unit with convolutional and shortcut blocks
+    Args:
+      feat_maps_in: number of channels/filters coming in, from input or previous layer
+      feat_maps_out: how many output channels/filters this block will produce
+      prev_layer: the previous layer
+    '''
+
+    id = identitiy_fix_size(feat_maps_in, feat_maps_out, prev_layer)
+    conv = conv_block(feat_maps_out, prev_layer)
+
+    print('Residual block mapping '+str(feat_maps_in)+' channels to '+str(feat_maps_out)+' channels built')
+    return merge([id, conv], mode='sum') # the residual connection
 
 
-def dense_block(x0, n=8):
-    """ Create a block of n densely connected pairs of convolutions """
-    for i in range(n):
-        x = Convolution3D(8, (3, 3, 3), padding='same', activation='relu')(x0)
-        x0 = concatenade([x0, x], axis=-1)
-    return x
+def dense_block(feat_maps_out, prev):
+    prev = Dense(feat_maps_out, activation='relu', kernel_initializer='he_normal')(prev)
+    prev = Dropout(rate=0.4)(prev)
+    prev = BatchNormalization()(prev)
+    prev = Dense(feat_maps_out, activation='relu', kernel_initializer='he_normal')(prev)
+    prev = Dropout(rate=0.4)(prev)
+    prev = BatchNormalization()(prev)
+    return prev
+    
+def identitiy_fix_size_dense(feat_maps_in, feat_maps_out, prev):
+    if feat_maps_in != feat_maps_out:
+        # This adds in a 1x1 convolution on shortcuts that map between an uneven amount of channels
+        prev = Dense(feat_maps_out, activation='relu', kernel_initializer='he_normal')(prev)
+    return prev
+
+
+def Dense_Residual(feat_maps_in, feat_maps_out, prev_layer):
+    '''
+    A residual unit with dense blocks 
+    Args:
+      feat_maps_in: number of channels/filters coming in, from input or previous layer
+      feat_maps_out: how many output channels/filters this block will produce
+      prev_layer: the previous layer
+    '''
+
+    id = identitiy_fix_size_dense(feat_maps_in, feat_maps_out, prev_layer)
+    dense = dense_block(feat_maps_out, prev_layer)
+
+    return merge([id, dense], mode='sum') # the residual connection
 
 
 def inception_unit(nfilters, x0, strides=(1, 1, 1)):
