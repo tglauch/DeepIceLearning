@@ -15,7 +15,7 @@ sys.path.append("/scratch9/mkron/software/DeepIceLearning/lib")
 import transformations as tr
 #import block_units
 import numpy as np
-import residual_unit as resid
+import block_unit as bunit
 
 
 # *Settings*
@@ -65,13 +65,13 @@ def model(input_shapes, output_shapes):
     z1 = Conv3D(72, (3, 3, 5), padding="same", **kwargs)(input_b1)
     z1 = MaxPooling3D(pool_size=(2, 2, 3))(z1)
     z1 = BatchNormalization()(z1)
-    z1 = resid.Residual(72, 72, z1)
+    z1 = bunit.Residual(72, 72, z1)
     z1 = BatchNormalization()(z1)
-    z1 = resid.Residual(72, 72, z1)
+    z1 = bunit.Residual(72, 72, z1)
     z1 = BatchNormalization()(z1)
-    z1 = resid.Residual(72, 72, z1)
+    z1 = bunit.Residual(72, 72, z1)
     z1 = BatchNormalization()(z1)
-    z1 = resid.Residual(72, 32, z1)
+    z1 = bunit.Residual(72, 32, z1)
     z1 = BatchNormalization()(z1)
     z1 = Flatten()(z1)
     z1 = Dense(64, **kwargs)(z1)
@@ -97,13 +97,13 @@ def model(input_shapes, output_shapes):
     z3 = Conv3D(72, (3, 3, 5), padding="same", **kwargs)(input_b3)
     z3 = MaxPooling3D(pool_size=(2, 2, 3))(z3)
     z3 = BatchNormalization()(z3)
-    z3 = resid.Residual(72, 72, z3)
+    z3 = bunit.Residual(72, 72, z3)
     z3 = BatchNormalization()(z3)
-    z3 = resid.Residual(72, 72, z3)
+    z3 = bunit.Residual(72, 72, z3)
     z3 = BatchNormalization()(z3)
-    z3 = resid.Residual(72, 72, z3)
+    z3 = bunit.Residual(72, 72, z3)
     z3 = BatchNormalization()(z3)
-    z3 = resid.Residual(72, 32, z3)
+    z3 = bunit.Residual(72, 32, z3)
     z3 = BatchNormalization()(z3)
     z3 = Flatten()(z3)
     z3 = Dense(64, **kwargs)(z3)
@@ -123,49 +123,49 @@ def model(input_shapes, output_shapes):
 
     # merge total
     zo = concatenate([merge1, merge2])
-    zo = resid.Dense_Residual(108, 72, zo)  # #input shape has to match the previous layer
-    zo = resid.Dense_Residual(72, 72, zo)
-    zo = resid.Dense_Residual(72, 72, zo)
-    zo = resid.Dense_Residual(72, 36, zo)
+    zo = bunit.Dense_Residual(108, 72, zo)  # #input shape has to match the previous layer
+    zo = bunit.Dense_Residual(72, 72, zo)
+    zo = bunit.Dense_Residual(72, 72, zo)
+    zo = bunit.Dense_Residual(72, 36, zo)
 
 
     # output 1
-    o1 = resid.Dense_Residual(36, 36, zo)
-    o1 = resid.Dense_Residual(36, 36, o1)
-    o1 = resid.Dense_Residual(36, 36, o1)
-    o1 = resid.Dense_Residual(36, 36, o1)
-    o1 = resid.Dense_Residual(36, 36, o1)
-    o1 = resid.Dense_Residual(36, 36, o1)
-    o1 = resid.Dense_Residual(36, 36, o1)
-    o1 = resid.Dense_Residual(36, 36, o1)
-    o1 = resid.Dense_Residual(36, 36, o1)    
+    o1 = bunit.Dense_Residual(36, 36, zo)
+    o1 = bunit.Dense_Residual(36, 36, o1)
+    o1 = bunit.Dense_Residual(36, 36, o1)
+    o1 = bunit.Dense_Residual(36, 36, o1)
+    o1 = bunit.Dense_Residual(36, 36, o1)
+    o1 = bunit.Dense_Residual(36, 36, o1)
+    o1 = bunit.Dense_Residual(36, 36, o1)
+    o1 = bunit.Dense_Residual(36, 36, o1)
+    o1 = bunit.Dense_Residual(36, 36, o1)    
     output_b1 = Dense(output_shapes["Out1"]["general"][0],\
                           activation="softmax",\
                           name="Target1")(o1)
 
 
     # output 2
-    o2 = resid.Dense_Residual(36, 36, zo)
-    o2 = resid.Dense_Residual(36, 36, o2)
-    o2 = resid.Dense_Residual(36, 36, o2)
+    o2 = bunit.Dense_Residual(36, 36, zo)
+    o2 = bunit.Dense_Residual(36, 36, o2)
+    o2 = bunit.Dense_Residual(36, 36, o2)
     output_b2 = Dense(output_shapes["Out2"]["general"][0],\
                           activation="softmax",\
                           name="Target2")(o2)
 
 
     # output 3
-    o3 = resid.Dense_Residual(36, 36, zo)
-    o3 = resid.Dense_Residual(36, 36, o3)
-    o3 = resid.Dense_Residual(36, 36, o3)
+    o3 = bunit.Dense_Residual(36, 36, zo)
+    o3 = bunit.Dense_Residual(36, 36, o3)
+    o3 = bunit.Dense_Residual(36, 36, o3)
     output_b3 = Dense(output_shapes["Out3"]["general"][0],\
                           activation="sigmoid",\
                           name="Target3")(o3)
 
 
 #    # output 4
-#    o4 = resid.Dense_Residual(36, 36, zo)
-#    o4 = resid.Dense_Residual(36, 36, o4)
-#    o4 = resid.Dense_Residual(36, 36, o4)
+#    o4 = bunit.Dense_Residual(36, 36, zo)
+#    o4 = bunit.Dense_Residual(36, 36, o4)
+#    o4 = bunit.Dense_Residual(36, 36, o4)
 #    output_b4 = Dense(output_shapes["Out4"]["general"][0],\
 #                          activation="softmax",\
 #                          name="Target4")(o4)
