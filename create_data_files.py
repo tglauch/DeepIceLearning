@@ -29,7 +29,6 @@ import argparse
 import os, sys
 from configparser import ConfigParser
 from lib.reco_quantities import *
-from lib.functions import read_variables
 import lib.transformations
 import cPickle as pickle
 import random
