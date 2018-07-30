@@ -235,3 +235,17 @@ def time_of_percentage(charges, times, percentage):
             break
     return tim
 
+
+### calculate a quantile
+def wf_quantiles(wfs, quantile, srcs=['ATWD', 'FADC']):
+    ret = dict()
+    src_loc = [wf.source.name for wf in wfs]
+    for src in srcs:
+        ret[src] = 0
+        if src not in src_loc:
+            continue
+        wf = wfs[src_loc.index(src)]
+        t = wf.time + np.linspace(0, len(wf.waveform) * wf.bin_width, len(wf.waveform))
+        charge_pdf = np.cumsum(wf.waveform) / np.cumsum(wf.waveform)[-1]
+        ret[src]=t[np.where(charge_pdf > quantile)[0][0]]
+    return ret

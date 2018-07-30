@@ -26,43 +26,6 @@ from reco_quantities import *
 # may some packages are not needed
 
 
-def read_variables(cfg_parser):
-    """Function reading a config file, defining the variables to be read
-       from the MC files.
-
-    Arguments:
-    cfg_parser: config parser object for the config file
-
-    Returns:
-    dtype : the dtype object defining the shape and names of the MC output
-    data_source: list defining the types,names and ranges of monte carlo data
-                to be saved from a physics frame
-                (e.g [('variable',['MCMostEnergeticTrack'].energy, [1e2,1e9])])
-    """
-    dtype = []
-    data_source = []
-    for i, key in enumerate(cfg_parser.keys()):
-        if key == 'DEFAULT' or key == 'Basics' or key =='Cuts'\
-           or 'Input' in key:
-            continue
-        cut = [-np.inf, np.inf]
-        if 'min' in cfg_parser[key].keys():
-            cut[0] = float(cfg_parser[key]['min'])
-        if 'max' in cfg_parser[key].keys():
-            cut[1] = float(cfg_parser[key]['max'])
-        if 'variable' in cfg_parser[key].keys():
-            data_source.append(('variable', cfg_parser[key]['variable'], cut))
-        elif 'function' in cfg_parser[key].keys():
-            data_source.append(('function', cfg_parser[key]['function'], cut))
-        else:
-            raise Exception(
-                'No Input Type given. Variable or funtion must be given')
-        dtype.append((str(key), eval('np.' + cfg_parser[key]['out_type'])))
-    dtype = np.dtype(dtype)
-
-    return dtype, data_source
-
-
 def preprocess_grid(geometry):
     # rotate IC into x-y-plane
     dom_6_pos = geometry[icetray.OMKey(6, 1)].position
@@ -230,17 +193,3 @@ def analyze_grid(grid):
             print index, strings
 
 
-
-### calculate a quantile
-def wf_quantiles(wfs, quantile, srcs=['ATWD', 'FADC']):
-    ret = dict()
-    src_loc = [wf.source.name for wf in wfs]
-    for src in srcs:
-	ret[src] = 0
-        if src not in src_loc:
-            continue
-        wf = wfs[src_loc.index(src)]
-        t = wf.time + np.linspace(0, len(wf.waveform) * wf.bin_width, len(wf.waveform))
-	charge_pdf = np.cumsum(wf.waveform) / np.cumsum(wf.waveform)[-1]
-	ret[src]=t[np.where(charge_pdf > quantile)[0][0]]
-    return ret
