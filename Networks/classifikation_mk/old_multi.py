@@ -31,10 +31,10 @@ inputs["Branch3"] = {"variables": ["time", "time_05pct", "time_10pct", "time_15p
                                    "time_35pct", "time_40pct", "time_45pct", "time_50pct", "time_55pct", "time_60pct",\
                                    "time_65pct", "time_70pct", "time_75pct", "time_80pct", "time_85pct", "time_90pct",\
                                    "time_95pct", "time_100pct", "charge"],
-                     "transformations": [tr.waveform_offset, tr.waveform_offset, tr.waveform_offset, tr.waveform_offset, tr.waveform_offset, tr.waveform_offset,\
-                                         tr.waveform_offset, tr.waveform_offset, tr.waveform_offset, tr.waveform_offset, tr.waveform_offset, tr.waveform_offset,\
-                                         tr.waveform_offset, tr.waveform_offset, tr.waveform_offset, tr.waveform_offset, tr.waveform_offset, tr.waveform_offset,\
-                                         tr.waveform_offset, tr.waveform_offset, tr.waveform_offset, tr.waveform_offset]}
+                     "transformations": [tr.centralize, tr.centralize, tr.centralize, tr.centralize, tr.centralize, tr.centralize,\
+                                         tr.centralize, tr.centralize, tr.centralize, tr.centralize, tr.centralize, tr.centralize,\
+                                         tr.centralize, tr.centralize, tr.centralize, tr.centralize, tr.centralize, tr.centralize,\
+                                         tr.centralize, tr.centralize, tr.centralize, tr.centralize]}
 inputs["Branch4"] = {"variables": ["time"],
                      "transformations": [tr.max_min_delta_log]}
 
@@ -48,8 +48,16 @@ outputs["Out1"] = {"variables": ["ClassificationLabel"],
 outputs["Out2"] = {"variables": ["StartingLabel"],
                    "transformations": [tr.oneHotEncode_01]}
 
-outputs["Out3"] = {"variables": ["zenith"],
-                   "transformations": [tr.zenith_prep]}
+outputs["Out3"] = {"variables": ["UpDownLabel"],
+                   "transformations": [tr.oneHotEncode_01]}
+
+#outputs["Out4"] = {"variables": ["CoincidenceLabel"],
+#                   "transformations": [tr.oneHotEncode_01]}
+
+#outputs["Loss"] = {"variables": ["depositedE", "ClassificationLabel"],
+#                   "transformations": [tr.identity, tr.identity]}
+
+
 
 reference_outputs = []
 
@@ -158,7 +166,7 @@ def model(input_shapes, output_shapes):
     o3 = resid.Dense_Residual(36, 36, o3)
     o3 = resid.Dense_Residual(36, 36, o3)
     output_b3 = Dense(output_shapes["Out3"]["general"][0],\
-                          activation="sigmoid",\
+                          activation="softmax",\
                           name="Target3")(o3)
 
 

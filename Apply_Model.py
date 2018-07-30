@@ -34,6 +34,9 @@ def parseArguments():
     parser.add_argument(
         "--model",
         help="name of the model to apply", default="")
+    parser.add_argument(
+        "--weights",
+        help="weights of the model to apply", default="")
     args = parser.parse_args()
     return args
 
@@ -142,7 +145,12 @@ if __name__ == "__main__":
             os.path.join(mc_location, input_files[0]))
 
     ngpus = args.__dict__['ngpus']
+#######################################################################################
     args.__dict__["load_weights"] = os.path.join(DATA_DIR, "best_val_loss.npy")
+    if args.__dict__["weights"]:
+	#print "NICE"
+	args.__dict__["load_weights"] = os.path.join(DATA_DIR, args.__dict__["weights"])
+#####################################################################################
     print'Use {} GPUS'.format(ngpus)
     if ngpus > 1:
         if backend == 'tensorflow':
@@ -237,9 +245,12 @@ if __name__ == "__main__":
     #file...we can also look for a nicer solution with dtypes again. but the
     #output-shape of prediction should be variable
     MANUAL_writeout_pred_and_exit= True
+    #save_name = "prediction.pickle"
+    save_name= args.__dict__["weights"][:-4] + "_pred.pickle"
+    print save_name
     if MANUAL_writeout_pred_and_exit:
         pickle.dump({"mc_truth": mc_truth, "prediction": prediction, "reco_vals": reco_vals, "HitDOMs": hit_vals},\
-                    open(os.path.join(DATA_DIR, "prediction.pickle"),"wc"))
+                    open(os.path.join(DATA_DIR, save_name),"wc"))
         print(' \n Finished .... Exiting.....')
         exit(0)
 '''

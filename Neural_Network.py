@@ -210,6 +210,8 @@ if __name__ == "__main__":
 
     if not os.path.exists(save_path):
         os.makedirs(save_path)
+    if not os.path.exists(save_path + "/model_all_epochs"):
+        os.makedirs(save_path + "/model_all_epochs")
 
     train_val_test_ratio = [
         float(parser.get('Training_Parameters', 'training_fraction')),
@@ -276,30 +278,25 @@ if __name__ == "__main__":
             weights = parser.get('Training_Parameters', 'weights')
             weights = np.array(weights.split(',')).astype(np.float)
             loss_func = lib.individual_loss.weighted_categorical_crossentropy(weights) 
-    print "Used Loss-Function {}".format(loss_func)
-###########################################################################################
-    if parser.has_option('Multi_Task_Learning', 'ON/OFF') == "ON":
-        if parser.has_option('Multi_Task_Learning', 'CustomLoss') == "ON":
-            #extra_parameter_1 = XX
-            #extra_parameter_2 =
-            #custom = [individual_loss.event_type_and_energy_weighted_loss(extra_parameter_1, extra_parameter_2), "categorial_crossentropy", "categorial_crossentropy", "categorial_crossentropy"] 
-            
-##############################################################################################
+        print "Used Loss-Function {}".format(loss_func)
+    if parser.get('Multi_Task_Learning', 'ON/OFF') == "ON":
+	if parser.get('Multi_Task_Learning', 'CustomLoss') == "ON":
+	    loss_3 = parser.get('Multi_Task_Learning', 'loss_3')
             weights = parser.get('Multi_Task_Learning', 'weights')
             weights = np.array(weights.split(',')).astype(np.float)
-            custom = [lib.individual_loss.weighted_categorical_crossentropy(weights), "categorial_crossentropy", "categorial_crossentropy", "categorial_crossentropy"]
-            
-
-############################################################################################################
-            model.compile(optimizer=optimizer_used,\
+            custom = [lib.individual_loss.weighted_categorical_crossentropy(weights),  "categorical_crossentropy", loss_3]
+	    loss_weights_weights = parser.get('Multi_Task_Learning', 'loss_weights')
+            loss_weights_weights = np.array(loss_weights_weights.split(',')).astype(np.float)
+	    model.compile(optimizer=optimizer_used,\
                 loss=custom,
-                loss_weights = parser.has_option('Multi_Task_Learning', 'loss_weights'))
+                loss_weights = {'Target1': loss_weights_weights[0], 'Target2': loss_weights_weights[1], 'Target3': loss_weights_weights[2]})
+		#loss_weights = parser.get('Multi_Task_Learning', 'loss_weights'))
         else:   
             model.compile(optimizer=optimizer_used,\
-               loss = parser.has_option('Multi_Task_Learning', 'loss'),\
-               loss_weights = parser.has_option('Multi_Task_Learning', 'loss_weights'))
+               loss = parser.get('Multi_Task_Learning', 'loss'),\
+               loss_weights = parser.get('Multi_Task_Learning', 'loss_weights'))
     else: 
-        if loss_func == "weighted_categorial_crossentropy":
+        if loss_func == "weighted_categorical_crossentropy":
             model.compile(
                 loss=loss_func, optimizer=optimizer_used)
         else:
@@ -353,6 +350,14 @@ if __name__ == "__main__":
             'Training_Parameters', 'single_gpu_batch_size'))
     file_handlers = [h5py.File(os.path.join(mc_location, file_name))
                      for file_name in input_files]
+    # saving model every epoch
+    every_model = keras.callbacks.ModelCheckpoint(
+        save_path + "/model_all_epochs/weights_{epoch:02d}.npy",
+        monitor='val_loss',
+        verbose=int(parser.get('Training_Parameters', 'verbose')),
+        save_best_only=False,
+        mode='auto',
+        period=1)
 
     #file_handlers = [tables.open_file(os.path.join(mc_location, file_name))
     #                 for file_name in input_files]
@@ -370,7 +375,7 @@ if __name__ == "__main__":
             inp_trans, out_shapes, out_trans, val_run=True),
         validation_steps=math.ceil(\
             np.sum([k[1] - k[0] for k in valid_inds]) / batch_size)/epoch_divider,
-        callbacks=[CSV_log, early_stop, best_model, MemoryCallback()],
+        callbacks=[CSV_log, early_stop, best_model, MemoryCallback(), every_model],
         epochs=int(parser.get('Training_Parameters', 'epochs')),
         verbose=int(parser.get('Training_Parameters', 'verbose')),
         max_q_size=int(parser.get('Training_Parameters', 'max_queue_size')))

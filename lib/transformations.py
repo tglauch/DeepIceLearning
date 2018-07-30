@@ -13,6 +13,8 @@ def centralize(x):
         return ((x - np.mean(x)) / np.std(x))
     else:
         return (x - np.mean(x))
+def waveform_offset(x):
+    return (x-10000)/400
 
 def max(x):
     return np.amax(x)
@@ -29,6 +31,10 @@ def sort_input(x):
 def plus_one_log10(x):
     tmp = x + 1.
     return np.log10(tmp)
+
+def zenith_prep(x):
+    x =  x / 3.14159
+    return x
 
 
 def log_handle_zeros_flatten_top30(x):
