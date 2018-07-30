@@ -29,9 +29,10 @@ import argparse
 import os, sys
 from configparser import ConfigParser
 from lib.reco_quantities import *
+from lib.functions import read_variables
 import cPickle as pickle
 import random
-import lib.functions_Create_Data_Files as fu
+import lib.ic_grid as fu
 import time
 import logging
 
@@ -104,7 +105,7 @@ logger.setLevel(logging.DEBUG)
 geometry_file = str(dataset_configparser.get('Basics', 'geometry_file'))
 outfolder = str(dataset_configparser.get('Basics', 'out_folder'))
 pulsemap_key = str(dataset_configparser.get('Basics', 'PulseSeriesMap'))
-dtype, settings = fu.read_variables(dataset_configparser)
+dtype, settings = read_variables(dataset_configparser)
 waveform_key = str(dataset_configparser.get('Basics', 'Waveforms'))
 settings.append(('variable', '["CalibratedWaveforms"]'))
 settings.append(('variable', '{}'.format(pulsemap_key)))
@@ -120,7 +121,7 @@ for key in y.keys():
     inputs.append((key, y[key]))
 for q in z['quantiles'].split(','):
     inputs.append(('{}_{}_pct_charge_quantile'.format(z['type'], q.strip().replace('.','_')),
-                   'fu.wf_quantiles(waveform, {})[\'{}\']'.format(q, z['type'])))    
+                   'wf_quantiles(waveform, {})[\'{}\']'.format(q, z['type'])))    
 
 # This is the dictionary used to store the input data
 events = dict()
