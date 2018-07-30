@@ -32,7 +32,7 @@ def parseArguments():
     parser.add_argument(
         "--create_script",
         help="Different script to execute",
-        type=str, default='Create_Data_Files.py')
+        type=str, default='create_data_files.py')
     parser.add_argument(
         "--request_RAM",
         help="amount of RAM in GB",
