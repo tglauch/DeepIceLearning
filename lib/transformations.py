@@ -32,8 +32,8 @@ def plus_one_log10(x):
     tmp = x + 1.
     return np.log10(tmp)
 
-def zenith_prep(x):
-    x =  x / 3.14159
+def zenith_prep(x, r_vals):
+    x =  x / np.pi
     return x
 
 
@@ -123,7 +123,7 @@ def max_min_delta_log(x):
     return np.log10(np.max(x)-np.min(x))
 
 
-def oneHotEncode_01(x):
+def oneHotEncode_01(x, r_vals):
     """
     This function one hot encodes the input for a binary label 
     """
@@ -140,7 +140,7 @@ def oneHotEncode_01(x):
     return onehot_encoded
 
 
-def oneHotEncode_EventType_exact(x):
+def oneHotEncode_EventType_exact(x, r_vals):
     """
     This function one hot encodes the input for the event types cascade, tracks, doubel-bang
     """
@@ -156,7 +156,7 @@ def oneHotEncode_EventType_exact(x):
         onehot_encoded.append(value)
     return onehot_encoded
 
-def oneHotEncode_EventType(x):
+def oneHotEncode_EventType(x, r_vals):
     """
     This function one hot encodes the input for the event types cascade, tracks, doubel-bang
     """
@@ -191,7 +191,7 @@ def oneHotEncode_EventType(x):
     return onehot_encoded
 
 
-def oneHotEncode_EventType_stratingTrack(x):
+def oneHotEncode_EventType_stratingTrack(x, r_vals):
     """
     This function one hot encodes the input for the event types cascade, tracks, doubel-bang
     """
