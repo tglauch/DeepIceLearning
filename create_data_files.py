@@ -30,6 +30,7 @@ import os, sys
 from configparser import ConfigParser
 from lib.reco_quantities import *
 from lib.functions import read_variables
+import lib.transformations
 import cPickle as pickle
 import random
 import lib.ic_grid as fu
@@ -38,7 +39,7 @@ import logging
 
 
 def replace_with_var(x):
-    """Replace the config parser input names with var names 
+    """Replace the config parser input names with var names
        in the Code.
 
     Args:
@@ -47,14 +48,18 @@ def replace_with_var(x):
         Correctly formatted transformation for the code
     """
 
-    if ('(' in x) and (')' in x): 
+    if ('(' in x) and (')' in x):
         y = x[x.index('('):x.index(')')]
-        x = x.replace(y, y.replace('c', 'charges').replace('t', 'times').replace('w', 'widths'))
+        x = x.replace(y, y.replace('c', 'charges').
+                      replace('t', 'times').replace('w', 'widths'))
     else:
-        x=x.replace('c', 'charges').replace('t', 'times').replace('w', 'widths')
+        x = x.replace('c', 'charges').replace('t', 'times').\
+            replace('w', 'widths')
     return x
 
 # arguments given in the terminal
+
+
 def parseArguments():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -68,7 +73,7 @@ def parseArguments():
     parser.add_argument(
         "--max_num_events",
         help="The maximum number of frames to be processed",
-        type=int,  default=-1)    
+        type=int, default=-1)
     parser.add_argument(
         "--filelist",
         help="Path to a filelist to be processed",
@@ -114,14 +119,19 @@ print settings
 x = dataset_configparser['Input_Charges']
 y = dataset_configparser['Input_Times']
 z = dataset_configparser['Input_Waveforms1']
+scale_class = dict()
+max_scale = np.max([scale_class[key] for key in scale_class])
+if 'Scale_Class' in dataset_configparser:
+    for key in dataset_configparser['Scale_Class'].keys():
+        scale_class[key] = dataset_configparser['Scale_Class'][key]
 inputs = []
 for key in x.keys():
     inputs.append((key, x[key]))
 for key in y.keys():
     inputs.append((key, y[key]))
 for q in z['quantiles'].split(','):
-    inputs.append(('{}_{}_pct_charge_quantile'.format(z['type'], q.strip().replace('.','_')),
-                   'wf_quantiles(waveform, {})[\'{}\']'.format(q, z['type'])))    
+    inputs.append(('{}_{}_pct_charge_quantile'.format(z['type'], q.strip().replace('.', '_')),
+                   'wf_quantiles(waveform, {})[\'{}\']'.format(q, z['type'])))
 
 # This is the dictionary used to store the input data
 events = dict()
@@ -146,7 +156,7 @@ def save_to_array(phy_frame):
         print('Physics Frame is None')
         return False
     for el in settings:
-        if el[1] ==  '["CalibratedWaveforms"]':
+        if el[1] == '["CalibratedWaveforms"]':
             try:
                 wf = phy_frame["CalibratedWaveforms"]
             except Exception:
@@ -179,6 +189,16 @@ def save_to_array(phy_frame):
     return
 
 
+def event_picker(phy_frame):
+    e_type = lib.transformations.classify(phy_frame)
+    rand = np.random.choice(max_scale)
+    if scale_class[e_type] <= rand:
+        return True
+    else:
+        print('Skip Event with type {} and rand number {}'.format(e_type, rand))
+        return False
+
+
 def produce_data_dict(i3_file, num_events):
     """IceTray script that wraps around an i3file and fills the events dict
        that is initialized outside the function
@@ -193,6 +213,8 @@ def produce_data_dict(i3_file, num_events):
     tray.AddModule("I3Reader", "source",
                    Filenamelist=[geometry_file,
                                  i3_file],)
+    tray.AddModule(event_picker, "event_picker",
+                   Streams=[icetray.I3Frame.Physics])
     tray.AddModule("Delete",
                    "old_keys_cleanup",
                    keys=['CalibratedWaveformRange'])
@@ -204,7 +226,7 @@ def produce_data_dict(i3_file, num_events):
                    ATWDSaturationMargin=123,
                    FADCSaturationMargin=0,)
     tray.AddModule(save_to_array, 'save', Streams=[icetray.I3Frame.Physics])
-    if num_events==-1:
+    if num_events == -1:
         tray.Execute()
     else:
         tray.Execute(num_events)
@@ -346,7 +368,7 @@ if __name__ == "__main__":
         print(h5file)
         print(h5file.root)
 
-        np.save('grid.npy', grid)
+        # np.save('grid.npy', grid)
         TotalEventCounter = 0
         skipped_frames = 0
         statusInFilelist = 0
@@ -362,7 +384,8 @@ if __name__ == "__main__":
             while counterSim < len(filelist):
                 try:
                     print('Attempt to read {}'.format(filelist[counterSim][statusInFilelist]))
-                    produce_data_dict(filelist[counterSim][statusInFilelist], args['max_num_events'])
+                    produce_data_dict(filelist[counterSim][statusInFilelist],
+                                      args['max_num_events'])
                     counterSim = counterSim + 1
                 except Exception:
                     continue
@@ -410,8 +433,8 @@ if __name__ == "__main__":
                     input_features[inp_c].append(f_slice)
 
             print('Flush data to HDF File')
-            for inp_feature in input_features:	
-                print(type(inp_feature))   
+            for inp_feature in input_features:
+                print(type(inp_feature))
                 inp_feature.flush()
             reco_vals.flush()
 
