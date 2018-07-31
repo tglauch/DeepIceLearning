@@ -1,5 +1,5 @@
-#!/bin/sh /cvmfs/icecube.opensciencegrid.org/py2-v2/icetray-start
-#METAPROJECT /data/user/mkronmueller/Software/combo/build
+#!/bin/sh /cvmfs/icecube.opensciencegrid.org/py2-v3/icetray-start
+#METAPROJECT /cvmfs/icecube.opensciencegrid.org/py2-v3.0.1/metaprojects/combo/stable/ 
 # coding: utf-8
 
 """This file is part of DeepIceLearning
