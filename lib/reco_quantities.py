@@ -21,6 +21,9 @@ import icecube.MuonGun
 import numpy as np
 
 
+nu_pdg = [12, 14, 16, -12, -14, -16]
+
+
 def calc_depositedE(physics_frame, gcd_file):
     I3Tree = physics_frame['I3MCTree']
     losses = 0
@@ -125,7 +128,6 @@ def has_signature(p, gcdfile):
 
 
 def get_the_right_particle(p_frame, gcdfile):
-    nu_pdg = [12, 14, 16, -12, -14, -16]
     I3Tree = p_frame['I3MCTree']
     # find first neutrino as seed for find_particle
     for p in I3Tree.get_primaries():
@@ -139,7 +141,6 @@ def get_the_right_particle(p_frame, gcdfile):
 
 
 def testing_event(p_frame, gcdfile):
-    nu_pdg = [12, 14, 16, -12, -14, -16]
     I3Tree = p_frame['I3MCTree']
     neutrino = get_the_right_particle(p_frame, gcdfile)
     if neutrino == -1:
@@ -162,7 +163,6 @@ def testing_event(p_frame, gcdfile):
 
 def find_particle(p, I3Tree, gcdfile):
     t_list = []
-    nu_pdg = [12, 14, 16, -12, -14, -16]
     children = I3Tree.children(p)
     IC_hit = np.any([(has_signature(tp, gcdfile) != -1) for tp in children])
     if IC_hit:
@@ -183,7 +183,6 @@ def find_particle(p, I3Tree, gcdfile):
 
 
 def classify(p_frame, gcdfile):
-    nu_pdg = [12, 14, 16, -12, -14, -16]
     I3Tree = p_frame['I3MCTree']
     neutrino = get_the_right_particle(p_frame, gcdfile)
     children = I3Tree.children(neutrino)
