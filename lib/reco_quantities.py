@@ -174,6 +174,7 @@ def classify(p_frame, gcdfile):
     nu_pdg = [12, 14, 16, -12, -14, -16]
     I3Tree = p_frame['I3MCTree']
     neutrino = get_the_right_particle(p_frame, gcdfile)
+    print neutrino
     children = I3Tree.children(neutrino)
     p_types = [np.abs(child.pdg_encoding) for child in children]
     p_strings = [child.type_string for child in children]

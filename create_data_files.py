@@ -20,6 +20,7 @@ small differences when processing data for the diffuse dataset
 '''
 
 from icecube import dataio, icetray, WaveCalibrator
+from icecube.trigger_sim.modules.time_shifter import I3TimeShifter
 from I3Tray import *
 from scipy.stats import moment, skew, kurtosis
 import numpy as np
@@ -219,16 +220,20 @@ def produce_data_dict(i3_file, num_events):
         True (IceTray standard)
     """
 
+    #time_shift_args = { "I3MCTreeNames": ["I3MCTree"],
+    #			"I3DOMLaunchSeriesMapNames": ["InIceRawData"]}
+
     tray = I3Tray()
     tray.AddModule("I3Reader", "source",
                    Filenamelist=[geometry_file,
                                  i3_file],)
+    tray.AddModule(cuts, 'cuts', Streams=[icetray.I3Frame.Physics])
     tray.AddModule(event_picker, "event_picker",
                    Streams=[icetray.I3Frame.Physics])
     tray.AddModule("Delete",
                    "old_keys_cleanup",
                    keys=['CalibratedWaveformRange'])
-    tray.AddModule(cuts, 'cuts', Streams=[icetray.I3Frame.Physics])
+    #tray.AddModule(I3TimeShifter, "T_Shifter", **time_shift_args )
     tray.AddModule("I3WaveCalibrator", "sedan",
                    Launches=waveform_key,
                    Waveforms="CalibratedWaveforms",
@@ -392,13 +397,10 @@ if __name__ == "__main__":
             events['pulses'] = []
             counterSim = 0
             while counterSim < len(filelist):
-                try:
-                    print('Attempt to read {}'.format(filelist[counterSim][statusInFilelist]))
-                    produce_data_dict(filelist[counterSim][statusInFilelist],
+                print('Attempt to read {}'.format(filelist[counterSim][statusInFilelist]))
+                produce_data_dict(filelist[counterSim][statusInFilelist],
                                       args['max_num_events'])
-                    counterSim = counterSim + 1
-                except Exception:
-                    continue
+                counterSim = counterSim + 1
             print('--- Run {} --- Countersim is {} --'.format(statusInFilelist,
                                                               counterSim))
             statusInFilelist += 1
