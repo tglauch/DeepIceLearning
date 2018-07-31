@@ -28,24 +28,18 @@ def calc_depositedE(physics_frame, gcd_file):
     I3Tree = physics_frame['I3MCTree']
     losses = 0
     for p in I3Tree:
-        if not p.is_cascade:
-            continue
-        if not p.location_type == dataclasses.I3Particle.InIce:
-            continue
-        if p.shape == p.Dark:
-            continue
+        if not p.is_cascade: continue
+        if not p.location_type == dataclasses.I3Particle.InIce: continue 
+        if p.shape == p.Dark: continue 
         if p.type in [p.Hadrons, p.PiPlus, p.PiMinus, p.NuclInt]:
-            if p.energy < 1 * I3Units.GeV:
-                losses += 0.8 * p.energy
+            if p.energy < 1*I3Units.GeV:
+                losses += 0.8*p.energy
             else:
-                energyScalingFactor = 1.0 + ((p.energy / I3Units.GeV /
-                                             0.399) ** - 0.130) *\
-                                            (0.467 - 1)
-                losses += energyScalingFactor * p.energy
+                energyScalingFactor = 1.0 + ((p.energy/I3Units.GeV/0.399)**-0.130)*(0.467 - 1)
+                losses += energyScalingFactor*p.energy
         else:
-            losses += p.energy
+            losses += p.energy 
     return losses
-
 
 def calc_hitDOMs(physics_frame, gcd_file):
     hitDOMs = 0
@@ -260,7 +254,6 @@ def wf_quantiles(wfs, quantile, srcs=['ATWD', 'FADC']):
 
 
 def get_dir(p_frame, gcdfile, which=""):
-    print('ok')
     neutrino = get_the_right_particle(p_frame, gcdfile)
     if which == "x":
         return neutrino.dir.x
@@ -268,3 +261,25 @@ def get_dir(p_frame, gcdfile, which=""):
         return neutrino.dir.y
     if which == "z":
         return neutrino.dir.z
+
+def get_inelasticity(p_frame, gcdfile):
+    I3Tree = p_frame['I3MCTree']
+    interaction_type = p_frame['I3MCWeightDict']['InteractionType']
+    if interaction_type!= 1:
+        return 0
+    else:
+        neutrino = get_the_right_particle(p_frame, gcdfile)
+        children = I3Tree.children(neutrino)
+        for child in children:
+            if child.type_string == "Hadrons":
+                return 1.0*child.energy/neutrino.energy 
+
+def get_vertex(p_frame, gcdfile, which=""):
+    I3Tree = p_frame['I3MCTree']
+    neutrino = get_the_right_particle(p_frame, gcdfile)
+    if which == "x":
+        return I3Tree.children(neutrino)[0].pos.x
+    if which == "y":
+        return I3Tree.children(neutrino)[0].pos.y    
+    if which == "z":
+        return I3Tree.children(neutrino)[0].pos.z
