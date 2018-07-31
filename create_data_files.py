@@ -197,7 +197,7 @@ def event_picker(phy_frame):
     e_type = lib.reco_quantities.classify(phy_frame, geometry_file)
     rand = np.random.choice(range(1, max_scale+1))
     if e_type not in scale_class.keys():
-        scaling = 1
+        scaling = max_scale
     else:
         scaling = scale_class[e_type]
     if scaling >= rand:
