@@ -183,7 +183,7 @@ def save_to_array(phy_frame):
         elif el[0] == 'function':
             try:
                 reco_arr.append(
-                    eval(el[1].replace('(x)', '(phy_frame, geometry_file)')))
+                    eval(el[1].replace('_icframe_', '(phy_frame, geometry_file)')))
             except Exception:
                 print('uuupus {}'.format(el[1]))
                 return False
@@ -197,16 +197,14 @@ def save_to_array(phy_frame):
 
 def event_picker(phy_frame):
     e_type = lib.reco_quantities.classify(phy_frame, geometry_file)
-    rand = np.random.choice(range(1,max_scale))
+    rand = np.random.choice(range(1, max_scale))
     if e_type not in scale_class.keys():
         scaling = 1
     else:
         scaling = scale_class[e_type]
     if scaling >= rand:
-        print('Include Event with type {} and rand number {}'.format(e_type, rand))
         return True
     else:
-        print('Skip Event with type {} and rand number {}'.format(e_type, rand))
         return False
 
 
