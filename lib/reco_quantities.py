@@ -256,3 +256,13 @@ def wf_quantiles(wfs, quantile, srcs=['ATWD', 'FADC']):
         charge_pdf = np.cumsum(wf.waveform) / np.cumsum(wf.waveform)[-1]
         ret[src] = t[np.where(charge_pdf > quantile)[0][0]]
     return ret
+
+
+def get_dir(p_frame, gcdfile, which=""):
+    neutrino = get_the_right_particle(p_frame, gcdfile)
+    if which == "x":
+        return neutrino.dir.x
+    if which == "y":
+        return neutrino.dir.y
+    if which == "z":
+        return neutrino.dir.z
