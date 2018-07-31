@@ -35,7 +35,9 @@ def calc_depositedE(physics_frame, gcd_file):
             if p.energy < 1 * I3Units.GeV:
                 losses += 0.8 * p.energy
             else:
-                energyScalingFactor = 1.0 + ((p.energy/I3Units.GeV/0.399)**-0.130)*(0.467 - 1)
+                energyScalingFactor = 1.0 + ((p.energy / I3Units.GeV /
+                                             0.399) ** - 0.130) *\
+                                            (0.467 - 1)
                 losses += energyScalingFactor * p.energy
         else:
             losses += p.energy
@@ -259,6 +261,7 @@ def wf_quantiles(wfs, quantile, srcs=['ATWD', 'FADC']):
 
 
 def get_dir(p_frame, gcdfile, which=""):
+    print('ok')
     neutrino = get_the_right_particle(p_frame, gcdfile)
     if which == "x":
         return neutrino.dir.x
