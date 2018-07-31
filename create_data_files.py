@@ -120,10 +120,15 @@ x = dataset_configparser['Input_Charges']
 y = dataset_configparser['Input_Times']
 z = dataset_configparser['Input_Waveforms1']
 scale_class = dict()
-max_scale = np.max([scale_class[key] for key in scale_class])
-if 'Scale_Class' in dataset_configparser:
+print dataset_configparser.keys()
+if 'Scale_Class' in dataset_configparser.keys():
     for key in dataset_configparser['Scale_Class'].keys():
-        scale_class[key] = dataset_configparser['Scale_Class'][key]
+        scale_class[int(key)] = int(dataset_configparser['Scale_Class'][key])
+print scale_class
+if len(scale_class.keys()) > 0:
+    max_scale = np.max([scale_class[key] for key in scale_class])
+else:
+    max_scale = 1
 inputs = []
 for key in x.keys():
     inputs.append((key, x[key]))
@@ -190,9 +195,14 @@ def save_to_array(phy_frame):
 
 
 def event_picker(phy_frame):
-    e_type = lib.transformations.classify(phy_frame)
-    rand = np.random.choice(max_scale)
-    if scale_class[e_type] <= rand:
+    e_type = lib.reco_quantities.classify(phy_frame, geometry_file)
+    rand = np.random.choice(range(1,max_scale))
+    if e_type not in scale_class.keys():
+        scaling = 1
+    else:
+        scaling = scale_class[e_type]
+    if scaling >= rand:
+        print('Include Event with type {} and rand number {}'.format(e_type, rand))
         return True
     else:
         print('Skip Event with type {} and rand number {}'.format(e_type, rand))
