@@ -409,10 +409,13 @@ if __name__ == "__main__":
                 TotalEventCounter += 1
                 reco_arr = events['reco_vals'][i]
                 if not len(reco_arr) == len(dtype):
+		    print('Len of the reco array does not match the dtype')
                     continue
+                reco_vals.append(np.array(reco_arr))
                 try:
                     reco_vals.append(np.array(reco_arr))
                 except Exception:
+		    print('Could not append the reco vals')
                     continue
 
                 pulses = events['pulses'][i]
@@ -431,7 +434,7 @@ if __name__ == "__main__":
                     final_dict[(omkey.string, omkey.om)] = \
                         [eval(inp[1]) for inp in inputs]
                 for inp_c, inp in enumerate(inputs):
-                    f_slice = np.zeros((1, input_shape[0], input_shape[1],
+		    f_slice = np.zeros((1, input_shape[0], input_shape[1],
                                         input_shape[2], 1))
                     for dom in DOM_list:
                         gpos = grid[dom]
@@ -442,7 +445,6 @@ if __name__ == "__main__":
 
             print('Flush data to HDF File')
             for inp_feature in input_features:
-                print(type(inp_feature))
                 inp_feature.flush()
             reco_vals.flush()
 
