@@ -203,9 +203,9 @@ def classify(p_frame, gcdfile):
                 return 4  # Stopping Track
         if (15 in p_types):
             tau_ind = p_types.index(15)
+            # consider to use the interactiontype here...
             if 'Hadrons' not in p_strings:
-                if has_signature(children[tau_ind], gcdfile) == 0:
-                    return 9  # Glashow Tau
+                return 9  # Glashow Tau
             had_ind = p_strings.index('Hadrons')
             tau_child = I3Tree.children(children[tau_ind])[-1]
             if np.abs(tau_child.pdg_encoding) == 13:

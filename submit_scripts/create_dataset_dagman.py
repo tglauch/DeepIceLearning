@@ -32,7 +32,7 @@ def parseArguments():
     parser.add_argument(
         "--create_script",
         help="Different script to execute",
-        type=str, default='create_dataset_env.sh')
+        type=str, default='submit_scripts/create_dataset_env.sh')
     parser.add_argument(
         "--request_RAM",
         help="amount of RAM in GB",
@@ -66,6 +66,8 @@ script = os.path.join(
     #"/data/user/mkronmueller/code/DeepIceLearning", 
     dataset_parser.get("Basics", "thisfolder"),\
     args.__dict__["create_script"])
+print('Submit Script:')
+print(script)
 dag_name = args.__dict__["name"]
 dagFile = os.path.join(
     WORKDIR, "job_{}.dag".format(dag_name))

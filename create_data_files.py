@@ -411,11 +411,11 @@ if __name__ == "__main__":
                 if not len(reco_arr) == len(dtype):
 		    print('Len of the reco array does not match the dtype')
                     continue
-                reco_vals.append(np.array(reco_arr))
                 try:
                     reco_vals.append(np.array(reco_arr))
                 except Exception:
 		    print('Could not append the reco vals')
+                    print(reco_vals)
                     continue
 
                 pulses = events['pulses'][i]
