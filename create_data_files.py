@@ -328,8 +328,11 @@ if __name__ == "__main__":
         input_shape = eval(input_shape_par)
         grid, DOM_list = fu.make_grid_dict(input_shape, geo)
     else:
-        input_shape = [12, 11, 61]
+        input_shape = [11, 10, 60]
         grid, DOM_list = fu.make_autoHexGrid(geo)
+
+    input_shape_DC = [5, 3, 60]
+    grid_DC, DOM_list_DC = fu.make_Deepcore_Grid(geo)
 
     # Create HDF5 File ##########
     if not os.path.exists(outfolder):
@@ -366,9 +369,15 @@ if __name__ == "__main__":
         for inp in inputs:
             print 'Generate Input Feature {}'.format(inp[0])
             feature = h5file.create_earray(
-                h5file.root, inp[0], tables.Float64Atom(),
+                h5file.root, 'IC_{}'.format(inp[0]), tables.Float64Atom(),
                 (0, input_shape[0], input_shape[1], input_shape[2], 1),
-                title=inp[1])
+                title='IC_{}'.format(inp[1]))
+            feature.flush()
+            input_features.append(feature)
+            feature = h5file.create_earray(
+                h5file.root, 'DC_{}'.format(inp[0]), tables.Float64Atom(),
+                (0, input_shape_DC[0], input_shape_DC[1], input_shape_DC[2], 1),
+                title='DC_{}'.format(inp[1]))
             feature.flush()
             input_features.append(feature)
         reco_vals = tables.Table(h5file.root, 'reco_vals',
@@ -409,12 +418,12 @@ if __name__ == "__main__":
                 TotalEventCounter += 1
                 reco_arr = events['reco_vals'][i]
                 if not len(reco_arr) == len(dtype):
-		    print('Len of the reco array does not match the dtype')
+                    print('Len of the reco array does not match the dtype')
                     continue
                 try:
                     reco_vals.append(np.array(reco_arr))
                 except Exception:
-		    print('Could not append the reco vals')
+                    print('Could not append the reco vals')
                     print(reco_vals)
                     continue
 
@@ -434,14 +443,25 @@ if __name__ == "__main__":
                     final_dict[(omkey.string, omkey.om)] = \
                         [eval(inp[1]) for inp in inputs]
                 for inp_c, inp in enumerate(inputs):
-		    f_slice = np.zeros((1, input_shape[0], input_shape[1],
+                    f_slice = np.zeros((1, input_shape[0],
+                                        input_shape[1],
                                         input_shape[2], 1))
                     for dom in DOM_list:
                         gpos = grid[dom]
                         if dom in final_dict:
                             f_slice[0][gpos[0]][gpos[1]][gpos[2]][0] = \
                                 final_dict[dom][inp_c]
-                    input_features[inp_c].append(f_slice)
+                    input_features[2 * inp_c].append(f_slice)
+
+                    f_slice = np.zeros((1, input_shape_DC[0],
+                                        input_shape_DC[1],
+                                        input_shape_DC[2], 1))
+                    for dom in DOM_list_DC:
+                        gpos = grid_DC[dom]
+                        if dom in final_dict:
+                            f_slice[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                                final_dict[dom][inp_c]
+                    input_features[2 * inp_c + 1].append(f_slice)
 
             print('Flush data to HDF File')
             for inp_feature in input_features:

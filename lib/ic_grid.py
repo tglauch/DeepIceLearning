@@ -159,15 +159,16 @@ def make_autoHexGrid(geometry):
     yinput_bins = np.linspace(np.amin(y_final) - deltay_aligned / 2.,
                               np.amax(y_final) + deltay_aligned / 2.,
                               11)
-    zinput_bins = np.linspace(np.amin(zpos), np.amax(zpos), 60)
+    # zinput_bins = np.linspace(np.amin(zpos), np.amax(zpos), 60)
 
     dom_list_ret = []
     for i, odom in enumerate(DOM_List):
         dom_list_ret.append((odom.string, odom.om))
         grid[(odom.string, odom.om)] = \
-            (np.digitize([x_final[i]], xinput_bins)[0],
-             np.digitize([y_final[i]], yinput_bins)[0],
-             np.digitize([zpos[i]], zinput_bins)[0])
+            (np.digitize([x_final[i]], xinput_bins)[0] - 1,
+             np.digitize([y_final[i]], yinput_bins)[0] - 1,
+             odom.om - 1)
+             # np.digitize([zpos[i]], zinput_bins)[0])
     return grid, dom_list_ret
 
 
@@ -193,3 +194,22 @@ def analyze_grid(grid):
             print index, strings
 
 
+def make_Deepcore_Grid(geometry):
+    # x, y in the new grid for each DeepCore String
+    positions = {79: (1, 1), 80: (3, 1), 81: (2, 0), 82: (4, 0),
+                 83: (4, 1), 84: (2, 2), 85: (0, 1), 86: (0, 0)}
+
+    DOM_List = sorted(
+        [i for i in geometry.keys()
+         if i.om < 61 and i.string in range(79, 87)])
+
+    grid = dict()
+    dom_list_ret = []
+    for i, odom in enumerate(DOM_List):
+        dom_list_ret.append((odom.string, odom.om))
+        grid[(odom.string, odom.om)] = \
+            (positions[odom.string][0],
+             positions[odom.string][1],
+             odom.om - 1)
+
+    return grid, dom_list_ret
