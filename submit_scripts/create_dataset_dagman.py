@@ -18,10 +18,6 @@ def parseArguments():
         help="dataset config ",
         type=str, default='create_dataset.cfg')
     parser.add_argument(
-        "--Rescue",
-        help="If true, run in rescue mode ",
-        action="store_true")
-    parser.add_argument(
         "--filesperJob",
         help="n files per job ", default=-1,
         type=int)
@@ -37,6 +33,10 @@ def parseArguments():
         "--request_RAM",
         help="amount of RAM in GB",
         type=int, default=4)
+    parser.add_argument(
+        "--rescue",
+        help="Run rescue script?!",
+        action='store_true', default=False)
     args = parser.parse_args()
     return args
 
@@ -53,7 +53,7 @@ if __name__ == '__main__':
     dataset_parser.read(args.dataset_config)
     print"############################################\n "
 
-Resc = args.__dict__["Rescue"]
+Resc = args.__dict__["rescue"]
 today = str(datetime.datetime.now()).\
         replace(" ", "-").split(".")[0].replace(":", "-")
 
