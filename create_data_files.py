@@ -367,12 +367,13 @@ if __name__ == "__main__":
             filters=FILTERS) as h5file:
         input_features = []
         for inp in inputs:
-            print 'Generate Input Feature {}'.format(inp[0])
+            print 'Generate Input Feature {}'.format('IC_{}'.format(inp[0]))
             feature = h5file.create_earray(
                 h5file.root, 'IC_{}'.format(inp[0]), tables.Float64Atom(),
                 (0, input_shape[0], input_shape[1], input_shape[2], 1),
                 title='IC_{}'.format(inp[1]))
             feature.flush()
+            print 'Generate Input Feature {}'.format('DC_{}'.format(inp[0]))        
             input_features.append(feature)
             feature = h5file.create_earray(
                 h5file.root, 'DC_{}'.format(inp[0]), tables.Float64Atom(),
