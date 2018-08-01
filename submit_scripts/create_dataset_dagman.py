@@ -54,26 +54,25 @@ if __name__ == '__main__':
     print"############################################\n "
 
 Resc = args.__dict__["rescue"]
-today = str(datetime.datetime.now()).\
-    replace(" ", "-").split(".")[0].replace(":", "-")
-
-PROCESS_DIR = dataset_parser.get("Basics", "dagman_folder") + "/" + today + "/"
-if not os.path.exists(PROCESS_DIR):
-    os.makedirs(PROCESS_DIR)
-
-WORKDIR = os.path.join(PROCESS_DIR, "jobs/")
-script = os.path.join(
-    #"/data/user/mkronmueller/code/DeepIceLearning", 
-    dataset_parser.get("Basics", "thisfolder"),\
-    args.__dict__["create_script"])
-print('Submit Script:')
-print(script)
-dag_name = args.__dict__["name"]
-dagFile = os.path.join(
-    WORKDIR, "job_{}.dag".format(dag_name))
-submitFile = os.path.join(WORKDIR, "job_{}.sub".format(dag_name))
-
 if Resc == '':
+    today = str(datetime.datetime.now()).\
+        replace(" ", "-").split(".")[0].replace(":", "-")
+
+    PROCESS_DIR = dataset_parser.get("Basics", "dagman_folder") + "/" + today + "/"
+    if not os.path.exists(PROCESS_DIR):
+        os.makedirs(PROCESS_DIR)
+
+    WORKDIR = os.path.join(PROCESS_DIR, "jobs/")
+    script = os.path.join(
+        #"/data/user/mkronmueller/code/DeepIceLearning", 
+        dataset_parser.get("Basics", "thisfolder"),\
+        args.__dict__["create_script"])
+    print('Submit Script:')
+    print(script)
+    dag_name = args.__dict__["name"]
+    dagFile = os.path.join(
+        WORKDIR, "job_{}.dag".format(dag_name))
+    submitFile = os.path.join(WORKDIR, "job_{}.sub".format(dag_name))
     if not os.path.exists(WORKDIR):
         os.makedirs(WORKDIR)
         print "Created New Folder in: {}".format(WORKDIR)
