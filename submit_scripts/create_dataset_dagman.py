@@ -36,7 +36,7 @@ def parseArguments():
     parser.add_argument(
         "--rescue",
         help="Run rescue script?!",
-        action='store_true', default=False)
+        type=str, default='')
     args = parser.parse_args()
     return args
 
@@ -55,9 +55,9 @@ if __name__ == '__main__':
 
 Resc = args.__dict__["rescue"]
 today = str(datetime.datetime.now()).\
-        replace(" ", "-").split(".")[0].replace(":", "-")
+    replace(" ", "-").split(".")[0].replace(":", "-")
 
-PROCESS_DIR = dataset_parser.get("Basics", "dagman_folder")+"/"+today+"/"
+PROCESS_DIR = dataset_parser.get("Basics", "dagman_folder") + "/" + today + "/"
 if not os.path.exists(PROCESS_DIR):
     os.makedirs(PROCESS_DIR)
 
@@ -73,7 +73,7 @@ dagFile = os.path.join(
     WORKDIR, "job_{}.dag".format(dag_name))
 submitFile = os.path.join(WORKDIR, "job_{}.sub".format(dag_name))
 
-if not Resc:
+if Resc == '':
     if not os.path.exists(WORKDIR):
         os.makedirs(WORKDIR)
         print "Created New Folder in: {}".format(WORKDIR)
@@ -98,22 +98,22 @@ if not Resc:
                                                **submitFileContent)
     submitFile.dump()
     folderlist = dataset_parser.get("Basics", "folder_list")
-    basepath= []
-    for i in xrange(3): # zum testen
+    basepath = []
+    for i in xrange(3):  # zum testen
     #for i in xrange(len(args['filelist'])):
         a = "MC_path" + str(i)
         basepath.append(str(dataset_parser.get('Basics', a)))
-    
+
     filelist = dataset_parser.get("Basics", "file_list")
     filesperjob = args.filesperJob
     file_bunches = []
 
-    if folderlist == 'allinmcpath': 
+    if folderlist == 'allinmcpath':
         folderlist = []
         for i in xrange(len(basepath)):
             check_sys = os.path.isdir(os.path.join(basepath[i], "00000-00999/clsim-base-4.0.3.0.99_eff"))
             print "Check for systematic dataset: {}".format(check_sys)
-            if check_sys: 
+            if check_sys:
                 a = [subfolder + "/clsim-base-4.0.3.0.99_eff" for subfolder in os.listdir(basepath[i])
                          if os.path.isdir(os.path.join(basepath[i], subfolder))]
             else:
@@ -137,8 +137,8 @@ if not Resc:
              longest = len(folderlist[j])
     for j, sim in enumerate(folderlist):
         if len(folderlist[j]) < longest:
-             factor = longest/len(folderlist[j])
-             factor_list.append(factor*10)
+             factor = longest / len(folderlist[j])
+             factor_list.append(factor * 10)
         else:
              factor_list.append(10)
     factor_list = factor_list
@@ -205,10 +205,10 @@ if not Resc:
         #list_file_bunches.append(file_bunches)
 #################### if Job number is set by hand ################
     misty = 0
-    while misty <= 999: #### bad quick fix
-    #while misty <= 199: #### bad quick fix
+    while misty <= 999:  # bad quick fix
+    #while misty <= 199: # bad quick fix
         file_bunches.append('File_{}'.format(misty))
-        misty +=1
+        misty += 1
 ###################################################################
     nodes = []
     for i, bunch in enumerate(file_bunches):
@@ -226,5 +226,7 @@ if not Resc:
         nodes.append(node)
     dag = pydag.dagman.DAGManJob(dagFile, nodes)
     dag.dump()
+else:
+    dagFile = Resc
 os.system("condor_submit_dag -f " + dagFile)
 time.sleep(1)
