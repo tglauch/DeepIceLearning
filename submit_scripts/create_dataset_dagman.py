@@ -90,7 +90,7 @@ if not Resc:
                          "log": "$(LOGFILE).log",
                          "output": "$(LOGFILE).out",
                          "error": "$(LOGFILE).err",
-			 "Requirements : HAS_CVMFS_icecube_opensciencegrid_org && (OpSysMajorVer =?= 7)"
+	#		 "Requirements" : "HAS_CVMFS_icecube_opensciencegrid_org",
                          "request_memory": RAM_str,
                          "arguments": arguments}
     submitFile = pydag.htcondor.HTCondorSubmit(submitFile,
