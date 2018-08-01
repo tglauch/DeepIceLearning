@@ -55,7 +55,7 @@ def starting(p_frame, gcdfile):
     I3Tree = p_frame['I3MCTree']
     neutrino = get_the_right_particle(p_frame, gcdfile)
     primary_list = I3Tree.get_primaries()
-    surface = icecube.MuonGun.ExtrudedPolygon.from_file(gcdfile, padding=25)
+    surface = icecube.MuonGun.ExtrudedPolygon.from_file(gcdfile, padding=100)
     intersections = surface.intersection(neutrino.pos + neutrino.length * neutrino.dir, neutrino.dir)
     if intersections.first <= 0 and intersections.second > 0:
         starting = 0  # starting event
