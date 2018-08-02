@@ -90,6 +90,7 @@ if Resc == '':
                          "output": "$(LOGFILE).out",
                          "error": "$(LOGFILE).err",
 	#		 "Requirements" : "HAS_CVMFS_icecube_opensciencegrid_org",
+                         "Requirements" : '(Machine != "n-15.icecube.wisc.edu")',
                          "request_memory": RAM_str,
                          "arguments": arguments}
     submitFile = pydag.htcondor.HTCondorSubmit(submitFile,
