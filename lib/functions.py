@@ -216,23 +216,22 @@ def generator(batch_size, file_handlers, inds,
                             file_handlers[cur_file]['reco_vals']
                             [var[0]][temp_cur_event_id:temp_cur_event_id +
                                      fill_batch])
-                        cur_len += fill_batch
-                        temp_cur_event_id += fill_batch
                         event_list.extend(zip(np.full(fill_batch, cur_file),
                                               range(temp_cur_event_id,
                                                     temp_cur_event_id +
                                                     fill_batch)))
+                        cur_len += fill_batch
+                        temp_cur_event_id += fill_batch
+
                     else:
                         temp_out.extend(
                             file_handlers[cur_file]['reco_vals'][var[0]]
                             [temp_cur_event_id:temp_up_to])
-                        cur_len += temp_up_to - temp_cur_event_id
-                        temp_cur_file += 1
-                        event_list.extend(zip(np.full(temp_cur_event_id -
-                                                      temp_up_to,
-                                                      cur_file),
+                        event_list.extend(zip(np.full(-temp_cur_event_id + temp_up_to, cur_file),
                                               range(temp_cur_event_id,
                                                     temp_up_to)))
+                        cur_len += temp_up_to - temp_cur_event_id
+                        temp_cur_file += 1
                         if temp_cur_file == len(file_handlers):
                             break
                         else:
@@ -243,8 +242,9 @@ def generator(batch_size, file_handlers, inds,
                     slice_ind = [slice(None)] * batch_out[j][i].ndim
                     slice_ind[-1] = slice(k, k + 1, 1)
                     pre_append = var[1](temp_out[i],
-                                        file_handlers[event_list[i][0]]
-                                        ['reco_vals'][event_list[i][1]])
+                                        file_handlers[event_list[i][0]])
+                    #                    ['reco_vals'][event_list[i][1]])
+		    #print type(pre_append)
                     if var == 'time':
                         pre_append[pre_append == np.inf] = -1
                     if len(var_array) > 1:
