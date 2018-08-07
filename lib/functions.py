@@ -226,8 +226,8 @@ def generator(batch_size, file_handlers, inds,
                         temp_out.extend(
                             file_handlers[cur_file]['reco_vals'][var[0]]
                             [temp_cur_event_id:temp_up_to])
-                        event_list.extend(zip(np.full(temp_cur_event_id -
-                                                      temp_up_to,
+                        event_list.extend(zip(np.full(temp_up_to -
+                                                      temp_cur_event_id,
                                                       cur_file),
                                               range(temp_cur_event_id,
                                                     temp_up_to)))
