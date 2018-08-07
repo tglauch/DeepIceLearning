@@ -10,6 +10,7 @@ import argparse
 import lib.model_parse as mp
 import cPickle as pickle
 
+
 def parseArguments():
 
     parser = argparse.ArgumentParser()
@@ -39,7 +40,6 @@ def parseArguments():
         help="weights of the model to apply", default="")
     args = parser.parse_args()
     return args
-
 
 
 args = parseArguments()
@@ -113,7 +113,7 @@ if __name__ == "__main__":
 
     if run_info['Files'] == ['all']:
         input_files = os.listdir(mc_location)
-    elif isinstance(run_info["Files"],list):
+    elif isinstance(run_info["Files"], list):
         input_files = run_info['Files']
     else:
         input_files = run_info['Files'].split(':')
@@ -146,10 +146,12 @@ if __name__ == "__main__":
 
     ngpus = args.__dict__['ngpus']
 #######################################################################################
-    args.__dict__["load_weights"] = os.path.join(DATA_DIR, "best_val_loss.npy")
-    if args.__dict__["weights"]:
-	#print "NICE"
-	args.__dict__["load_weights"] = os.path.join(DATA_DIR, args.__dict__["weights"])
+    if args.__dict__["weights"] != '':
+        args.__dict__["load_weights"] = os.path.join(DATA_DIR,
+                                                     args.__dict__["weights"])
+    else:
+        args.__dict__["load_weights"] = os.path.join(DATA_DIR,
+                                                     "best_val_loss.npy")
 #####################################################################################
     print'Use {} GPUS'.format(ngpus)
     if ngpus > 1:
@@ -163,7 +165,7 @@ if __name__ == "__main__":
             raise Exception(
                 'Multi GPU can only be used with tensorflow as Backend.')
     else:
-        print "BASE MODEL:  {}".format( base_model)
+        print "BASE MODEL:  {}".format(base_model)
         model = read_NN_weights(args.__dict__, base_model)
 
     os.system("nvidia-smi")
@@ -172,25 +174,25 @@ if __name__ == "__main__":
 
     num_events = np.sum([k[1] - k[0] for k in test_inds])
     print('Apply the NN to {} events'.format(num_events))
-    file_handlers = [h5py.File(os.path.join(mc_location, file_name))\
+    file_handlers = [h5py.File(os.path.join(mc_location, file_name))
                      for file_name in input_files]
-    steps_per_epoch = math.ceil(np.sum([k[1] - k[0] for k in\
-                                        test_inds])/args.batch_size)
+    steps_per_epoch = math.ceil(np.sum([k[1] - k[0] for k in
+                                        test_inds]) / args.batch_size)
     if steps_per_epoch == 0:
-    	print "steps per epoch is 0, therefore manually set to 1"
+        print "steps per epoch is 0, therefore manually set to 1"
         steps_per_epoch = 1
 
     prediction = model.predict_generator(
-                 generator(args.batch_size,\
-                           file_handlers,\
-                           test_inds,\
-                           inp_shapes,\
-                           inp_trans,\
-                           out_shapes,\
-                           out_trans),
-                steps = steps_per_epoch,\
-                verbose=1,\
-                max_q_size=2)
+        generator(args.batch_size,
+                  file_handlers,
+                  test_inds,
+                  inp_shapes,
+                  inp_trans,
+                  out_shapes,
+                  out_trans),
+        steps=steps_per_epoch,
+        verbose=1,
+        max_q_size=2)
     #print prediction 
     #np.save(os.path.join(DATA_DIR, 'predictions_mk.npy'), prediction)
 
@@ -206,9 +208,9 @@ if __name__ == "__main__":
     outbranch0 = out_shapes.keys()[0]
     for ref_out in reference_outputs:
         out_shapes[outbranch0][ref_out] = 1
-    mc_truth = [[] for br in out_shapes.keys()\
-                for var in out_shapes[br].keys()\
-                if var!='general']
+    mc_truth = [[] for br in out_shapes.keys()
+                for var in out_shapes[br].keys()
+                if var != 'general']
     reco_vals = []
     hit_vals = []
 
@@ -221,36 +223,37 @@ if __name__ == "__main__":
         #print "up_reduced: {}".format(up_reduced)
         #temp_truth = file_handler['reco_vals'][down:up_reduced]
         temp_truth = file_handler['reco_vals'][down:up]
-        for j, var in enumerate([var for br in out_shapes.keys() \
-                                for var in out_shapes[br].keys()\
-                                if var!='general']):
-              mc_truth[j].extend(temp_truth[var])
-        reco_vals.extend(temp_truth) 
+        for j, var in enumerate([var for br in out_shapes.keys()
+                                for var in out_shapes[br].keys()
+                                if var != 'general']):
+            mc_truth[j].extend(temp_truth[var])
+        reco_vals.extend(temp_truth)
 ###################################################################################
         hit_DOMs_list = []
-	for k in xrange(up-down):
-	    charge = file_handler["charge"][down+k]
-	    hitDOMs = np.count_nonzero(charge)
-	    hit_DOMs_list.append(hitDOMs)
-	hit_vals.extend(hit_DOMs_list)
+    for k in xrange(up - down):
+        charge = file_handler["charge"][down + k]
+        hitDOMs = np.count_nonzero(charge)
+        hit_DOMs_list.append(hitDOMs)
+    hit_vals.extend(hit_DOMs_list)
 ##################################################################################
-    dtype = np.dtype([(var + '_truth', np.float64)\
-                      for br in out_shapes.keys() \
-                      for var in out_shapes[br].keys()\
-                      if var!='general'])
+    dtype = np.dtype([(var + '_truth', np.float64)
+                      for br in out_shapes.keys()
+                      for var in out_shapes[br].keys()
+                      if var != 'general'])
     mc_truth = np.array(zip(*np.array(mc_truth)), dtype=dtype)
     #mc_truth = np.array(zip(*np.array(mc_truth)))
 
     #write-out the mc_truth and the prediction separately to a joint pickle
     #file...we can also look for a nicer solution with dtypes again. but the
     #output-shape of prediction should be variable
-    MANUAL_writeout_pred_and_exit= True
+    MANUAL_writeout_pred_and_exit = True
     #save_name = "prediction.pickle"
-    save_name= args.__dict__["weights"][:-4] + "_pred.pickle"
+    save_name = args.__dict__["weights"][:-4] + "_pred.pickle"
     print save_name
     if MANUAL_writeout_pred_and_exit:
-        pickle.dump({"mc_truth": mc_truth, "prediction": prediction, "reco_vals": reco_vals, "HitDOMs": hit_vals},\
-                    open(os.path.join(DATA_DIR, save_name),"wc"))
+        pickle.dump({"mc_truth": mc_truth, "prediction": prediction,
+                     "reco_vals": reco_vals, "HitDOMs": hit_vals},
+                    open(os.path.join(DATA_DIR, save_name), "wc"))
         print(' \n Finished .... Exiting.....')
         exit(0)
 '''
@@ -265,4 +268,3 @@ if __name__ == "__main__":
         flatten=True,
         usemask=False))
 '''
-
