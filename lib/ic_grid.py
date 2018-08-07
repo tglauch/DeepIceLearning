@@ -159,7 +159,7 @@ def make_autoHexGrid(geometry):
     yinput_bins = np.linspace(np.amin(y_final) - deltay_aligned / 2.,
                               np.amax(y_final) + deltay_aligned / 2.,
                               11)
-    # zinput_bins = np.linspace(np.amin(zpos), np.amax(zpos), 60)
+    #zinput_bins = np.linspace(np.amin(zpos), np.amax(zpos), 60)
 
     dom_list_ret = []
     for i, odom in enumerate(DOM_List):
@@ -168,7 +168,7 @@ def make_autoHexGrid(geometry):
             (np.digitize([x_final[i]], xinput_bins)[0] - 1,
              np.digitize([y_final[i]], yinput_bins)[0] - 1,
              odom.om - 1)
-             # np.digitize([zpos[i]], zinput_bins)[0])
+     #        np.digitize([zpos[i]], zinput_bins)[0])
     return grid, dom_list_ret
 
 

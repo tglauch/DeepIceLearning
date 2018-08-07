@@ -194,7 +194,13 @@ def save_to_array(phy_frame):
 
 
 def event_picker(phy_frame):
-    e_type = lib.reco_quantities.classify(phy_frame, geometry_file)
+    try:
+        e_type = lib.reco_quantities.classify(phy_frame, geometry_file)
+    except Exception:
+        print('The following event could not be classified')
+        print(phy_frame['I3EventHeader'])
+        print('First particle {}'.format(phy_frame['I3MCTree'][0].pdg_encoding))
+        return False
     rand = np.random.choice(range(1, max_scale+1))
     if e_type not in scale_class.keys():
         scaling = max_scale
@@ -389,7 +395,7 @@ if __name__ == "__main__":
         print(h5file)
         print(h5file.root)
 
-        # np.save('grid.npy', grid)
+        np.save('grid.npy', grid)
         TotalEventCounter = 0
         skipped_frames = 0
         statusInFilelist = 0
