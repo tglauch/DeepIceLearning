@@ -350,6 +350,15 @@ if __name__ == "__main__":
             'Training_Parameters', 'single_gpu_batch_size'))
     file_handlers = [h5py.File(os.path.join(mc_location, file_name))
                      for file_name in input_files]
+    t_c =0
+    while t_c < len(test_inds):
+        if (test_inds[t_c][1]-test_inds[t_c][0])<=0:
+            del valid_inds[t_c]
+            del train_inds[t_c]
+            del file_handlers[t_c]
+        else:
+            t_c+=1    
+    
     # saving model every epoch
     every_model = keras.callbacks.ModelCheckpoint(
         save_path + "/model_all_epochs/weights_{epoch:02d}.npy",

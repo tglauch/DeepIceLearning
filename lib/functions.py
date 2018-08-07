@@ -150,11 +150,8 @@ def generator(batch_size, file_handlers, inds,
                      for branch in out_branches]
     batch_input = [np.zeros((batch_size,) + branch[1])
                    for branch in in_branches]
-    #batch_out = [np.zeros((batch_size,) + (branch[1],))
-    #             for branch in out_branches]
     batch_out = [np.zeros((batch_size,) + branch[1])
                  for branch in out_branches]
-    #print batch_out
     cur_file = 0
     cur_event_id = inds[cur_file][0]
     cur_len = 0
@@ -174,13 +171,13 @@ def generator(batch_size, file_handlers, inds,
                     fill_batch = batch_size - cur_len
                     if fill_batch < (temp_up_to - temp_cur_event_id):
                         temp_in.extend(
-                            file_handlers[cur_file][var[0]]
+                            file_handlers[temp_cur_file][var[0]]
                             [temp_cur_event_id:temp_cur_event_id + fill_batch])
                         cur_len += fill_batch
                         temp_cur_event_id += fill_batch
                     else:
                         temp_in.extend(
-                            file_handlers[cur_file][var[0]]
+                            file_handlers[temp_cur_file][var[0]]
                             [temp_cur_event_id:temp_up_to])
                         cur_len += temp_up_to - temp_cur_event_id
                         temp_cur_file += 1
@@ -189,7 +186,7 @@ def generator(batch_size, file_handlers, inds,
                         else:
                             temp_cur_event_id = inds[temp_cur_file][0]
                             temp_up_to = inds[temp_cur_file][1]
-
+                            print('File {} from {} to {}'.format(file_handlers[temp_cur_file].filename,temp_cur_event_id, temp_up_to))
                 for i in range(len(temp_in)):
                     slice_ind = [slice(None)] * batch_input[j][i].ndim
                     slice_ind[-1] = slice(k, k + 1, 1)
@@ -212,25 +209,23 @@ def generator(batch_size, file_handlers, inds,
                 while cur_len < batch_size:
                     fill_batch = batch_size - cur_len
                     if fill_batch < (temp_up_to - temp_cur_event_id):
-                        print('1')
                         temp_out.extend(
-                            file_handlers[cur_file]['reco_vals']
+                            file_handlers[temp_cur_file]['reco_vals']
                             [var[0]][temp_cur_event_id:temp_cur_event_id +
                                      fill_batch])
-                        event_list.extend(zip(np.full(fill_batch, cur_file),
+                        event_list.extend(zip(np.full(fill_batch, temp_cur_file),
                                               range(temp_cur_event_id,
                                                     temp_cur_event_id +
                                                     fill_batch)))
                         cur_len += fill_batch
                         temp_cur_event_id += fill_batch
                     else:
-                        print('2')
                         temp_out.extend(
-                            file_handlers[cur_file]['reco_vals'][var[0]]
+                            file_handlers[temp_cur_file]['reco_vals'][var[0]]
                             [temp_cur_event_id:temp_up_to])
                         event_list.extend(zip(np.full(temp_up_to -
                                                       temp_cur_event_id,
-                                                      cur_file),
+                                                      temp_cur_file),
                                               range(temp_cur_event_id,
                                                     temp_up_to)))
                         cur_len += temp_up_to - temp_cur_event_id
@@ -240,9 +235,7 @@ def generator(batch_size, file_handlers, inds,
                         else:
                             temp_cur_event_id = inds[temp_cur_file][0]
                             temp_up_to = inds[temp_cur_file][1]
-                print len(temp_out)
-                print len(event_list)
-                print ('----')
+
                 for i in range(len(temp_out)):
                     slice_ind = [slice(None)] * batch_out[j][i].ndim
                     slice_ind[-1] = slice(k, k + 1, 1)
@@ -263,7 +256,7 @@ def generator(batch_size, file_handlers, inds,
             up_to = inds[0][1]
         else:
             if temp_cur_file != cur_file:
-                print('\n Read File Number {} \n'.format(temp_cur_file + 1))
+                print('\n Read File Number {} \n'.format(file_handlers[temp_cur_file + 1].filename))
                 if not val_run:
                     print(' \n CPU RAM Usage {:.2f} GB'.
                           format(resource.getrusage(

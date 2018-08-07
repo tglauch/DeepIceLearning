@@ -172,10 +172,18 @@ if __name__ == "__main__":
 
     # Saving the Final Model and Calculation/Saving of Result for Test Dataset ####
 
-    num_events = np.sum([k[1] - k[0] for k in test_inds])
-    print('Apply the NN to {} events'.format(num_events))
     file_handlers = [h5py.File(os.path.join(mc_location, file_name))
                      for file_name in input_files]
+    t_c =0
+    while t_c < len(test_inds):        
+        if (test_inds[t_c][1]-test_inds[t_c][0])<=0:
+            del test_inds[t_c]
+            del file_handlers[t_c]
+        else:
+            t_c+=1
+            
+    num_events = np.sum([k[1] - k[0] for k in test_inds])
+    print('Apply the NN to {} events'.format(num_events))
     steps_per_epoch = math.ceil(np.sum([k[1] - k[0] for k in
                                         test_inds]) / args.batch_size)
     if steps_per_epoch == 0:

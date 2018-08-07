@@ -32,7 +32,8 @@ def plus_one_log10(x):
     tmp = x + 1.
     return np.log10(tmp)
 
-def zenith_prep(x, r_vals):
+def zenith_prep(x, r_vals):i
+    print r_vals
     x =  x / np.pi
     return x
 
