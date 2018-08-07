@@ -126,7 +126,7 @@ def generator(batch_size, file_handlers, inds,
     batch size : the batch size per gpu
     file_location: path to the folder containing the training files
     file_list: list of files used for the training
-    inds: the index range used for the training set
+    inds: the index range used for the dataset
     inp_shape_dict: A dictionary with the input shape for each branch
     inp_transformations: Dictionary with input variable name and function
     out_shape_dict: A dictionary with the output shape for each branch
@@ -212,6 +212,7 @@ def generator(batch_size, file_handlers, inds,
                 while cur_len < batch_size:
                     fill_batch = batch_size - cur_len
                     if fill_batch < (temp_up_to - temp_cur_event_id):
+                        print('1')
                         temp_out.extend(
                             file_handlers[cur_file]['reco_vals']
                             [var[0]][temp_cur_event_id:temp_cur_event_id +
@@ -223,6 +224,7 @@ def generator(batch_size, file_handlers, inds,
                         cur_len += fill_batch
                         temp_cur_event_id += fill_batch
                     else:
+                        print('2')
                         temp_out.extend(
                             file_handlers[cur_file]['reco_vals'][var[0]]
                             [temp_cur_event_id:temp_up_to])
