@@ -186,7 +186,6 @@ def generator(batch_size, file_handlers, inds,
                         else:
                             temp_cur_event_id = inds[temp_cur_file][0]
                             temp_up_to = inds[temp_cur_file][1]
-                            print('File {} from {} to {}'.format(file_handlers[temp_cur_file].filename,temp_cur_event_id, temp_up_to))
                 for i in range(len(temp_in)):
                     slice_ind = [slice(None)] * batch_input[j][i].ndim
                     slice_ind[-1] = slice(k, k + 1, 1)
