@@ -14,7 +14,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import tables
+import h5py
 import numpy as np
 import importlib
 import os
@@ -28,14 +28,14 @@ def prepare_io_shapes(inputs, outputs, exp_file):
     out_transformations = OrderedDict()
     out_shapes = OrderedDict()
     # open example file
-    inp_file = tables.open_file(exp_file)
+    inp_file = h5py.File(exp_file)
 
     for br in inputs:
         inp_shapes[br] = {}
         inp_transformations[br] = {}
         for var, tr in zip(inputs[br]["variables"],
                            inputs[br]["transformations"]):
-            test_arr = np.array(inp_file._get_node("/" + var)[0])
+            test_arr = np.array(inp_file[var][0])
             res_shape = np.shape(np.squeeze(tr(test_arr))) if not \
                     isinstance(tr(test_arr), np.float) else (1,)
             print(br,var,res_shape)
@@ -55,9 +55,9 @@ def prepare_io_shapes(inputs, outputs, exp_file):
         out_transformations[br] = {}
         for var, tr in zip(outputs[br]["variables"],
                            outputs[br]["transformations"]):
-            test_arr = np.array(inp_file._get_node("/reco_vals").col(var)[0])
-            res_shape = np.shape(np.squeeze(tr(test_arr))) if not \
-                    isinstance(tr(test_arr), np.float) else (1,)
+            test_arr = np.array(inp_file['reco_vals'][var][0])
+            res_shape = np.shape(np.squeeze(tr(test_arr, inp_file["reco_vals"][:][0]))) if not \
+                    isinstance(tr(test_arr, inp_file["reco_vals"][:][0]), np.float) else (1,)
             print(br,var,res_shape)
             out_shapes[br][var] = res_shape
             out_transformations[br][var] = tr
@@ -86,8 +86,6 @@ def parse_reference_output(cfg_file):
 def parse_functional_model(cfg_file, exp_file):
     # fancy relative imports..
     sys.path.append(os.path.dirname(cfg_file))
-    #sys.path.append("/scratch9/mkron/software/DeepIceLearning/Networks/classifikation_mk/")
-    #sys.path.append("/scratch9/mkron/data/NN_out/run35/")
     sys.path.append(os.getcwd()+"/"+os.path.dirname(cfg_file))
     mname = os.path.splitext(os.path.basename(cfg_file))[0]
     func_model_def = importlib.import_module(mname)

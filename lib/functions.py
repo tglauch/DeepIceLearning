@@ -240,7 +240,7 @@ def generator(batch_size, file_handlers, inds,
                     slice_ind[-1] = slice(k, k + 1, 1)
                     pre_append = var[1](temp_out[i],
                                         file_handlers[event_list[i][0]]
-                                        ['reco_vals'][event_list[i][1]])
+                                        ['reco_vals'][:][event_list[i][1]])
                     if var == 'time':
                         pre_append[pre_append == np.inf] = -1
                     if len(var_array) > 1:

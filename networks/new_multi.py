@@ -10,12 +10,13 @@ from keras import regularizers
 from keras.utils import to_categorical
 import sys
 from collections import OrderedDict
-sys.path.append("..")
-sys.path.append("/scratch9/mkron/software/DeepIceLearning/lib")
+import os
+sys.path.append(os.path.abspath(".."))
+sys.path.append(os.path.join(os.path.abspath(".."),'lib'))
 import transformations as tr
 #import block_units
 import numpy as np
-import block_unit as bunit
+import block_units as bunit
 
 
 # *Settings*

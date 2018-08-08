@@ -20,7 +20,6 @@ from six.moves import configparser
 import socket
 import argparse
 import h5py
-import tables
 import lib.model_parse as mp
 import sys
 import numpy.lib.recfunctions as rfn
@@ -367,9 +366,6 @@ if __name__ == "__main__":
         save_best_only=False,
         mode='auto',
         period=1)
-
-    #file_handlers = [tables.open_file(os.path.join(mc_location, file_name))
-    #                 for file_name in input_files]
 
     epoch_divider = int(parser.get('Training_Parameters', 'epoch_divider'))
     model.fit_generator(
