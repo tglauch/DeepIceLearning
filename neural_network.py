@@ -338,6 +338,7 @@ if __name__ == "__main__":
         if (test_inds[t_c][1] - test_inds[t_c][0]) <= 0:
             del valid_inds[t_c]
             del train_inds[t_c]
+            del test_inds[t_c]
             del file_handlers[t_c]
         else:
             t_c += 1
