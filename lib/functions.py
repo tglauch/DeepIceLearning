@@ -126,7 +126,7 @@ def generator(batch_size, file_handlers, inds,
     batch size : the batch size per gpu
     file_location: path to the folder containing the training files
     file_list: list of files used for the training
-    inds: the index range used for the training set
+    inds: the index range used for the dataset
     inp_shape_dict: A dictionary with the input shape for each branch
     inp_transformations: Dictionary with input variable name and function
     out_shape_dict: A dictionary with the output shape for each branch
@@ -150,11 +150,8 @@ def generator(batch_size, file_handlers, inds,
                      for branch in out_branches]
     batch_input = [np.zeros((batch_size,) + branch[1])
                    for branch in in_branches]
-    #batch_out = [np.zeros((batch_size,) + (branch[1],))
-    #             for branch in out_branches]
     batch_out = [np.zeros((batch_size,) + branch[1])
                  for branch in out_branches]
-    #print batch_out
     cur_file = 0
     cur_event_id = inds[cur_file][0]
     cur_len = 0
@@ -174,13 +171,13 @@ def generator(batch_size, file_handlers, inds,
                     fill_batch = batch_size - cur_len
                     if fill_batch < (temp_up_to - temp_cur_event_id):
                         temp_in.extend(
-                            file_handlers[cur_file][var[0]]
+                            file_handlers[temp_cur_file][var[0]]
                             [temp_cur_event_id:temp_cur_event_id + fill_batch])
                         cur_len += fill_batch
                         temp_cur_event_id += fill_batch
                     else:
                         temp_in.extend(
-                            file_handlers[cur_file][var[0]]
+                            file_handlers[temp_cur_file][var[0]]
                             [temp_cur_event_id:temp_up_to])
                         cur_len += temp_up_to - temp_cur_event_id
                         temp_cur_file += 1
@@ -189,7 +186,6 @@ def generator(batch_size, file_handlers, inds,
                         else:
                             temp_cur_event_id = inds[temp_cur_file][0]
                             temp_up_to = inds[temp_cur_file][1]
-
                 for i in range(len(temp_in)):
                     slice_ind = [slice(None)] * batch_input[j][i].ndim
                     slice_ind[-1] = slice(k, k + 1, 1)
@@ -213,21 +209,22 @@ def generator(batch_size, file_handlers, inds,
                     fill_batch = batch_size - cur_len
                     if fill_batch < (temp_up_to - temp_cur_event_id):
                         temp_out.extend(
-                            file_handlers[cur_file]['reco_vals']
+                            file_handlers[temp_cur_file]['reco_vals']
                             [var[0]][temp_cur_event_id:temp_cur_event_id +
                                      fill_batch])
-                        event_list.extend(zip(np.full(fill_batch, cur_file),
+                        event_list.extend(zip(np.full(fill_batch, temp_cur_file),
                                               range(temp_cur_event_id,
                                                     temp_cur_event_id +
                                                     fill_batch)))
                         cur_len += fill_batch
                         temp_cur_event_id += fill_batch
-
                     else:
                         temp_out.extend(
-                            file_handlers[cur_file]['reco_vals'][var[0]]
+                            file_handlers[temp_cur_file]['reco_vals'][var[0]]
                             [temp_cur_event_id:temp_up_to])
-                        event_list.extend(zip(np.full(-temp_cur_event_id + temp_up_to, cur_file),
+                        event_list.extend(zip(np.full(temp_up_to -
+                                                      temp_cur_event_id,
+                                                      temp_cur_file),
                                               range(temp_cur_event_id,
                                                     temp_up_to)))
                         cur_len += temp_up_to - temp_cur_event_id
@@ -242,9 +239,8 @@ def generator(batch_size, file_handlers, inds,
                     slice_ind = [slice(None)] * batch_out[j][i].ndim
                     slice_ind[-1] = slice(k, k + 1, 1)
                     pre_append = var[1](temp_out[i],
-                                        file_handlers[event_list[i][0]])
-                    #                    ['reco_vals'][event_list[i][1]])
-		    #print type(pre_append)
+                                        file_handlers[event_list[i][0]]
+                                        ['reco_vals'][event_list[i][1]])
                     if var == 'time':
                         pre_append[pre_append == np.inf] = -1
                     if len(var_array) > 1:
@@ -259,7 +255,7 @@ def generator(batch_size, file_handlers, inds,
             up_to = inds[0][1]
         else:
             if temp_cur_file != cur_file:
-                print('\n Read File Number {} \n'.format(temp_cur_file + 1))
+                #print('\n Read File Number {} \n'.format(file_handlers[temp_cur_file + 1].filename))
                 if not val_run:
                     print(' \n CPU RAM Usage {:.2f} GB'.
                           format(resource.getrusage(
