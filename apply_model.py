@@ -105,20 +105,7 @@ if __name__ == "__main__":
     conf_model_file = os.path.join(DATA_DIR, args.model)
     print args.model
     print "##############################################################"
-    #conf_model_file = "/scratch9/mkron/software/DeepIceLearning/Networks/classifikation_mk/classification_concatenate.py"
     test_inds = run_info["Test_Inds"]
-
-    # Alternative wit a simple numpy dict is implemented instead, see above
-    #shelf = shelve.open(os.path.join(DATA_DIR, 'run_info.shlf'))
-
-    #if shelf['Files'] == ['all']:
-        #input_files = os.listdir(mc_location)
-    #elif isinstance(shelf["Files"],list):
-        #input_files = shelf['Files']
-    #else:
-        #input_files = shelf['Files'].split(':')
-    #conf_model_file = os.path.join(DATA_DIR,"model.py")
-    #test_inds = shelf["Test_Inds"]
 
 
     # create model (new implementation, functional API of Keras)
@@ -159,13 +146,13 @@ if __name__ == "__main__":
 
     file_handlers = [h5py.File(os.path.join(mc_location, file_name))
                      for file_name in input_files]
-    t_c =0
+    t_c = 0
     while t_c < len(test_inds):
         if (test_inds[t_c][1]-test_inds[t_c][0])<=0:
             del test_inds[t_c]
             del file_handlers[t_c]
         else:
-            t_c+=1
+            t_c += 1
 
     num_events = np.sum([k[1] - k[0] for k in test_inds])
     print('Apply the NN to {} events'.format(num_events))
@@ -186,15 +173,7 @@ if __name__ == "__main__":
         steps=steps_per_epoch,
         verbose=1,
         max_q_size=2)
-    #print prediction 
-    #np.save(os.path.join(DATA_DIR, 'predictions_mk.npy'), prediction)
 
-
-
-
-
-
-    ## write out muex etc for comparison later
     reference_outputs = mp.parse_reference_output(conf_model_file)
     #print('Reference output-vars: ', reference_outputs)
     ## add to first out-branch:
@@ -218,13 +197,13 @@ if __name__ == "__main__":
             mc_truth[j].extend(temp_truth[var])
         reco_vals.extend(temp_truth)
     IC_hit_DOMs_list = []
-	DC_hit_DOMs_list = []
+    DC_hit_DOMs_list = []
     for k in xrange(up - down):
         IC_charge = file_handler["IC_charge"][down + k]
         DC_charge = file_handler["DC_charge"][down + k]
         IC_hitDOMs = np.count_nonzero(IC_charge)
         IC_hit_DOMs_list.append(IC_hitDOMs)
-	    DC_hitDOMs = np.count_nonzero(DC_charge)
+        DC_hitDOMs = np.count_nonzero(DC_charge)
         DC_hit_DOMs_list.append(DC_hitDOMs)
     IC_hit_vals.extend(IC_hit_DOMs_list)
     DC_hit_vals.extend(DC_hit_DOMs_list)
@@ -233,30 +212,19 @@ if __name__ == "__main__":
                       for var in out_shapes[br].keys()
                       if var != 'general'])
     mc_truth = np.array(zip(*np.array(mc_truth)), dtype=dtype)
-    #mc_truth = np.array(zip(*np.array(mc_truth)))
 
     #write-out the mc_truth and the prediction separately to a joint pickle
     #file...we can also look for a nicer solution with dtypes again. but the
     #output-shape of prediction should be variable
     MANUAL_writeout_pred_and_exit = True
-    #save_name = "prediction.pickle"
     save_name = args.__dict__["weights"][:-4] + "_pred.pickle"
     print save_name
     if MANUAL_writeout_pred_and_exit:
-        pickle.dump({"mc_truth": mc_truth, "prediction": prediction,
-                     "reco_vals": reco_vals, "IC_HitDOMs": IC_hit_vals, "DC_HitDOMs": DC_hit_vals},
+        pickle.dump({"mc_truth": mc_truth,
+                     "prediction": prediction,
+                     "reco_vals": reco_vals,
+                     "IC_HitDOMs": IC_hit_vals,
+                     "DC_HitDOMs": DC_hit_vals},
                     open(os.path.join(DATA_DIR, save_name), "wc"))
         print(' \n Finished .... Exiting.....')
         exit(0)
-'''
-    dtype = np.dtype([(var, np.float64) for br in out_shapes.keys()\
-                      for var in out_shapes[br].keys() if var!='general'])
-    prediction = np.array(zip(*[np.concatenate(prediction[:, i:i + 1])
-                      for i in range(np.shape(prediction)[-1])]),
-                      dtype=dtype)[0:num_events]
-
-    np.save(os.path.join(DATA_DIR, 'test_res.npy'),
-        rfn.merge_arrays([mc_truth, prediction],
-        flatten=True,
-        usemask=False))
-'''
