@@ -54,21 +54,6 @@ os.environ["KERAS_BACKEND"] = backend
 if backend == 'theano':
     os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=gpu,floatX=float32"
 
-cuda_path = parser.get('Basics', 'cuda_installation')
-if not os.path.exists(cuda_path):
-    raise Exception('Given Cuda installation does not exist!')
-
-if cuda_path not in os.environ['LD_LIBRARY_PATH'].split(os.pathsep):
-    print('Setting Cuda Path...')
-    os.environ["PATH"] += os.pathsep + cuda_path
-    os.environ['LD_LIBRARY_PATH'] += os.pathsep + cuda_path
-    try:
-        print('Attempt to Restart with new Cuda Path')
-        os.execv(sys.argv[0], sys.argv)
-    except Exception, exc:
-        print 'Failed re-exec:', exc
-        sys.exit(1)
-
 if backend == 'tensorflow':
     print('Run with backend Tensorflow')
     import tensorflow as tf
