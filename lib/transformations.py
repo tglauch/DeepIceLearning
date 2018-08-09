@@ -160,6 +160,8 @@ def oneHotEncode_EventType(x, r_vals=None):
     """
     This function one hot encodes the input for the event types cascade, tracks, doubel-bang
     """
+    print "r_vals: {}".format(r_vals)
+    print "x: {}".format(x)
     # define universe of possible input values
     fail = [0., 0., 0.]
     cascade = [1., 0., 0.]
@@ -193,8 +195,11 @@ def oneHotEncode_EventType(x, r_vals=None):
 
 def oneHotEncode_EventType_stratingTrack(x, r_vals=None):
     """
-    This function one hot encodes the input for the event types cascade, tracks, doubel-bang
+    This function one hot encodes the input for the event types cascade, tracks, doubel-bang, starting tracks
     """
+    #print type(list(r_vals))
+    #print "r_vals: {}".format(r_vals)
+    #print "x: {}".format(x)
     # define universe of possible input values
     fail = [0., 0., 0., 0.]
     cascade = [1., 0., 0., 0.]
@@ -226,6 +231,3 @@ def oneHotEncode_EventType_stratingTrack(x, r_vals=None):
         onehot_encoded = fail
     return onehot_encoded
 
-#def time_interval_0.1_to_0.9(x):
-#    interval = np.percentile(x, 90)-np.percentile(x, 10)
-#    return interval

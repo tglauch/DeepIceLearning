@@ -356,8 +356,7 @@ if __name__ == "__main__":
             del train_inds[t_c]
             del file_handlers[t_c]
         else:
-            t_c+=1    
-    
+            t_c+=1
     # saving model every epoch
     every_model = keras.callbacks.ModelCheckpoint(
         save_path + "/model_all_epochs/weights_{epoch:02d}.npy",

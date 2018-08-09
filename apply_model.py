@@ -160,13 +160,13 @@ if __name__ == "__main__":
     file_handlers = [h5py.File(os.path.join(mc_location, file_name))
                      for file_name in input_files]
     t_c =0
-    while t_c < len(test_inds):        
+    while t_c < len(test_inds):
         if (test_inds[t_c][1]-test_inds[t_c][0])<=0:
             del test_inds[t_c]
             del file_handlers[t_c]
         else:
             t_c+=1
-            
+
     num_events = np.sum([k[1] - k[0] for k in test_inds])
     print('Apply the NN to {} events'.format(num_events))
     steps_per_epoch = math.ceil(np.sum([k[1] - k[0] for k in
@@ -205,30 +205,29 @@ if __name__ == "__main__":
                 for var in out_shapes[br].keys()
                 if var != 'general']
     reco_vals = []
-    hit_vals = []
+    IC_hit_vals = []
+    DC_hit_vals = []
 
     for i, file_handler in enumerate(file_handlers):
         down = test_inds[i][0]
         up = test_inds[i][1]
-        #up_reduced = up - ((up-down)%300) #300 is batch size, is neccesary to get rid of overlap of the dataset
-        #print "pred: {}".format(len(prediction))
-        #print "up: {}".format(up)
-        #print "up_reduced: {}".format(up_reduced)
-        #temp_truth = file_handler['reco_vals'][down:up_reduced]
         temp_truth = file_handler['reco_vals'][down:up]
         for j, var in enumerate([var for br in out_shapes.keys()
                                 for var in out_shapes[br].keys()
                                 if var != 'general']):
             mc_truth[j].extend(temp_truth[var])
         reco_vals.extend(temp_truth)
-###################################################################################
-        hit_DOMs_list = []
+    IC_hit_DOMs_list = []
+	DC_hit_DOMs_list = []
     for k in xrange(up - down):
-        charge = file_handler["charge"][down + k]
-        hitDOMs = np.count_nonzero(charge)
-        hit_DOMs_list.append(hitDOMs)
-    hit_vals.extend(hit_DOMs_list)
-##################################################################################
+        IC_charge = file_handler["IC_charge"][down + k]
+        DC_charge = file_handler["DC_charge"][down + k]
+        IC_hitDOMs = np.count_nonzero(IC_charge)
+        IC_hit_DOMs_list.append(IC_hitDOMs)
+	    DC_hitDOMs = np.count_nonzero(DC_charge)
+        DC_hit_DOMs_list.append(DC_hitDOMs)
+    IC_hit_vals.extend(IC_hit_DOMs_list)
+    DC_hit_vals.extend(DC_hit_DOMs_list)
     dtype = np.dtype([(var + '_truth', np.float64)
                       for br in out_shapes.keys()
                       for var in out_shapes[br].keys()
@@ -245,7 +244,7 @@ if __name__ == "__main__":
     print save_name
     if MANUAL_writeout_pred_and_exit:
         pickle.dump({"mc_truth": mc_truth, "prediction": prediction,
-                     "reco_vals": reco_vals, "HitDOMs": hit_vals},
+                     "reco_vals": reco_vals, "IC_HitDOMs": IC_hit_vals, "DC_HitDOMs": DC_hit_vals},
                     open(os.path.join(DATA_DIR, save_name), "wc"))
         print(' \n Finished .... Exiting.....')
         exit(0)

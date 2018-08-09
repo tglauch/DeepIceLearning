@@ -10,9 +10,8 @@ from keras import regularizers
 from keras.utils import to_categorical
 import sys
 from collections import OrderedDict
-import os
-sys.path.append(os.path.abspath(".."))
-sys.path.append(os.path.join(os.path.abspath(".."),'lib'))
+sys.path.append("..")
+sys.path.append("/scratch9/mkron/software/DeepIceLearning/lib")
 import transformations as tr
 import numpy as np
 import block_units as bunit

@@ -10,9 +10,8 @@ from keras import regularizers
 from keras.utils import to_categorical
 import sys
 from collections import OrderedDict
-import os
-sys.path.append(os.path.abspath(".."))
-sys.path.append(os.path.join(os.path.abspath(".."),'lib'))
+sys.path.append("..")
+sys.path.append("/scratch9/mkron/software/DeepIceLearning/lib")
 import transformations as tr
 import numpy as np
 import block_units as bunit
@@ -47,27 +46,27 @@ inputs["Branch_IC_time_abs"] = {"variables": ["IC_time_first"],
                      "transformations": [tr.max_min_delta_log]}
 
 #Input for DC
-#inputs["Branch_DC_charge"] = {"variables": ["DC_charge", "DC_first_charge", "DC_num_pulses", "DC_time_first"],
-#                     "transformations": [tr.centralize, tr.centralize,  tr.centralize, tr.centralize]}
-#inputs["Branch_DC_charge_abs"] = {"variables": ["DC_charge"],
-#                     "transformations": [tr.log_of_sum]}
-#
-#inputs["Branch_DC_time"] = {"variables": ["DC_time_first", "DC_ATWD_0_05_pct_charge_quantile", "DC_ATWD_0_1_pct_charge_quantile",\
-#                                   "DC_ATWD_0_15_pct_charge_quantile", "DC_ATWD_0_2_pct_charge_quantile", "DC_ATWD_0_25_pct_charge_quantile",\
-#                                   "DC_ATWD_0_3_pct_charge_quantile", "DC_ATWD_0_35_pct_charge_quantile", "DC_ATWD_0_4_pct_charge_quantile",\
-#                                   "DC_ATWD_0_45_pct_charge_quantile", "DC_ATWD_0_5_pct_charge_quantile", "DC_ATWD_0_55_pct_charge_quantile",\
-#                                   "DC_ATWD_0_6_pct_charge_quantile", "DC_ATWD_0_65_pct_charge_quantile", "DC_ATWD_0_7_pct_charge_quantile",\
-#                                   "DC_ATWD_0_75_pct_charge_quantile","DC_ATWD_0_8_pct_charge_quantile", "DC_ATWD_0_85_pct_charge_quantile",\
-#                                   "DC_ATWD_0_9_pct_charge_quantile","DC_ATWD_0_95_pct_charge_quantile", "DC_charge"],
-#                     "transformations": [tr.centralize, tr.centralize, tr.centralize,\
-#                                         tr.centralize, tr.centralize, tr.centralize,\
-#                                         tr.centralize, tr.centralize, tr.centralize,\
-#                                         tr.centralize, tr.centralize, tr.centralize,\
-#                                        tr.centralize, tr.centralize, tr.centralize,\
-#                                         tr.centralize, tr.centralize, tr.centralize,\
-#                                         tr.centralize, tr.centralize, tr.centralize]}
-#inputs["Branch_DC_time_abs"] = {"variables": ["DC_time_first"],
-#                     "transformations": [tr.max_min_delta_log]}
+inputs["Branch_DC_charge"] = {"variables": ["DC_charge", "DC_first_charge", "DC_num_pulses", "DC_time_first"],
+                     "transformations": [tr.centralize, tr.centralize,  tr.centralize, tr.centralize]}
+inputs["Branch_DC_charge_abs"] = {"variables": ["DC_charge"],
+                     "transformations": [tr.log_of_sum]}
+
+inputs["Branch_DC_time"] = {"variables": ["DC_time_first", "DC_ATWD_0_05_pct_charge_quantile", "DC_ATWD_0_1_pct_charge_quantile",\
+                                   "DC_ATWD_0_15_pct_charge_quantile", "DC_ATWD_0_2_pct_charge_quantile", "DC_ATWD_0_25_pct_charge_quantile",\
+                                   "DC_ATWD_0_3_pct_charge_quantile", "DC_ATWD_0_35_pct_charge_quantile", "DC_ATWD_0_4_pct_charge_quantile",\
+                                   "DC_ATWD_0_45_pct_charge_quantile", "DC_ATWD_0_5_pct_charge_quantile", "DC_ATWD_0_55_pct_charge_quantile",\
+                                   "DC_ATWD_0_6_pct_charge_quantile", "DC_ATWD_0_65_pct_charge_quantile", "DC_ATWD_0_7_pct_charge_quantile",\
+                                   "DC_ATWD_0_75_pct_charge_quantile","DC_ATWD_0_8_pct_charge_quantile", "DC_ATWD_0_85_pct_charge_quantile",\
+                                   "DC_ATWD_0_9_pct_charge_quantile","DC_ATWD_0_95_pct_charge_quantile", "DC_charge"],
+                     "transformations": [tr.centralize, tr.centralize, tr.centralize,\
+                                         tr.centralize, tr.centralize, tr.centralize,\
+                                         tr.centralize, tr.centralize, tr.centralize,\
+                                         tr.centralize, tr.centralize, tr.centralize,\
+                                         tr.centralize, tr.centralize, tr.centralize,\
+                                         tr.centralize, tr.centralize, tr.centralize,\
+                                         tr.centralize, tr.centralize, tr.centralize]}
+inputs["Branch_DC_time_abs"] = {"variables": ["DC_time_first"],
+                     "transformations": [tr.max_min_delta_log]}
                      
 # define outputs for each branch
 outputs = OrderedDict()
@@ -159,80 +158,67 @@ def model(input_shapes, output_shapes):
 
     #DC
     #branch5
-#    input_b5 = Input(shape=input_shapes["Branch_DC_charge"]["general"],
-#                     name = "Input-Branch5")
-#    z5 = Conv3D(72, (3, 3, 5), padding="same", **kwargs)(input_b5)
-#    z5 = MaxPooling3D(pool_size=(2, 2, 3))(z5)
-#    z5 = BatchNormalization()(z5)
-#    z5 = bunit.Residual(72, 72, z5)
-#    z5 = BatchNormalization()(z5)
-#    z5 = bunit.Residual(72, 72, z5)
-#    z5 = BatchNormalization()(z5)
-#    z5 = bunit.Residual(72, 72, z5)
-#    z5 = BatchNormalization()(z5)
-#    z5 = bunit.Residual(72, 32, z5)
-#    z5 = BatchNormalization()(z5)
-#    z5 = Flatten()(z5)
-#    z5 = Dense(64, **kwargs)(z5)
-#    z5 = Dropout(rate=0.4)(z5)
+    input_b5 = Input(shape=input_shapes["Branch_DC_charge"]["general"],
+                     name = "Input-Branch5")
+    z5 = Conv3D(72, (3, 3, 5), padding="same", **kwargs)(input_b5)
+    z5 = MaxPooling3D(pool_size=(2, 2, 3))(z5)
+    z5 = BatchNormalization()(z5)
+    z5 = bunit.Residual(72, 32, z5)
+    z5 = BatchNormalization()(z5)
+    z5 = Flatten()(z5)
+    z5 = Dense(64, **kwargs)(z5)
+    z5 = Dropout(rate=0.4)(z5)
 
 
     # branch 6
-#    input_b6 = Input(shape=input_shapes["Branch_DC_charge_abs"]["general"],
-#                     name="Input-Branch6")
+    input_b6 = Input(shape=input_shapes["Branch_DC_charge_abs"]["general"],
+                     name="Input-Branch6")
 
     # merge #3 of Branche "DC_charge"
-#    merge3 = concatenate([z5, input_b6])
-#    merge3 = Dense(36,\
-#              **kwargs)(merge3)
-#    merge3 = Dropout(rate=0.4)(merge3)
-#    merge3 = BatchNormalization()(merge3)
+    merge3 = concatenate([z5, input_b6])
+    merge3 = Dense(36,\
+              **kwargs)(merge3)
+    merge3 = Dropout(rate=0.4)(merge3)
+    merge3 = BatchNormalization()(merge3)
 
 
     #branch7
-#    input_b7 = Input(shape=input_shapes["Branch_DC_time"]["general"],
-#                     name = "Input-Branch7")
-#    z7 = Conv3D(72, (3, 3, 5), padding="same", **kwargs)(input_b7)
-#    z7 = MaxPooling3D(pool_size=(2, 2, 3))(z7)
-#    z7 = BatchNormalization()(z7)
-#    z7 = bunit.Residual(72, 72, z7)
-#    z7 = BatchNormalization()(z7)
-#    z7 = bunit.Residual(72, 72, z7)
-#    z7 = BatchNormalization()(z7)
-#    z7 = bunit.Residual(72, 72, z7)
-#    z7 = BatchNormalization()(z7)
-#    z7 = bunit.Residual(72, 32, z7)
-#    z7 = BatchNormalization()(z7)
-#    z7 = Flatten()(z7)
-#    z7 = Dense(64, **kwargs)(z7)
-#    z7 = Dropout(rate=0.4)(z7)
+    input_b7 = Input(shape=input_shapes["Branch_DC_time"]["general"],
+                     name = "Input-Branch7")
+    z7 = Conv3D(72, (3, 3, 5), padding="same", **kwargs)(input_b7)
+    z7 = MaxPooling3D(pool_size=(2, 2, 3))(z7)
+    z7 = BatchNormalization()(z7)
+    z7 = bunit.Residual(72, 72, z7)
+    z7 = BatchNormalization()(z7)
+    z7 = Flatten()(z7)
+    z7 = Dense(64, **kwargs)(z7)
+    z7 = Dropout(rate=0.4)(z7)
 
     # branch 8
-#    input_b8 = Input(shape=input_shapes["Branch_DC_time_abs"]["general"],
-#                     name="Input-Branch8")
+    input_b8 = Input(shape=input_shapes["Branch_DC_time_abs"]["general"],
+                     name="Input-Branch8")
 
     # merge #4 of Branche "DC_time"
-#    merge4 = concatenate([z7, input_b8])
-#    merge4 = Dense(72,\
-#              **kwargs)(merge4)
-#    merge4 = Dropout(rate=0.4)(merge4)
-#    merge4 = BatchNormalization()(merge4)
+    merge4 = concatenate([z7, input_b8])
+    merge4 = Dense(72,\
+              **kwargs)(merge4)
+    merge4 = Dropout(rate=0.4)(merge4)
+    merge4 = BatchNormalization()(merge4)
 
 
     # merge total DC
-#    merge_DC = concatenate([merge3, merge4])
-#    merge_DC = bunit.Dense_Residual(108, 72, merge_DC)  # #input shape has to match the previous layer
-#    merge_DC = bunit.Dense_Residual(72, 36, merge_DC)
+    merge_DC = concatenate([merge3, merge4])
+    merge_DC = bunit.Dense_Residual(108, 36, merge_DC)  # #input shape has to match the previous layer
 
     # merge total total
-#    merge_total = concatenate([merge_IC, merge_DC])
-#    merge_total = bunit.Dense_Residual(72, 72, merge_total)  # #input shape has to match the previous layer
-#    merge_total = bunit.Dense_Residual(72, 72, merge_total)
-#    merge_total = bunit.Dense_Residual(72, 72, merge_total)
-#    merge_total = bunit.Dense_Residual(72, 36, merge_total)
+    merge_total = concatenate([merge_IC, merge_DC])
+    merge_total = bunit.Dense_Residual(72, 72, merge_total)  # #input shape has to match the previous layer
+    merge_total = bunit.Dense_Residual(72, 72, merge_total)
+    merge_total = bunit.Dense_Residual(72, 72, merge_total)
+    merge_total = bunit.Dense_Residual(72, 36, merge_total)
 
     # output 1
-    o1 = bunit.Dense_Residual(36, 36, merge_IC)
+    o1 = bunit.Dense_Residual(36, 36, merge_total)
     o1 = bunit.Dense_Residual(36, 36, o1)
     o1 = bunit.Dense_Residual(36, 36, o1)
     o1 = bunit.Dense_Residual(36, 36, o1)
@@ -247,7 +233,7 @@ def model(input_shapes, output_shapes):
 
 
     # output 2
-    o2 = bunit.Dense_Residual(36, 36, merge_IC)
+    o2 = bunit.Dense_Residual(36, 36, merge_total)
     o2 = bunit.Dense_Residual(36, 36, o2)
     o2 = bunit.Dense_Residual(36, 36, o2)
     output_b2 = Dense(output_shapes["Out2"]["general"][0],\
@@ -256,7 +242,7 @@ def model(input_shapes, output_shapes):
 
 
     # output 3
-    o3 = bunit.Dense_Residual(36, 36, merge_IC)
+    o3 = bunit.Dense_Residual(36, 36, merge_total)
     o3 = bunit.Dense_Residual(36, 36, o3)
     o3 = bunit.Dense_Residual(36, 36, o3)
     output_b3 = Dense(output_shapes["Out3"]["general"][0],\
@@ -264,8 +250,7 @@ def model(input_shapes, output_shapes):
                           name="Target3")(o3)
 
 
-#    model = keras.models.Model(inputs=[input_b1, input_b2, input_b3, input_b4, input_b5, input_b6, input_b7, input_b8],\
-    model = keras.models.Model(inputs=[input_b1, input_b2, input_b3, input_b4],\
+    model = keras.models.Model(inputs=[input_b1, input_b2, input_b3, input_b4, input_b5, input_b6, input_b7, input_b8],\
                                outputs=[output_b1, output_b2, output_b3])
     print(model.summary())
     return model
