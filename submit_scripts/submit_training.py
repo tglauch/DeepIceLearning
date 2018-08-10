@@ -68,7 +68,7 @@ request_memory = parser.get('GPU', 'request_memory')
 requirements = parser.get('GPU', 'requirements')
 project_name = args['project']
 thisfolder = parser.get("Basics", "thisfolder")
-model_name = parser.get("Basics", "model_name")
+model_name = args['model']
 if 'exclude_node' in parser_dict['GPU'].keys():
     exclude = parser.get('GPU', 'exclude_node')
 else:

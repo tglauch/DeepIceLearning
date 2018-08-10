@@ -38,7 +38,7 @@ def Residual(feat_maps_in, feat_maps_out, prev_layer):
     conv = conv_block(feat_maps_out, prev_layer)
 
     print('Residual block mapping '+str(feat_maps_in)+' channels to '+str(feat_maps_out)+' channels built')
-    return merge([id, conv], mode='sum') # the residual connection
+    return concatenate([id, conv]) # the residual connection
 
 
 def dense_block(feat_maps_out, prev):
@@ -69,7 +69,7 @@ def Dense_Residual(feat_maps_in, feat_maps_out, prev_layer):
     id = identitiy_fix_size_dense(feat_maps_in, feat_maps_out, prev_layer)
     dense = dense_block(feat_maps_out, prev_layer)
 
-    return merge([id, dense], mode='sum') # the residual connection
+    return add([id, dense]) # the residual connection
 
 
 def inception_unit(nfilters, x0, strides=(1, 1, 1)):
@@ -96,7 +96,7 @@ def inception_unit(nfilters, x0, strides=(1, 1, 1)):
     x4 = Convolution3D(
         nfilters, (1, 1, 1), padding='same', activation='relu')(x4)
 
-    return concatenate([x1, x2, x4], axis=-1)
+    return add([x1, x2, x4], axis=-1)
 
 
 def conv_3pyramide(x0, n_kernels, **kwargs):
