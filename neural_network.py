@@ -21,7 +21,6 @@ import argparse
 import h5py
 import lib.model_parse as mp
 import sys
-import numpy.lib.recfunctions as rfn
 
 
 def parseArguments():
@@ -127,9 +126,10 @@ import math
 import argparse
 import time
 import shelve
-if backend == 'tensorflow':
-    from keras_exp.multigpu import get_available_gpus
-    from keras_exp.multigpu import make_parallel
+from keras.utils import multi_gpu_model
+# if backend == 'tensorflow':
+#     from keras_exp.multigpu import get_available_gpus
+#     from keras_exp.multigpu import make_parallel
 from lib.functions import *
 from keras.utils import plot_model
 import lib.individual_loss
@@ -235,15 +235,14 @@ if __name__ == "__main__":
 
     ngpus = args.__dict__['ngpus']
     if ngpus > 1:
-        if backend == 'tensorflow':
-            with tf.device('/cpu:0'):
-                model_serial = read_NN_weights(args.__dict__, base_model)
-            gdev_list = get_available_gpus()
-            print('Using GPUs: {}'.format(gdev_list))
-            model = make_parallel(model_serial, gdev_list)
-        else:
-            raise Exception(
-                'Multi GPU can only be used with tensorflow as Backend.')
+        model_serial = read_NN_weights(args.__dict__, base_model)
+        model = multi_gpu_model(model_serial, gpus=ngpus)
+        #     gdev_list = get_available_gpus()
+        #     print('Using GPUs: {}'.format(gdev_list))
+        #     model = make_parallel(model_serial, gdev_list)
+        # else:
+        #     raise Exception(
+        #         'Multi GPU can only be used with tensorflow as Backend.')
     else:
         model = read_NN_weights(args.__dict__, base_model)
 
