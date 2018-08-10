@@ -255,7 +255,7 @@ def generator(batch_size, file_handlers, inds,
         else:
             if temp_cur_file != cur_file:
                 print('\n Read File Number {} \n'.format(
-                    file_handlers[temp_cur_file + 1].filename))
+                    file_handlers[temp_cur_file].filename))
                 if not val_run:
                     print(' \n CPU RAM Usage {:.2f} GB'.
                           format(resource.getrusage(
