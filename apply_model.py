@@ -141,11 +141,13 @@ if __name__ == "__main__":
                      for file_name in input_files]
     t_c = 0
     while t_c < len(test_inds):
-        if (test_inds[t_c][1]-test_inds[t_c][0])<=0:
+        if (test_inds[t_c][1]-test_inds[t_c][0])<=1:
             del test_inds[t_c]
             del file_handlers[t_c]
         else:
             t_c += 1
+    print(zip(file_handlers,test_inds))
+    
 
     num_events = np.sum([k[1] - k[0] for k in test_inds])
     print('Apply the NN to {} events'.format(num_events))

@@ -33,8 +33,8 @@ def plus_one_log10(x):
     return np.log10(tmp)
 
 def zenith_prep(x, r_vals=None):
-    if r_vals is not None:
-       print x, r_vals['zenith']
+    #if r_vals is not None:
+    #   print x, r_vals['zenith']
     x =  x / np.pi
     return x
 

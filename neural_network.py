@@ -283,26 +283,15 @@ if __name__ == "__main__":
 
     os.system("nvidia-smi")
 
-    # Save Run Information
-    if not os.path.exists(os.path.join(save_path, 'run_info.shlf')):
-        if args.__dict__['continue'] == 'None':
-            shelf = shelve.open(os.path.join(save_path, 'run_info.shlf'))
-            shelf['Files'] = input_files
-            shelf['mc_location'] = mc_location
-            shelf['Test_Inds'] = test_inds
-            shelf.close()
-
-    # Alternative to Shelf
-    if not os.path.exists(os.path.join(save_path, "run_info.npy")):
-        if args.__dict__['continue'] == 'None':
-            run_info = dict()
-            run_info['Files'] = input_files
-            run_info['mc_location'] = mc_location
-            run_info['Test_Inds'] = test_inds
-            np.save(os.path.join(save_path, 'run_info.npy'), run_info)
+    if args.__dict__['continue'] == 'None':
+        run_info = dict()
+        run_info['Files'] = input_files
+        run_info['mc_location'] = mc_location
+        run_info['Test_Inds'] = test_inds
+        np.save(os.path.join(save_path, 'run_info.npy'), run_info)
 
 # Train the Model #########################################################
-
+'''
     CSV_log = keras.callbacks.CSVLogger(
         os.path.join(save_path,
                      'loss_logger.csv'),
@@ -331,7 +320,7 @@ if __name__ == "__main__":
                      for file_name in input_files]
     t_c = 0
     while t_c < len(test_inds):
-        if (test_inds[t_c][1] - test_inds[t_c][0]) <= 0:
+        if (test_inds[t_c][1] - test_inds[t_c][0]) <= 1:
             del valid_inds[t_c]
             del train_inds[t_c]
             del test_inds[t_c]
@@ -381,3 +370,4 @@ if __name__ == "__main__":
     print('\n Saved the Model \n')
 
     print('\n Finished .... Exit.....')
+'''
