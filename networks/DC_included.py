@@ -165,12 +165,6 @@ def model(input_shapes, output_shapes):
     z5 = BatchNormalization()(z5)
     z5 = bunit.Residual(72, 72, z5)
     z5 = BatchNormalization()(z5)
-    z5 = bunit.Residual(72, 72, z5)
-    z5 = BatchNormalization()(z5)
-    z5 = bunit.Residual(72, 72, z5)
-    z5 = BatchNormalization()(z5)
-    z5 = bunit.Residual(72, 32, z5)
-    z5 = BatchNormalization()(z5)
     z5 = Flatten()(z5)
     z5 = Dense(64, **kwargs)(z5)
     z5 = Dropout(rate=0.4)(z5)
@@ -196,12 +190,6 @@ def model(input_shapes, output_shapes):
     z7 = BatchNormalization()(z7)
     z7 = bunit.Residual(72, 72, z7)
     z7 = BatchNormalization()(z7)
-    z7 = bunit.Residual(72, 72, z7)
-    z7 = BatchNormalization()(z7)
-    z7 = bunit.Residual(72, 72, z7)
-    z7 = BatchNormalization()(z7)
-    z7 = bunit.Residual(72, 32, z7)
-    z7 = BatchNormalization()(z7)
     z7 = Flatten()(z7)
     z7 = Dense(64, **kwargs)(z7)
     z7 = Dropout(rate=0.4)(z7)
@@ -220,8 +208,7 @@ def model(input_shapes, output_shapes):
 
     # merge total DC
     merge_DC = concatenate([merge3, merge4])
-    merge_DC = bunit.Dense_Residual(108, 72, merge_DC)  # #input shape has to match the previous layer
-    merge_DC = bunit.Dense_Residual(72, 36, merge_DC)
+    merge_DC = bunit.Dense_Residual(108, 36, merge_DC)
 
     # merge total total
     merge_total = concatenate([merge_IC, merge_DC])
