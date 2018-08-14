@@ -238,12 +238,6 @@ if __name__ == "__main__":
     if ngpus > 1:
         model_serial = read_NN_weights(args.__dict__, base_model)
         model = multi_gpu_model(model_serial, gpus=ngpus)
-        #     gdev_list = get_available_gpus()
-        #     print('Using GPUs: {}'.format(gdev_list))
-        #     model = make_parallel(model_serial, gdev_list)
-        # else:
-        #     raise Exception(
-        #         'Multi GPU can only be used with tensorflow as Backend.')
     else:
         model = read_NN_weights(args.__dict__, base_model)
         model_serial = model

@@ -5,8 +5,7 @@ import os
 import time
 import argparse
 from six.moves import configparser
-#changed this because ConfigParser was not available on the RZ in Aachen
-#from configparser import ConfigParser
+from shutil import copyfile
 import datetime
 from workload_managers import *
 
@@ -152,18 +151,17 @@ elif workload_manager == 'bsub':
 
 
 print(submit_info)
+
 submitfile_full = os.path.join(condor_out_folder, 'submit.sub')
 with open(submitfile_full, "wc") as file:
     file.write(submit_info)
 
 if not os.path.exists(os.path.join(save_path, 'config.cfg')):
-    os.system("cp {} {} ".format(
-        args["main_config"], os.path.join(save_path, 'config.cfg')))
-if not os.path.exists(os.path.join(save_path, model_name)):
-#if not os.path.exists(os.path.join(save_path, 'model.py')):
-    os.system("cp {} {} ".format(
-        #args["model"], os.path.join(save_path, 'model.py')))
-        args["model"], os.path.join(save_path, model_name)))
+    copyfile(args["main_config"],
+             os.path.join(save_path, 'config.cfg'))
+if not os.path.exists(os.path.join(save_path, model_name.split('/')[-1])):
+    copyfile(args["model"], 
+             os.path.join(save_path, model_name.split('/')[-1]))
 
 if workload_manager == 'slurm':
     os.system("sbatch {}".format(submitfile_full))
@@ -172,3 +170,4 @@ elif workload_manager =="condor":
 elif workload_manager =="bsub":
     os.system("bsub<{}".format(submitfile_full))
 time.sleep(3)
+

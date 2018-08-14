@@ -226,7 +226,7 @@ def generator(batch_size, file_handlers, inds,
                 close_h5file(t_file)
                 t_file = h5py.File(file_handlers[temp_cur_file], 'r')
                 if j==0 and k==0:
-                    print('Opened File {}'.format(file_handlers[temp_cur_file]))
+                    print('\n Opened File {}'.format(file_handlers[temp_cur_file]))
                 temp_cur_event_id = cur_event_id
                 temp_up_to = up_to
                 cur_len = 0
