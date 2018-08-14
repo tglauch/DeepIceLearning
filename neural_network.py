@@ -291,7 +291,7 @@ if __name__ == "__main__":
         np.save(os.path.join(save_path, 'run_info.npy'), run_info)
 
 # Train the Model #########################################################
-'''
+
     CSV_log = keras.callbacks.CSVLogger(
         os.path.join(save_path,
                      'loss_logger.csv'),
@@ -370,4 +370,4 @@ if __name__ == "__main__":
     print('\n Saved the Model \n')
 
     print('\n Finished .... Exit.....')
-'''
+
