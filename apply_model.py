@@ -127,19 +127,12 @@ if __name__ == "__main__":
 #####################################################################################
     print'Use {} GPUS'.format(ngpus)
     if ngpus > 1:
-        if backend == 'tensorflow':
-            with tf.device('/cpu:0'):
-                model_serial = read_NN_weights(args.__dict__, base_model)
-            gdev_list = get_available_gpus()
-            print('Using GPUs: {}'.format(gdev_list))
-            model = make_parallel(model_serial, gdev_list)
-        else:
-            raise Exception(
-                'Multi GPU can only be used with tensorflow as Backend.')
+        model_serial = read_NN_weights(args.__dict__, base_model)
+        model = multi_gpu_model(model_serial, gpus=ngpus)
     else:
-        print "BASE MODEL:  {}".format(base_model)
         model = read_NN_weights(args.__dict__, base_model)
-
+        model_serial = model
+ 
     os.system("nvidia-smi")
 
     # Saving the Final Model and Calculation/Saving of Result for Test Dataset ####
