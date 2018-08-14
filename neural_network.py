@@ -113,6 +113,7 @@ if cuda_path not in os.environ['LD_LIBRARY_PATH'].split(os.pathsep):
 if backend == 'tensorflow':
     print('Run with backend Tensorflow')
     import tensorflow as tf
+    print('Version {}, \n Path {}'.format(tf.__version__, tf.__path__))
 elif backend == 'theano':
     print('Run with backend Theano')
     import theano
@@ -245,6 +246,7 @@ if __name__ == "__main__":
         #         'Multi GPU can only be used with tensorflow as Backend.')
     else:
         model = read_NN_weights(args.__dict__, base_model)
+        model_serial = model
 
     # Choosing the Loss function
     loss_func = 'mean_squared_error'
@@ -319,8 +321,9 @@ if __name__ == "__main__":
         verbose=int(parser.get('Training_Parameters', 'verbose')),
         mode='auto')
 
-    best_model = keras.callbacks.ModelCheckpoint(
-        save_path + "/best_val_loss.npy",
+    best_model = ParallelModelCheckpoint(
+        model = model_serial,
+        filepath= os.path.join(save_path, "best_val_loss.npy"),
         monitor='val_loss',
         verbose=int(parser.get('Training_Parameters', 'verbose')),
         save_best_only=True,
@@ -330,7 +333,7 @@ if __name__ == "__main__":
     batch_size = int(
         parser.get("GPU", "request_gpus")) * int(parser.get(
             'Training_Parameters', 'single_gpu_batch_size'))
-    file_handlers = [h5py.File(os.path.join(mc_location, file_name))
+    file_handlers = [os.path.join(mc_location, file_name)
                      for file_name in input_files]
     t_c = 0
     while t_c < len(test_inds):
@@ -342,8 +345,13 @@ if __name__ == "__main__":
         else:
             t_c += 1
     # saving model every epoch
-    every_model = keras.callbacks.ModelCheckpoint(
-        save_path + "/model_all_epochs/weights_{epoch:02d}.npy",
+    all_epoch_folder = os.path.join(save_path, "model_all_epochs")
+    if not os.path.exists(all_epoch_folder):
+        os.makedirs(all_epoch_folder)
+    print('Created Folder {}'.format(all_epoch_folder))
+    every_model = ParallelModelCheckpoint(
+        model = model_serial,
+        filepath = os.path.join(save_path, "model_all_epochs/weights_{epoch:02d}.npy"),
         monitor='val_loss',
         verbose=int(parser.get('Training_Parameters', 'verbose')),
         save_best_only=False,

@@ -28,7 +28,7 @@ def prepare_io_shapes(inputs, outputs, exp_file):
     out_transformations = OrderedDict()
     out_shapes = OrderedDict()
     # open example file
-    inp_file = h5py.File(exp_file)
+    inp_file = h5py.File(exp_file, 'r')
 
     for br in inputs:
         inp_shapes[br] = {}
@@ -69,7 +69,7 @@ def prepare_io_shapes(inputs, outputs, exp_file):
                 out_shapes[br]["general"] = res_shape + (1,)
             else:
                 out_shapes[br]["general"] = res_shape
-
+    inp_file.close()
     return inp_shapes, inp_transformations, out_shapes, out_transformations
 
 def parse_reference_output(cfg_file):

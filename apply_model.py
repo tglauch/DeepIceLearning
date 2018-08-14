@@ -144,7 +144,7 @@ if __name__ == "__main__":
 
     # Saving the Final Model and Calculation/Saving of Result for Test Dataset ####
 
-    file_handlers = [h5py.File(os.path.join(mc_location, file_name))
+    file_handlers = [os.path.join(mc_location, file_name)
                      for file_name in input_files]
     t_c = 0
     while t_c < len(test_inds):

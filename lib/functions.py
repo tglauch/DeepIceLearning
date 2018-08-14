@@ -20,7 +20,25 @@ import os
 import numpy as np
 import tables
 import resource
+import h5py
 
+class ParallelModelCheckpoint(keras.callbacks.ModelCheckpoint):
+    def __init__(self,model,filepath, monitor='val_loss', verbose=0,
+                 save_best_only=False, save_weights_only=False,
+                 mode='auto', period=1):
+		self.single_model = model
+		super(ParallelModelCheckpoint,self).__init__(filepath, monitor, verbose,save_best_only, save_weights_only,mode, period)
+
+    def set_model(self, model):
+        super(ParallelModelCheckpoint,self).set_model(self.single_model)
+
+def close_h5file(file_obj):
+    if isinstance(file_obj, h5py.File):   # Just HDF5 files
+        try:
+            file_obj.close()
+        except:
+            pass
+    return
 
 def read_variables(cfg_parser):
     """Function reading a config file, defining the variables to be read
@@ -158,11 +176,14 @@ def generator(batch_size, file_handlers, inds,
     loop_counter = 0
     temp_out = []
     temp_in = []
+    t_file = None
     while True:
         loop_counter += 1
         for j, var_array in enumerate(inp_variables):
             for k, var in enumerate(var_array):
                 temp_cur_file = cur_file
+                close_h5file(t_file)
+                t_file = h5py.File(file_handlers[temp_cur_file], 'r')
                 temp_cur_event_id = cur_event_id
                 temp_up_to = up_to
                 cur_len = 0
@@ -170,16 +191,18 @@ def generator(batch_size, file_handlers, inds,
                     fill_batch = batch_size - cur_len
                     if fill_batch < (temp_up_to - temp_cur_event_id):
                         temp_in.extend(
-                            file_handlers[temp_cur_file][var[0]]
+                            t_file[var[0]]
                             [temp_cur_event_id:temp_cur_event_id + fill_batch])
                         cur_len += fill_batch
                         temp_cur_event_id += fill_batch
                     else:
                         temp_in.extend(
-                            file_handlers[temp_cur_file][var[0]]
+                            t_file[var[0]]
                             [temp_cur_event_id:temp_up_to])
                         cur_len += temp_up_to - temp_cur_event_id
+                        t_file.close()
                         temp_cur_file += 1
+                        t_file = h5py.File(file_handlers[temp_cur_file], 'r')
                         if temp_cur_file == len(file_handlers):
                             break
                         else:
@@ -196,10 +219,14 @@ def generator(batch_size, file_handlers, inds,
                     else:
                         batch_input[j][i] = pre_append
                 temp_in = []
-
+        t_file.close()
         for j, var_array in enumerate(out_variables):
             for k, var in enumerate(var_array):
                 temp_cur_file = cur_file
+                close_h5file(t_file)
+                t_file = h5py.File(file_handlers[temp_cur_file], 'r')
+                if j==0 and k==0:
+                    print('Opened File {}'.format(file_handlers[temp_cur_file]))
                 temp_cur_event_id = cur_event_id
                 temp_up_to = up_to
                 cur_len = 0
@@ -208,7 +235,7 @@ def generator(batch_size, file_handlers, inds,
                     fill_batch = batch_size - cur_len
                     if fill_batch < (temp_up_to - temp_cur_event_id):
                         temp_out.extend(
-                            file_handlers[temp_cur_file]['reco_vals']
+                            t_file['reco_vals']
                             [var[0]][temp_cur_event_id:temp_cur_event_id +
                                      fill_batch])
                         event_list.extend(zip(np.full(fill_batch, temp_cur_file),
@@ -219,7 +246,7 @@ def generator(batch_size, file_handlers, inds,
                         temp_cur_event_id += fill_batch
                     else:
                         temp_out.extend(
-                            file_handlers[temp_cur_file]['reco_vals'][var[0]]
+                            t_file['reco_vals'][var[0]]
                             [temp_cur_event_id:temp_up_to])
                         event_list.extend(zip(np.full(temp_up_to -
                                                       temp_cur_event_id,
@@ -227,19 +254,28 @@ def generator(batch_size, file_handlers, inds,
                                               range(temp_cur_event_id,
                                                     temp_up_to)))
                         cur_len += temp_up_to - temp_cur_event_id
+                        t_file.close()
                         temp_cur_file += 1
+                        t_file = h5py.File(file_handlers[temp_cur_file], 'r')
+                        if j==0 and k==0:
+                            print('Opened File {}'.format(file_handlers[temp_cur_file]))
                         if temp_cur_file == len(file_handlers):
                             break
                         else:
                             temp_cur_event_id = inds[temp_cur_file][0]
                             temp_up_to = inds[temp_cur_file][1]
-
+                t_file.close()
+                file_counter = event_list[0][0]
+                t_file = h5py.File(file_handlers[file_counter], 'r')
                 for i in range(len(temp_out)):
+                    if event_list[i][0] != file_counter:
+                        t_file.close()
+                        file_counter = event_list[i][0]
+                        t_file = h5py.File(file_handlers[file_counter], 'r')
                     slice_ind = [slice(None)] * batch_out[j][i].ndim
                     slice_ind[-1] = slice(k, k + 1, 1)
                     pre_append = var[1](temp_out[i],
-                                        file_handlers[event_list[i][0]]
-                                        ['reco_vals'][:][event_list[i][1]])
+                                        t_file['reco_vals'][:][event_list[i][1]])
                     if var == 'time':
                         pre_append[pre_append == np.inf] = -1
                     if len(var_array) > 1:
@@ -247,6 +283,7 @@ def generator(batch_size, file_handlers, inds,
                     else:
                         batch_out[j][i] = pre_append
                 temp_out = []
+                t_file.close()
 
         if temp_cur_file == len(file_handlers):
             cur_file = 0
@@ -254,8 +291,8 @@ def generator(batch_size, file_handlers, inds,
             up_to = inds[0][1]
         else:
             if temp_cur_file != cur_file:
-                print('\n Read File Number {} \n'.format(
-                    file_handlers[temp_cur_file].filename))
+                print('\n Current File:  {} \n'.format(
+                    file_handlers[temp_cur_file]))
                 if not val_run:
                     print(' \n CPU RAM Usage {:.2f} GB'.
                           format(resource.getrusage(
