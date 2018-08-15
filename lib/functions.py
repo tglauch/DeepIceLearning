@@ -202,10 +202,10 @@ def generator(batch_size, file_handlers, inds,
                         cur_len += temp_up_to - temp_cur_event_id
                         t_file.close()
                         temp_cur_file += 1
-                        t_file = h5py.File(file_handlers[temp_cur_file], 'r')
                         if temp_cur_file == len(file_handlers):
                             break
                         else:
+                            t_file = h5py.File(file_handlers[temp_cur_file], 'r')
                             temp_cur_event_id = inds[temp_cur_file][0]
                             temp_up_to = inds[temp_cur_file][1]
                 for i in range(len(temp_in)):
@@ -225,7 +225,7 @@ def generator(batch_size, file_handlers, inds,
                 close_h5file(t_file)
                 t_file = h5py.File(file_handlers[temp_cur_file], 'r')
                 if j==0 and k==0:
-                    print('\n Open File {}'.format(file_handlers[temp_cur_file]))
+                    print('\n Open File (1) {}'.format(file_handlers[temp_cur_file]))
                 temp_cur_event_id = cur_event_id
                 temp_up_to = up_to
                 cur_len = 0
@@ -255,18 +255,17 @@ def generator(batch_size, file_handlers, inds,
                         cur_len += temp_up_to - temp_cur_event_id
                         t_file.close()
                         temp_cur_file += 1
-                        t_file = h5py.File(file_handlers[temp_cur_file], 'r')
-                        if j==0 and k==0:
-                            print('Open File for fill-up {}'.format(file_handlers[temp_cur_file]))
                         if temp_cur_file == len(file_handlers):
                             break
                         else:
+                            t_file = h5py.File(file_handlers[temp_cur_file], 'r')
+                            if j==0 and k==0:
+                                print('Open File (2) {}'.format(file_handlers[temp_cur_file]))
                             temp_cur_event_id = inds[temp_cur_file][0]
                             temp_up_to = inds[temp_cur_file][1]
                 t_file.close()
                 file_counter = event_list[0][0]
                 t_file = h5py.File(file_handlers[file_counter], 'r')
-                print(len(event_list))
                 for i in range(len(temp_out)):
                     if event_list[i][0] != file_counter:
                         t_file.close()
@@ -291,8 +290,6 @@ def generator(batch_size, file_handlers, inds,
             up_to = inds[0][1]
         else:
             if temp_cur_file != cur_file:
-                print('\n Current File:  {} \n'.format(
-                    file_handlers[temp_cur_file]))
                 if not val_run:
                     print(' \n CPU RAM Usage {:.2f} GB'.
                           format(resource.getrusage(
