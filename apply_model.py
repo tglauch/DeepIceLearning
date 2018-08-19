@@ -50,7 +50,19 @@ except Exception:
     raise Exception('Config File is missing!!!!')
 backend = parser.get('Basics', 'keras_backend')
 os.environ["KERAS_BACKEND"] = backend
-
+cuda_path = parser.get('Basics', 'cuda_installation')
+if not os.path.exists(cuda_path):
+    raise Exception('Given Cuda installation does not exist!')
+if cuda_path not in os.environ['LD_LIBRARY_PATH'].split(os.pathsep):
+    print('Setting Cuda Path...')
+    os.environ["PATH"] += os.pathsep + cuda_path
+    os.environ['LD_LIBRARY_PATH'] += os.pathsep + cuda_path
+    try:
+        print('Attempt to Restart with new Cuda Path')
+        os.execv(sys.argv[0], sys.argv)
+    except Exception, exc:
+        print 'Failed re-exec:', exc
+        sys.exit(1)
 if backend == 'theano':
     os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=gpu,floatX=float32"
 
@@ -67,7 +79,6 @@ import numpy as np
 import keras
 from keras.models import Sequential, load_model
 import h5py
-import shelve
 from lib.functions import generator
 import math
 import numpy.lib.recfunctions as rfn
@@ -146,7 +157,6 @@ if __name__ == "__main__":
             del file_handlers[t_c]
         else:
             t_c += 1
-    print(zip(file_handlers,test_inds))
     
 
     num_events = np.sum([k[1] - k[0] for k in test_inds])
@@ -182,26 +192,27 @@ if __name__ == "__main__":
     IC_hit_vals = []
     DC_hit_vals = []
 
-    for i, file_handler in enumerate(file_handlers):
+    for i, file_handler_p in enumerate(file_handlers):
         down = test_inds[i][0]
         up = test_inds[i][1]
+        file_handler = h5py.File(file_handler_p, 'r')
         temp_truth = file_handler['reco_vals'][down:up]
         for j, var in enumerate([var for br in out_shapes.keys()
                                 for var in out_shapes[br].keys()
                                 if var != 'general']):
             mc_truth[j].extend(temp_truth[var])
         reco_vals.extend(temp_truth)
-    IC_hit_DOMs_list = []
-    DC_hit_DOMs_list = []
-    for k in xrange(up - down):
-        IC_charge = file_handler["IC_charge"][down + k]
-        DC_charge = file_handler["DC_charge"][down + k]
-        IC_hitDOMs = np.count_nonzero(IC_charge)
-        IC_hit_DOMs_list.append(IC_hitDOMs)
-        DC_hitDOMs = np.count_nonzero(DC_charge)
-        DC_hit_DOMs_list.append(DC_hitDOMs)
-    IC_hit_vals.extend(IC_hit_DOMs_list)
-    DC_hit_vals.extend(DC_hit_DOMs_list)
+        IC_hit_DOMs_list = []
+        DC_hit_DOMs_list = []
+        for k in xrange(up - down):
+            IC_charge = file_handler["IC_charge"][down + k]
+            DC_charge = file_handler["DC_charge"][down + k]
+            IC_hitDOMs = np.count_nonzero(IC_charge)
+            IC_hit_DOMs_list.append(IC_hitDOMs)
+            DC_hitDOMs = np.count_nonzero(DC_charge)
+            DC_hit_DOMs_list.append(DC_hitDOMs)
+        IC_hit_vals.extend(IC_hit_DOMs_list)
+        DC_hit_vals.extend(DC_hit_DOMs_list)
     dtype = np.dtype([(var + '_truth', np.float64)
                       for br in out_shapes.keys()
                       for var in out_shapes[br].keys()

@@ -21,6 +21,18 @@ def parseArguments():
         "--folder",
         type=str, required=True,
         help="trainfolder ")
+    parser.add_argument(
+        "--batch_size",
+        type=int, default='256',
+        help="trainfolder ")
+    parser.add_argument(
+        "--model",
+        type=str, required=True,
+        help="trainfolder ")
+    parser.add_argument(
+        "--weights",
+        type=str, default='best_val_loss.npy',
+        help="trainfolder ")
     args = parser.parse_args()
     return args
 
@@ -49,13 +61,13 @@ if workload_manager not in ['slurm','condor','bsub']:
 #load shelf:
 #shelf = shelve.open(os.path.join(args['folder'],'run_info.shlf'))
 
-arguments = ' --main_config {}  --folder {}'.format(\
-                        args['main_config'], args['folder'])
+arguments = ' --main_config {}  --folder {} --batch_size {} --model {} --weights {}'.format(\
+                        args['main_config'], args['folder'], args['batch_size'], args['model'],args['weights'] )
 
 save_path = args['folder']
 condor_out_folder = os.path.join(save_path, 'condor')
 if workload_manager == 'slurm':
-    submit_info = make_slurm("Apply_Model.py",\
+    submit_info = make_slurm("apply_env.sh",\
                              request_gpus,\
                              float(request_memory) * 1e3,\
                              condor_out_folder,\
@@ -64,7 +76,7 @@ if workload_manager == 'slurm':
                              thisfolder,\
                              exclude)
 elif workload_manager == 'condor':
-    submit_info = make_condor("Apply_Model.py",\
+    submit_info = make_condor("apply_env.sh",\
                               request_gpus,\
                               request_memory,\
                               requirements,\
@@ -72,7 +84,7 @@ elif workload_manager == 'condor':
                               arguments,\
                               thisfolder)
 elif workload_manager == 'bsub':
-    submit_info = make_bsub("Apply_Model.py",\
+    submit_info = make_bsub("apply_env.sh",\
                             request_memory,\
                             condor_out_folder,\
                             thisfolder,\
