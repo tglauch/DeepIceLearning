@@ -128,9 +128,6 @@ import argparse
 import time
 import shelve
 from keras.utils import multi_gpu_model
-# if backend == 'tensorflow':
-#     from keras_exp.multigpu import get_available_gpus
-#     from keras_exp.multigpu import make_parallel
 from lib.functions import *
 from keras.utils import plot_model
 import lib.individual_loss
