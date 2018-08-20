@@ -216,7 +216,7 @@ if __name__ == "__main__":
     print('Index ranges used for testing: {}'.format(test_inds))
 
     # create model (new implementation, functional API of Keras)
-    base_model, inp_shapes, inp_trans, out_shapes, out_trans = \
+    base_model, inp_shapes, inp_trans, out_shapes, out_trans, loss_dict = \
         mp.parse_functional_model(
             conf_model_file,
             os.path.join(mc_location, input_files[0]))
@@ -243,45 +243,8 @@ if __name__ == "__main__":
         model_serial = model
 
     # Choosing the Loss function
-    loss_func = 'mean_squared_error'
-    if parser.has_option('Training_Parameters', 'loss_function'):
-        loss_func = parser.get('Training_Parameters', 'loss_function')
-        if loss_func == "weighted_categorial_crossentropy":
-            weights = parser.get('Training_Parameters', 'weights')
-            weights = np.array(weights.split(',')).astype(np.float)
-            loss_func = lib.individual_loss.\
-                weighted_categorical_crossentropy(weights)
-        print "Used Loss-Function {}".format(loss_func)
-    if parser.get('Multi_Task_Learning', 'ON/OFF') == "ON":
-        if parser.get('Multi_Task_Learning', 'CustomLoss') == "ON":
-            loss_3 = parser.get('Multi_Task_Learning', 'loss_3')
-            weights = parser.get('Multi_Task_Learning', 'weights')
-            weights = np.array(weights.split(',')).astype(np.float)
-            custom = [lib.individual_loss.weighted_categorical_crossentropy(weights),
-                      "categorical_crossentropy", loss_3]
-            loss_weights_weights = parser.get('Multi_Task_Learning',
-                                              'loss_weights')
-            loss_weights_weights = np.array(loss_weights_weights.split(',')).\
-                astype(np.float)
-            model.compile(optimizer=optimizer_used,
-                          loss=custom,
-                          loss_weights={'Target1': loss_weights_weights[0],
-                                        'Target2': loss_weights_weights[1],
-                                        'Target3': loss_weights_weights[2]})
-        else:
-            model.compile(optimizer=optimizer_used,
-                          loss=parser.get('Multi_Task_Learning', 'loss'),
-                          loss_weights=parser.get('Multi_Task_Learning',
-                                                  'loss_weights'))
-    else:
-        if loss_func == "weighted_categorical_crossentropy":
-            model.compile(
-                loss=loss_func, optimizer=optimizer_used)
-        else:
-            model.compile(
-                loss=loss_func, optimizer=optimizer_used, metrics=['accuracy'])
-
-    os.system("nvidia-smi")
+    model.compile(optimizer=optimizer_used, **loss_dict)
+    print(os.system("nvidia-smi"))
 
     if args.__dict__['continue'] == 'None':
         run_info = dict()

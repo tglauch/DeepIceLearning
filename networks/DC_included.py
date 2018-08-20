@@ -161,13 +161,13 @@ def model(input_shapes, output_shapes):
     #branch5
     input_b5 = Input(shape=input_shapes["Branch_DC_charge"]["general"],
                      name = "Input-Branch5")
-    z5 = Conv3D(72, (3, 3, 5), padding="same", **kwargs)(input_b5)
-    z5 = MaxPooling3D(pool_size=(2, 2, 3))(z5)
+    z5 = Conv3D(72, (2, 2, 5), padding="same", **kwargs)(input_b5)
+    z5 = MaxPooling3D(pool_size=(1, 1, 3))(z5)
     z5 = BatchNormalization()(z5)
-    z5 = bunit.Residual(72, 72, z5)
+    z5 = bunit.Residual(72, 72, z5, kernel_size=(2,2,5))
     z5 = BatchNormalization()(z5)
     z5 = Flatten()(z5)
-    z5 = Dense(64, **kwargs)(z5)
+    z5 = Dense(32, **kwargs)(z5)
     z5 = Dropout(rate=0.4)(z5)
 
 
@@ -186,13 +186,13 @@ def model(input_shapes, output_shapes):
     #branch7
     input_b7 = Input(shape=input_shapes["Branch_DC_time"]["general"],
                      name = "Input-Branch7")
-    z7 = Conv3D(72, (3, 3, 5), padding="same", **kwargs)(input_b7)
-    z7 = MaxPooling3D(pool_size=(2, 2, 3))(z7)
+    z7 = Conv3D(72, (2, 2, 5), padding="same", **kwargs)(input_b7)
+    z7 = MaxPooling3D(pool_size=(1, 1, 3))(z7)
     z7 = BatchNormalization()(z7)
-    z7 = bunit.Residual(72, 72, z7)
+    z7 = bunit.Residual(72, 72, z7, kernel_size=(2,2,5))
     z7 = BatchNormalization()(z7)
     z7 = Flatten()(z7)
-    z7 = Dense(64, **kwargs)(z7)
+    z7 = Dense(32, **kwargs)(z7)
     z7 = Dropout(rate=0.4)(z7)
 
     # branch 8
@@ -231,16 +231,6 @@ def model(input_shapes, output_shapes):
     output_b1 = Dense(output_shapes["Out1"]["general"][0],\
                           activation="softmax",\
                           name="Target1")(o1)
-
-
-    # output 2
-    o2 = bunit.Dense_Residual(36, 36, merge_total)
-    o2 = bunit.Dense_Residual(36, 36, o2)
-    o2 = bunit.Dense_Residual(36, 36, o2)
-    output_b2 = Dense(output_shapes["Out2"]["general"][0],\
-                          activation="softmax",\
-                          name="Target2")(o2)
-
 
     # output 3
     o3 = bunit.Dense_Residual(36, 36, merge_total)

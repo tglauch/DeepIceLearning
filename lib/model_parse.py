@@ -94,12 +94,18 @@ def parse_functional_model(cfg_file, exp_file):
     #    raise Exception('Import of model.py failed: {}'.format(cfg_file))
     inputs = func_model_def.inputs
     outputs = func_model_def.outputs
-
+    loss_dict = {}
+    if hasattr(func_model_def, 'loss_weights'):
+        loss_dict['loss_weights'] = func_model_def.loss_weights
+    if hasattr(func_model_def, 'loss_functions'):
+        loss_dict['loss'] = func_model_def.loss_functions
+    print() 
     in_shapes, in_trans, out_shapes, out_trans = \
         prepare_io_shapes(inputs, outputs, exp_file)
-    print(out_shapes)
-    print(in_shapes)
+    print('----In  Shapes-----\n {}'.format(in_shapes))
+    print('----Out Shapes----- \n {}'.format(out_shapes))
+    print('--- Loss Settings ---- \n {}'.format(loss_dict))
     model = func_model_def.model(in_shapes, out_shapes)
-    return model, in_shapes, in_trans, out_shapes, out_trans
+    return model, in_shapes, in_trans, out_shapes, out_trans, loss_dict
 
 

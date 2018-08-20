@@ -7,13 +7,13 @@ Keras Customizable Residual Unit
 This is a simplified implementation of the basic (no bottlenecks) full pre-activation residual unit from He, K., Zhang, X., Ren, S., Sun, J., "Identity Mappings in Deep Residual Networks" (http://arxiv.org/abs/1603.05027v2).
 '''
 
-def conv_block(feat_maps_out, prev):
+def conv_block(feat_maps_out, prev, kernel_size=(3,3,5)):
     prev = BatchNormalization()(prev) # Specifying the axis and mode allows for later merging
     prev = Activation('relu')(prev)
-    prev = Conv3D(feat_maps_out, (3, 3, 5), padding="same")(prev) 
+    prev = Conv3D(feat_maps_out, kernel_size, padding="same")(prev) 
     prev = BatchNormalization()(prev) # Specifying the axis and mode allows for later merging
     prev = Activation('relu')(prev)
-    prev = Conv3D(feat_maps_out, (3, 3, 5), padding="same")(prev)   
+    prev = Conv3D(feat_maps_out, kernel_size, padding="same")(prev)   
  
     return prev
 
@@ -25,7 +25,7 @@ def identitiy_fix_size(feat_maps_in, feat_maps_out, prev):
     return prev 
 
 
-def Residual(feat_maps_in, feat_maps_out, prev_layer):
+def Residual(feat_maps_in, feat_maps_out, prev_layer, kernel_size=(3,3,5)):
     '''
     A customizable residual unit with convolutional and shortcut blocks
     Args:
@@ -35,7 +35,7 @@ def Residual(feat_maps_in, feat_maps_out, prev_layer):
     '''
 
     id = identitiy_fix_size(feat_maps_in, feat_maps_out, prev_layer)
-    conv = conv_block(feat_maps_out, prev_layer)
+    conv = conv_block(feat_maps_out, prev_layer, kernel_size)
 
     print('Residual block mapping '+str(feat_maps_in)+' channels to '+str(feat_maps_out)+' channels built')
     return concatenate([id, conv]) # the residual connection

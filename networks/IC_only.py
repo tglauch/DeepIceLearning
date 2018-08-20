@@ -16,10 +16,12 @@ sys.path.append(os.path.join(os.path.abspath(".."),'lib'))
 import transformations as tr
 import numpy as np
 import block_units as bunit
+import individual_loss
 
 
-# *Settings*
-# define inputs for each branch
+# ----*Settings*---------
+# Step 1: Define inputs for each branch here
+
 inputs = OrderedDict()
 
 
@@ -46,33 +48,11 @@ inputs["Branch_IC_time"] = {"variables": ["IC_time_first", "IC_ATWD_0_05_pct_cha
 inputs["Branch_IC_time_abs"] = {"variables": ["IC_time_first"],
                      "transformations": [tr.max_min_delta_log]}
 
-#Input for DC
-#inputs["Branch_DC_charge"] = {"variables": ["DC_charge", "DC_first_charge", "DC_num_pulses", "DC_time_first"],
-#                     "transformations": [tr.centralize, tr.centralize,  tr.centralize, tr.centralize]}
-#inputs["Branch_DC_charge_abs"] = {"variables": ["DC_charge"],
-#                     "transformations": [tr.log_of_sum]}
-#
-#inputs["Branch_DC_time"] = {"variables": ["DC_time_first", "DC_ATWD_0_05_pct_charge_quantile", "DC_ATWD_0_1_pct_charge_quantile",\
-#                                   "DC_ATWD_0_15_pct_charge_quantile", "DC_ATWD_0_2_pct_charge_quantile", "DC_ATWD_0_25_pct_charge_quantile",\
-#                                   "DC_ATWD_0_3_pct_charge_quantile", "DC_ATWD_0_35_pct_charge_quantile", "DC_ATWD_0_4_pct_charge_quantile",\
-#                                   "DC_ATWD_0_45_pct_charge_quantile", "DC_ATWD_0_5_pct_charge_quantile", "DC_ATWD_0_55_pct_charge_quantile",\
-#                                   "DC_ATWD_0_6_pct_charge_quantile", "DC_ATWD_0_65_pct_charge_quantile", "DC_ATWD_0_7_pct_charge_quantile",\
-#                                   "DC_ATWD_0_75_pct_charge_quantile","DC_ATWD_0_8_pct_charge_quantile", "DC_ATWD_0_85_pct_charge_quantile",\
-#                                   "DC_ATWD_0_9_pct_charge_quantile","DC_ATWD_0_95_pct_charge_quantile", "DC_charge"],
-#                     "transformations": [tr.centralize, tr.centralize, tr.centralize,\
-#                                         tr.centralize, tr.centralize, tr.centralize,\
-#                                         tr.centralize, tr.centralize, tr.centralize,\
-#                                         tr.centralize, tr.centralize, tr.centralize,\
-#                                        tr.centralize, tr.centralize, tr.centralize,\
-#                                         tr.centralize, tr.centralize, tr.centralize,\
-#                                         tr.centralize, tr.centralize, tr.centralize]}
-#inputs["Branch_DC_time_abs"] = {"variables": ["DC_time_first"],
-#                     "transformations": [tr.max_min_delta_log]}
                      
-# define outputs for each branch
+# Step 2:  Define outputs for each branch here
+
 outputs = OrderedDict()
 outputs["Out1"] = {"variables": ["ClassificationLabel"],
-#                   "transformations": [tr.oneHotEncode_EventType]}
                    "transformations": [tr.oneHotEncode_EventType_stratingTrack]}
 
 outputs["Out2"] = {"variables": ["StartingLabel"],
@@ -83,6 +63,14 @@ outputs["Out3"] = {"variables": ["zenith"],
 
 reference_outputs = []
 
+
+# Step 3: Define loss functions
+
+loss_weights = {'Target1': 1., 'Target2': 3., 'Target3': 30.}
+ev_class_weights = [1.0, 1.024,  4.421, 1.409]
+loss_functions = [individual_loss.weighted_categorical_crossentropy(ev_class_weights),
+                 "categorical_crossentropy", 
+                 "mean_squared_error"]
 # *Model*
 
 def model(input_shapes, output_shapes):
