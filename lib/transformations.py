@@ -142,6 +142,20 @@ def oneHotEncode_01(x, r_vals=None):
     return onehot_encoded
 
 
+def oneHotEncode_Starting_padding(x, r_vals):
+    pos = [r_vals[14], r_vals[15], r_vals[16]]
+    dir = [r_vals[17], r_vals[18], r_vals[19]]
+    gcdfile = "/cvmfs/icecube.opensciencegrid.org/data/GCD/GeoCalibDetectorStatus_2013.56429_V0.i3.gz"
+    padding = 100
+    surface = icecube.MuonGun.ExtrudedPolygon.from_file(gcdfile, padding= padding)
+    intersections = surface.intersection(pos, dir)
+    if intersections.first <= 0 and intersections.second > 0:
+        starting = 0  # starting event
+    else:
+        starting = 1  # through-going or stopping event
+    return starting
+
+
 def oneHotEncode_EventType_exact(x, r_vals=None):
     """
     This function one hot encodes the input for the event types cascade, tracks, doubel-bang
@@ -169,6 +183,7 @@ def oneHotEncode_EventType(x, r_vals=None):
     cascade = [1., 0., 0.]
     track = [0., 1., 0.]
     doublebang = [0., 0., 1.]
+    #muss man dringend mal in ein dic umschreiben
     # map x to possible classes
     if x == 0: #NC
         onehot_encoded = cascade
