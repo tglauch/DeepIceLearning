@@ -306,8 +306,8 @@ if __name__ == "__main__":
         generator(
             batch_size, file_handlers, train_inds, inp_shapes,
             inp_trans, out_shapes, out_trans),
-        steps_per_epoch=math.ceil(
-            (np.sum([k[1] - k[0] for k in train_inds]) / batch_size)) / epoch_divider,
+        steps_per_epoch=int(math.ceil(
+            (np.sum([k[1] - k[0] for k in train_inds]) / batch_size)) / epoch_divider),
         validation_data=generator(
             batch_size, file_handlers, valid_inds, inp_shapes,
             inp_trans, out_shapes, out_trans, val_run=True),

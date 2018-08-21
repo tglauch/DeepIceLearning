@@ -5,7 +5,7 @@ import numpy as np
 from keras.utils import to_categorical
 from scipy.stats import norm
 
-def identity(x):
+def identity(x,r_vals=None):
     return x
 
 def centralize(x):
@@ -233,3 +233,23 @@ def oneHotEncode_EventType_stratingTrack(x, r_vals=None):
         onehot_encoded = fail
     return onehot_encoded
 
+def oneHotEncode_DB(x, r_vals=None):
+    """
+    This function one hot encode for event type  doubel-bang, no-double bang
+    """
+    #print type(list(r_vals))
+    #print "r_vals: {}".format(r_vals)
+    #print "x: {}".format(x)
+    # define universe of possible input values
+    fail = [0., 0.]
+    ndoublebang = [1., 0.]
+    doublebang = [0., 1.,]
+    
+    # map x to possible classes
+    if x == 5: #Double Bang
+        onehot_encoded = doublebang
+    elif x in [0,1,2,3,4,6,7,8,9]:
+        onehot_encoded = ndoublebang
+    else:
+        onehot_encoded = fail
+    return onehot_encoded
