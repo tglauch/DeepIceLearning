@@ -71,7 +71,10 @@ ev_class_weights = [1.0, 1.024,  4.421, 1.409]
 loss_functions = [individual_loss.weighted_categorical_crossentropy(ev_class_weights),
                  "categorical_crossentropy", 
                  "mean_squared_error"]
-# *Model*
+
+
+
+# Step 4: Define the model using Keras functional API
 
 def model(input_shapes, output_shapes):
 

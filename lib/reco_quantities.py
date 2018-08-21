@@ -151,11 +151,11 @@ def testing_event(p_frame, gcdfile):
             return 0  # everything fine
 
 
-# returns a list of neutrinos, that children interact with the detector,
-# determines after the level, where one is found
 
 
 def find_particle(p, I3Tree, gcdfile):
+# returns a list of neutrinos, that children interact with the detector,
+# determines after the level, where one is found
     t_list = []
     children = I3Tree.children(p)
     IC_hit = np.any([(has_signature(tp, gcdfile) != -1) for tp in children])

@@ -122,7 +122,7 @@ if __name__ == "__main__":
     # create model (new implementation, functional API of Keras)
     print '##########################################################'
     print os.path.join(mc_location, input_files[0])
-    base_model, inp_shapes, inp_trans, out_shapes, out_trans = \
+    base_model, inp_shapes, inp_trans, out_shapes, out_trans,_ = \
         mp.parse_functional_model(
             conf_model_file,
             os.path.join(mc_location, input_files[0]))
