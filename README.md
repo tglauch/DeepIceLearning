@@ -7,7 +7,7 @@ The main functionalities are provided by essentially three scripts and their cor
 
 # 1. create_dataset.py
 
-This file converts a set of i3files into training data. Training data files consist of 3d input tensors in the format 11x10x60 for IceCube and 3x5x60 for Deep core. The values to be saved to the tensor are defined in a config file (see `/configs/create_dataset_default.cfg`), classical examples are time at which x% of the charge are collected, the overall number of hits, total collected charge...Also a set of 'reco_vals' can be defined which stores quantities that are later used as training output of the network or can be used for network analysis.
+This file converts a set of i3files into training data. Training data files consist of 3d input tensors in the format 11x10x60 for IceCube and 3x5x60 for Deep core. The values to be saved to the tensor are defined in a config file (see `/configs/create_dataset_default.cfg`), classical examples are time at which x% of the charge are collected, the overall number of hits, total collected charge...Also a set of `reco_vals` can be defined which are quantities that are later used as training output of the network or can be used for analyzing the network.
 
 In order create a dataset run something like
 
