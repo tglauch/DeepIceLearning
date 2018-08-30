@@ -11,7 +11,7 @@ This file converts a set of i3files into training data. Training data files cons
 
 In order create a dataset run something like
 
-`adsfajlsdaf`
+`python create_dataset_dagman.py --dataset_config file_to_dataset_config_file`
 
 # 2. neural_network.py
 
