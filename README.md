@@ -25,7 +25,6 @@ An example to run the training on a GPU is
 
 Once a network is trained one might want to apply it to a set of data. For this just run something like 
 
-bash apply_env.sh --folder path_to_trained_network_folder --main_config path_to_corresponding_cfg_file --batch_size 256 --model name_of_the_model_file --weights name_of_the_weights_file
-
+`bash apply_env.sh --folder path_to_trained_network_folder --main_config path_to_corresponding_cfg_file --batch_size 256 --model name_of_the_model_file --weights name_of_the_weights_file`
 
 
