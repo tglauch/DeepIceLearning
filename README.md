@@ -17,7 +17,7 @@ In order create a dataset run something like
 
 This is the main script for training a network. As command line arguments it needs a config file that sets the hyperparameters and filepath for the training and a network definition file. Most of the network definition is done using standart Keras. Additionall transformations to the input and output data, as well as loss function settings can be defined as well. Compare the examples in `./networks/`
 
-An example to run the training on a GPU is
+An example to run the training is
 
 `bash nn_env.sh --main_config path_to_config_file --input all --model path_to_model_file`
 
