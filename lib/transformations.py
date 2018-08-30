@@ -162,13 +162,11 @@ def oneHotEncode_EventType(x, r_vals=None):
     """
     This function one hot encodes the input for the event types cascade, tracks, doubel-bang
     """
-    print "r_vals: {}".format(r_vals)
-    print "x: {}".format(x)
     # define universe of possible input values
     fail = [0., 0., 0.]
     cascade = [1., 0., 0.]
     track = [0., 1., 0.]
-    doublebang = [0., 0., 1.]
+    s_track = [0., 0., 1.]
     # map x to possible classes
     if x == 0: #NC
         onehot_encoded = cascade
@@ -177,13 +175,13 @@ def oneHotEncode_EventType(x, r_vals=None):
     elif x == 2: #Through-Going Track
         onehot_encoded = track
     elif x == 3: #Starting Track
-        onehot_encoded = track
+        onehot_encoded = s_track
     elif x == 4: #Stopping Track
         onehot_encoded = track
     elif x == 5: #Double Bang
-        onehot_encoded = doublebang
+        onehot_encoded = cascade
     elif x == 6: #Stopping Tau
-        onehot_encoded = doublebang
+        onehot_encoded = cascade
     elif x == 7: #Glashow Cascade
         onehot_encoded = cascade
     elif x == 8: #Glashow Track
@@ -222,7 +220,7 @@ def oneHotEncode_EventType_stratingTrack(x, r_vals=None):
     elif x == 5: #Double Bang
         onehot_encoded = doublebang
     elif x == 6: #Stopping Tau
-        onehot_encoded = doublebang
+        onehot_encoded = cascade
     elif x == 7: #Glashow Cascade
         onehot_encoded = cascade
     elif x == 8: #Glashow Track

@@ -188,10 +188,9 @@ if __name__ == "__main__":
     mc_truth = [[] for br in out_shapes.keys()
                 for var in out_shapes[br].keys()
                 if var != 'general']
-    reco_vals = []
     IC_hit_vals = []
     DC_hit_vals = []
-
+    reco_vals = None
     for i, file_handler_p in enumerate(file_handlers):
         down = test_inds[i][0]
         up = test_inds[i][1]
@@ -201,7 +200,10 @@ if __name__ == "__main__":
                                 for var in out_shapes[br].keys()
                                 if var != 'general']):
             mc_truth[j].extend(temp_truth[var])
-        reco_vals.extend(temp_truth)
+        if reco_vals == None:
+            reco_vals = temp_truth
+        else:
+            reco_vals = np.concatenate([reco_vals, temp_truth])
         IC_hit_DOMs_list = []
         DC_hit_DOMs_list = []
         for k in xrange(up - down):
