@@ -207,23 +207,34 @@ def classify(p_frame, gcdfile):
             if 'Hadrons' not in p_strings:
                 return 9  # Glashow Tau
             had_ind = p_strings.index('Hadrons')
-            tau_child = I3Tree.children(children[tau_ind])[-1]
-            if np.abs(tau_child.pdg_encoding) == 13:
-                if has_signature(tau_child, gcdfile) == 0:
-                    return 3  # Starting Track
-                if has_signature(tau_child, gcdfile) == 1:
+            try:
+                tau_child = I3Tree.children(children[tau_ind])[-1]
+            except:
+                tau_child = None
+            if tau_child:
+                if np.abs(tau_child.pdg_encoding) == 13:
+                    if has_signature(tau_child, gcdfile) == 0:
+                        return 3  # Starting Track
+                    if has_signature(tau_child, gcdfile) == 1:
+                        return 2  # Through Going Track
+                    if has_signature(tau_child, gcdfile) == 2:
+                        return 4  # Stopping Track
+                else:
+                    if children[tau_ind].length < 10:  # Achtung Hardcode tau decay length!!!!!!!!
+                        return 1
+                    if has_signature(children[tau_ind], gcdfile) == 0 and has_signature(tau_child, gcdfile) == 0:
+                        return 5  # Double Bang
+                    if has_signature(children[tau_ind], gcdfile) == 0 and has_signature(tau_child, gcdfile) == -1:
+                        return 3  # Starting Track
+                    if has_signature(children[tau_ind], gcdfile) == -1 and has_signature(tau_child, gcdfile) == 0:
+                        return 6  # Stopping Tau
+            else: # Tau Decay Length to large, so no childs are simulated
+                if has_signature(children[tau_ind], gcdfile) == 0:
+                    return 3 # Starting Track
+                if has_signature(children[tau_ind], gcdfile) == 1:
                     return 2  # Through Going Track
-                if has_signature(tau_child, gcdfile) == 2:
+                if has_signature(children[tau_ind], gcdfile) == 2:
                     return 4  # Stopping Track
-            else:
-                if children[tau_ind].length < 10:  # Achtung Hardcode tau decay length!!!!!!!!
-                    return 1
-                if has_signature(children[tau_ind], gcdfile) == 0 and has_signature(tau_child, gcdfile) == 0:
-                    return 5  # Double Bang
-                if has_signature(children[tau_ind], gcdfile) == 0 and has_signature(tau_child, gcdfile) == -1:
-                    return 3  # Starting Track
-                if has_signature(children[tau_ind], gcdfile) == -1 and has_signature(tau_child, gcdfile) == 0:
-                    return 6  # Stopping Tau
 
 
 def time_of_percentage(charges, times, percentage):
