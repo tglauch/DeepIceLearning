@@ -1,5 +1,5 @@
 # DeepIceLearning
-DeepIceLearning - An Approach to use Deep Neural Networks for the Regressions and Classifications in IceCube
+DeepIceLearning - A software package to use Deep Neural Networks for Reconstructions and Classifications in IceCube
 
 This software package is designed to make Deep Learning applications in IceCube as easy as possible. It contains a set of scripts to generate training datasets from i3 files, train Deep Neural Networks and apply them to data.
 
