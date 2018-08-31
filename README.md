@@ -3,7 +3,7 @@ DeepIceLearning - A software package to use Deep Neural Networks for Reconstruct
 
 This software package is designed to make Deep Learning applications in IceCube as easy as possible. It contains a set of scripts to generate training datasets from i3 files, train Deep Neural Networks and apply them to data.
 
-The main functionalities are provided by essentially three scripts and their corresponding submit files in the `/submit_scripts` folder. Addtional configurations for the training and dataset defintions can be done using the config files in `/config`. Finally networks can be defined using the Keras functional API (see examples in `/networks/`). In addition to the model definition python dictionaries are used in order to define the output and input features as well as transformations applied on them.
+The main functionalities are provided by essentially three scripts and their corresponding submit files in the `/submit_scripts` folder. Addtional configurations for the training and dataset defintions can be done using the config files in `/config`. Neural networks are defined using the Keras functional API (see examples in `/networks/`). In addition to the Keras model definition python dictionaries in the network file are used in order to define the output and input features as well as transformations applied on them.
 
 # 1. create_dataset.py
 
@@ -12,6 +12,10 @@ This file converts a set of i3files into training data. Training data files cons
 In order create a dataset run something like
 
 `python create_dataset_dagman.py --dataset_config file_to_dataset_config_file`
+
+or the corresponding submit file
+
+`python create_dataset_dagman.py --dataset_config config_file_for_the_dataset --files_per_job num_i3files_per_job`
 
 # 2. neural_network.py
 
