@@ -163,35 +163,13 @@ def oneHotEncode_EventType(x, r_vals=None):
     This function one hot encodes the input for the event types cascade, tracks, doubel-bang
     """
     # define universe of possible input values
-    fail = [0., 0., 0.]
+    #fail = [0., 0., 0.]
     cascade = [1., 0., 0.]
     track = [0., 1., 0.]
     s_track = [0., 0., 1.]
     # map x to possible classes
-    if x == 0: #NC
-        onehot_encoded = cascade
-    elif x == 1: #Cascade
-        onehot_encoded = cascade
-    elif x == 2: #Through-Going Track
-        onehot_encoded = track
-    elif x == 3: #Starting Track
-        onehot_encoded = s_track
-    elif x == 4: #Stopping Track
-        onehot_encoded = track
-    elif x == 5: #Double Bang
-        onehot_encoded = cascade
-    elif x == 6: #Stopping Tau
-        onehot_encoded = cascade
-    elif x == 7: #Glashow Cascade
-        onehot_encoded = cascade
-    elif x == 8: #Glashow Track
-        onehot_encoded = track
-    elif x == 9: #Glashow Tau
-        onehot_encoded = cascade
-    else:
-	onehot_encoded = fail 
-    return onehot_encoded
-
+    mapping = {0:cascade, 1:cascade, 2:track, 3:track, 4:track, 5:doublebang, 6:doublebang, 7:cascade, 8:track, 9:cascade}
+    return mapping[x]
 
 def oneHotEncode_EventType_stratingTrack(x, r_vals=None):
     """
@@ -201,35 +179,27 @@ def oneHotEncode_EventType_stratingTrack(x, r_vals=None):
     #print "r_vals: {}".format(r_vals)
     #print "x: {}".format(x)
     # define universe of possible input values
-    fail = [0., 0., 0., 0.]
+    #fail = [0., 0., 0., 0.]
     cascade = [1., 0., 0., 0.]
     track = [0., 1., 0., 0.]
     doublebang = [0., 0., 1., 0.]
     startingTrack = [0., 0., 0., 1.]
     # map x to possible classes
-    if x == 0: #NC
-        onehot_encoded = cascade
-    elif x == 1: #Cascade
-        onehot_encoded = cascade
-    elif x == 2: #Through-Going Track
-        onehot_encoded = track
-    elif x == 3: #Starting Track
-        onehot_encoded = startingTrack
-    elif x == 4: #Stopping Track
-        onehot_encoded = track
-    elif x == 5: #Double Bang
-        onehot_encoded = doublebang
-    elif x == 6: #Stopping Tau
-        onehot_encoded = cascade
-    elif x == 7: #Glashow Cascade
-        onehot_encoded = cascade
-    elif x == 8: #Glashow Track
-        onehot_encoded = track
-    elif x == 9: #Glashow Tau
-        onehot_encoded = cascade
+    mapping = {0:cascade, 1:cascade, 2:track, 3:startingTrack, 4:track, 5:doublebang, 6:doublebang, 7:cascade, 8:track, 9:cascade}
+    return mapping[x]
+
+def oneHotEncode_Starting_padding(x, r_vals):
+    pos = [r_vals[14], r_vals[15], r_vals[16]]
+    dir = [r_vals[17], r_vals[18], r_vals[19]]
+    gcdfile = "/cvmfs/icecube.opensciencegrid.org/data/GCD/GeoCalibDetectorStatus_2013.56429_V0.i3.gz"
+    padding = 100
+    surface = icecube.MuonGun.ExtrudedPolygon.from_file(gcdfile, padding= padding)
+    intersections = surface.intersection(pos, dir)
+    if intersections.first <= 0 and intersections.second > 0:
+        starting = 0  # starting event
     else:
-        onehot_encoded = fail
-    return onehot_encoded
+        starting = 1  # through-going or stopping event
+    return starting
 
 def oneHotEncode_DB(x, r_vals=None):
     """
