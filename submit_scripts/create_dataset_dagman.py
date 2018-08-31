@@ -164,5 +164,5 @@ if Resc == '':
     dag.dump()
 else:
     dagFile = Resc
-#os.system("condor_submit_dag -f " + dagFile)
-#time.sleep(1)
+os.system("condor_submit_dag -f " + dagFile)
+time.sleep(1)
