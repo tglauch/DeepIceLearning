@@ -21,6 +21,10 @@ An example to run the training is
 
 `bash nn_env.sh --main_config path_to_config_file --input all --model path_to_model_file`
 
+or when sending the job to a (multi-gpu) cluster. Run from within the `submit_scripts` folder
+
+`python submit_training.py --main_config path_to_config_file --input all --model path_to_model_file`
+
 # 3. apply.py
 
 Once a network is trained one might want to apply it to a set of data. For this just run something like 
