@@ -18,7 +18,7 @@ def parseArguments():
         help="dataset config ",
         type=str, default='create_dataset.cfg')
     parser.add_argument(
-        "--filesperJob",
+        "--files_per_job",
         help="n files per job ", default=50,
         type=int)
     parser.add_argument(
@@ -96,11 +96,10 @@ if Resc == '':
     basepath = [dataset_parser['Basics'][key] for key in
                 dataset_parser['Basics'].keys() if 'mc_path' in key]
     filelist = dataset_parser.get("Basics", "file_list")
-    filesjob = args.filesperJob
+    filesjob = args.files_per_job
     file_bunches = []
-
     if folderlist == 'allinmcpath':
-        folderlist = []
+        folderlists = []
         for p in basepath:
             a = [subfolder for subfolder in os.listdir(p)
                  if os.path.isdir(os.path.join(p, subfolder))]
@@ -108,21 +107,22 @@ if Resc == '':
                 a.remove("logs")
             if "job_stats.json.gz" in a:
                 a.remove("job_stats.json.gz")
-            folderlist.append(a)
+            folderlists.append(a)
     else:
-        folderlist = [folder.strip() for folder in folderlist.split(',')]
+        folderlists = [folder.strip() for folder in folderlist.split(',')]
 
     if not filelist == 'allinfolder':
         filelist = filelist.split(',')
-
-    for j, sim in enumerate(folderlist):
+    num_files = []
+    for j, bfolder in enumerate(folderlists):
         outfolder = os.path.join(dataset_parser.get('Basics', 'out_folder'),
                                  "filelists/dataset",
                                  str(j))
         if not os.path.exists(outfolder):
             os.makedirs(outfolder)
+            print('Created Folder {}'.format(outfolder))
         run_filelist = []
-        for ii, folder in enumerate(folderlist[j]):
+        for ii, folder in enumerate(bfolder):
             for root, dirs, files in os.walk(os.path.join(basepath[j],
                                                           folder)):
                 i3_files_all = [s_file for s_file in files
@@ -131,36 +131,29 @@ if Resc == '':
                     i3_files = [f for f in filelist if f in i3_files_all]
                 else:
                     i3_files = i3_files_all
-                if len(i3_files) > 0:
-                    b = [os.path.join(root, single_file)
-                         for single_file in i3_files]
-                    run_filelist.extend(b)
-            run_filelist = [run_filelist[i:i + filesjob] for i
-                            in np.arange(0, len(run_filelist), filesjob + 1)]
-            for numberInRunFilelist, single_filelist in enumerate(run_filelist):
-                with open(os.path.join(outfolder,
-                                       'File_{}.pickle'.format(ii * 20 + numberInRunFilelist)), 'w+') as f:
-                    pickle.dump(single_filelist, f)
-            run_filelist = []
-
-
-#################### if Job number is set by hand ################
-    misty = 0
-    while misty <= 999:  # bad quick fix ###### AAAAAAAAAAAHHHH
-        file_bunches.append('File_{}'.format(misty))
-        misty += 1
-###################################################################
+                b = [os.path.join(root, s_file) for s_file in i3_files]
+                run_filelist.extend(b)
+        run_filelist = [run_filelist[i:i + filesjob] for i
+                        in np.arange(0, len(run_filelist), filesjob + 1)]
+        print('Save filelists for mc  {}'.format(basepath[j]))
+        num_files.append(len(run_filelist))
+        for c, sublist in enumerate(run_filelist):
+            with open(os.path.join(outfolder,'File_{}.pickle'.format(c)), 'w+') as f:
+                    pickle.dump(sublist, f)
 
     nodes = []
-    for i, bunch in enumerate(file_bunches):
-        logfile = log_path + bunch
+    print('The number of files for the datasets is {} '.format(num_files))
+    print('Resulting in {} jobs'.format(np.min(num_files)))
+    for i in range(np.min(num_files)):
+        fname = 'File_{}'.format(i)
+        logfile = os.path.join(log_path,fname)
         PATH = ''
-        for k in xrange(len(basepath)):
+        for k in range(len(basepath)):
             PATH = PATH +\
                 os.path.join(dataset_parser.get('Basics', 'out_folder'),
                              "filelists/dataset",
                              str(k),
-                             '{}.pickle'.format(bunch)) + " "
+                             '{}.pickle'.format(fname)) + " "
         dagArgs = pydag.dagman.Macros(LOGFILE=logfile,
                                       PATHs=PATH,
                                       DATASET=args.dataset_config)
@@ -171,5 +164,5 @@ if Resc == '':
     dag.dump()
 else:
     dagFile = Resc
-os.system("condor_submit_dag -f " + dagFile)
-time.sleep(1)
+#os.system("condor_submit_dag -f " + dagFile)
+#time.sleep(1)
