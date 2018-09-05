@@ -220,8 +220,6 @@ def classify(p_frame, gcdfile):
                     if has_signature(tau_child, gcdfile) == 2:
                         return 4  # Stopping Track
                 else:
-                    if children[tau_ind].length < 10:  # Achtung Hardcode tau decay length!!!!!!!!
-                        return 1
                     if has_signature(children[tau_ind], gcdfile) == 0 and has_signature(tau_child, gcdfile) == 0:
                         return 5  # Double Bang
                     if has_signature(children[tau_ind], gcdfile) == 0 and has_signature(tau_child, gcdfile) == -1:
