@@ -56,8 +56,9 @@ def prepare_io_shapes(inputs, outputs, exp_file):
         for var, tr in zip(outputs[br]["variables"],
                            outputs[br]["transformations"]):
             test_arr = np.array(inp_file['reco_vals'][var][0])
-            res_shape = np.shape(np.squeeze(tr(test_arr, inp_file["reco_vals"][:][0]))) if not \
-                    isinstance(tr(test_arr, inp_file["reco_vals"][:][0]), np.float) else (1,)
+            res_shape = np.shape(np.squeeze(tr(test_arr, inp_file["reco_vals"][:][0])))
+            if res_shape == ():
+                res_shape = (1,)
             print(br,var,res_shape)
             out_shapes[br][var] = res_shape
             out_transformations[br][var] = tr

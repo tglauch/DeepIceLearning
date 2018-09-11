@@ -63,17 +63,14 @@ if cuda_path not in os.environ['LD_LIBRARY_PATH'].split(os.pathsep):
     except Exception, exc:
         print 'Failed re-exec:', exc
         sys.exit(1)
-if backend == 'theano':
-    os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=gpu,floatX=float32"
 
+#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+#os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 if backend == 'tensorflow':
     print('Run with backend Tensorflow')
     import tensorflow as tf
-elif backend == 'theano':
-    print('Run with backend Theano')
-    import theano
 else:
-    raise NameError('Choose tensorflow or theano as keras backend')
+    raise NameError('Backend {} currently not supported'.format(backend))
 
 import numpy as np
 import keras

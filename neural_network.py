@@ -226,6 +226,12 @@ if __name__ == "__main__":
     elif parser.get('Training_Parameters', 'optimizer') == "Adam":
         optimizer_used = keras.optimizers.Adam(
             lr=float(parser.get('Training_Parameters', 'learning_rate')))
+    elif parser.get('Training_Parameters', 'optimizer') == "SGD":
+        optimizer_used = keras.optimizers.SGD(
+            lr=float(parser.get('Training_Parameters', 'learning_rate')))
+    elif parser.get('Training_Parameters', 'optimizer') == "RMSProb":
+        optimizer_used = keras.optimizers.RMSprop(
+            lr=float(parser.get('Training_Parameters', 'learning_rate')))
     else:
         print "Optimizer unchoosen or unknown -> default: Adam"
         optimizer_used = keras.optimizers.Adam(

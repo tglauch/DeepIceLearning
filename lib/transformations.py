@@ -189,7 +189,7 @@ def oneHotEncode_3_evtypes(x, r_vals=None):
     # map x to possible classes
     mapping = {0: cascade, 1: cascade, 2: track, 3: s_track, 4: track,
                5: cascade, 6: cascade, 7: cascade, 8: track, 9: cascade}
-    return mapping[x]
+    return mapping[int(x)]
 
 
 def oneHotEncode_db(x, r_vals=None):
@@ -204,7 +204,7 @@ def oneHotEncode_db(x, r_vals=None):
     mapping = {0: ndoublebang, 1: ndoublebang, 2: ndoublebang, 3: ndoublebang,
                4: ndoublebang, 5: doublebang, 6: doublebang, 7: ndoublebang,
                8: ndoublebang, 9: ndoublebang}
-    return mapping[x]
+    return mapping[int(x)]
 
 
 def oneHotEncode_4_evtypes(x, r_vals=None):
@@ -212,7 +212,6 @@ def oneHotEncode_4_evtypes(x, r_vals=None):
     This function one hot encodes the input for the event types 
     cascade, tracks, doubel-bang, starting tracks
     """
-
     cascade = [1., 0., 0., 0.]
     track = [0., 1., 0., 0.]
     doublebang = [0., 0., 1., 0.]
@@ -220,7 +219,7 @@ def oneHotEncode_4_evtypes(x, r_vals=None):
     # map x to possible classes
     mapping = {0: cascade, 1: cascade, 2: track, 3: s_track, 4: track,
                5: doublebang, 6: doublebang, 7: cascade, 8: track, 9: cascade}
-    return mapping[x]
+    return mapping[int(x)]
 
 
 def oneHotEncode_Starting_padding(x, r_vals):

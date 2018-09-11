@@ -33,6 +33,10 @@ def parseArguments():
         "--weights",
         type=str, default='best_val_loss.npy',
         help="trainfolder ")
+    parser.add_argument(
+        "--memory",
+        help="specify the RAM requirements",
+        type=int, default=-1)
     args = parser.parse_args()
     return args
 
@@ -46,7 +50,10 @@ parser_dict = {s:dict(parser.items(s)) for s in parser.sections()}
 train_location = parser.get('Basics', 'train_folder')
 workload_manager = parser.get('Basics', 'workload_manager')
 request_gpus = parser.get('GPU', 'request_gpus')
-request_memory = parser.get('GPU', 'request_memory')
+if args['memory'] == -1:
+    request_memory = parser.get('GPU', 'request_memory')
+else:
+    request_memory = args['memory']
 requirements = parser.get('GPU', 'requirements')
 thisfolder = parser.get("Basics", "thisfolder")
 if 'exclude_node' in parser_dict['GPU'].keys():
@@ -58,8 +65,6 @@ if workload_manager not in ['slurm','condor','bsub']:
     raise NameError(
         'Workload manager not defined!')
 
-#load shelf:
-#shelf = shelve.open(os.path.join(args['folder'],'run_info.shlf'))
 
 arguments = ' --main_config {}  --folder {} --batch_size {} --model {} --weights {}'.format(\
                         args['main_config'], args['folder'], args['batch_size'], args['model'],args['weights'] )

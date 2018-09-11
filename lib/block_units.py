@@ -266,14 +266,14 @@ def inception_resnet_block(x, scale, block_type, block_idx, activation='relu'):
     elif block_type == 'block17':
         branch_0 = conv3d_bn(x, 192, 1)
         branch_1 = conv3d_bn(x, 128, 1)
-        branch_1 = conv3d_bn(branch_1, 160, [1, 7])
-        branch_1 = conv3d_bn(branch_1, 192, [7, 1])
+        branch_1 = conv3d_bn(branch_1, 160, (1, 1, 3))
+        branch_1 = conv3d_bn(branch_1, 192, (3, 3, 1))
         branches = [branch_0, branch_1]
     elif block_type == 'block8':
         branch_0 = conv3d_bn(x, 192, 1)
         branch_1 = conv3d_bn(x, 192, 1)
-        branch_1 = conv3d_bn(branch_1, 224, [1, 3])
-        branch_1 = conv3d_bn(branch_1, 256, [3, 1])
+        branch_1 = conv3d_bn(branch_1, 224, (1, 1 ,3))
+        branch_1 = conv3d_bn(branch_1, 256, (2, 2, 1))
         branches = [branch_0, branch_1]
     else:
         raise ValueError('Unknown Inception-ResNet block type. '
@@ -300,8 +300,9 @@ def inception_resnet_block(x, scale, block_type, block_idx, activation='relu'):
     return x
 
 
-def InceptionResNetV2(input_tensor=None,
-                      pooling=None,):
+def InceptionResNetV2_small(input_tensor=None,
+                      pooling=None,
+		      kernel = (2,2,3)):
     """Instantiates the Inception-ResNet v2 architecture.
     Optionally loads weights pre-trained on ImageNet.
     Note that when using TensorFlow, for best performance you should
@@ -331,68 +332,51 @@ def InceptionResNetV2(input_tensor=None,
     """
 
     # Stem block: 35 x 35 x 192
-    x = conv3d_bn(img_input, 32, 3, strides=2, padding='valid')
-    x = conv3d_bn(x, 32, 3, padding='valid')
-    x = conv3d_bn(x, 64, 3)
-    x = MaxPooling3D(3, strides=2)(x)
-    x = conv3d_bn(x, 80, 1, padding='valid')
-    x = conv3d_bn(x, 192, 3, padding='valid')
-    x = MaxPooling3D(3, strides=2)(x)
+    x = conv3d_bn(input_tensor, 32, kernel, padding='same')
+    x = conv3d_bn(x, 32, kernel, padding='same')
+    x = conv3d_bn(x, 64, kernel)
+    x = MaxPooling3D((1,1,2), strides=1)(x)
+    x = conv3d_bn(x, 80, 1, padding='same')
+    x = conv3d_bn(x, 96, kernel, padding='same')
+    x = MaxPooling3D((2,2,3), strides=(1,1,2))(x)
 
     # Mixed 5b (Inception-A block): 35 x 35 x 320
-    branch_0 = conv3d_bn(x, 96, 1)
+    branch_0 = conv3d_bn(x, 96, 1, padding='same')
     branch_1 = conv3d_bn(x, 48, 1)
-    branch_1 = conv3d_bn(branch_1, 64, 5)
+    branch_1 = conv3d_bn(branch_1, 64, 5, padding='same')
     branch_2 = conv3d_bn(x, 64, 1)
     branch_2 = conv3d_bn(branch_2, 96, 3)
-    branch_2 = conv3d_bn(branch_2, 96, 3)
-    branch_pool = AveragePooling3D(3, strides=1, padding='same')(x)
+    branch_2 = conv3d_bn(branch_2, 96, 3, padding='same')
+    branch_pool = AveragePooling3D(3,1, padding='same')(x)
     branch_pool = conv3d_bn(branch_pool, 64, 1)
     branches = [branch_0, branch_1, branch_2, branch_pool]
+    print('imaga_data_format {}'.format(K.image_data_format()))
     channel_axis = 1 if K.image_data_format() == 'channels_first' else -1
     x = Concatenate(axis=channel_axis, name='mixed_5b')(branches)
 
     # 10x block35 (Inception-ResNet-A block): 35 x 35 x 320
-    for block_idx in range(1, 11):
+    for block_idx in range(1, 4):
         x = inception_resnet_block(x,
                                    scale=0.17,
                                    block_type='block35',
                                    block_idx=block_idx)
 
     # Mixed 6a (Reduction-A block): 17 x 17 x 1088
-    branch_0 = conv3d_bn(x, 384, 3, strides=2, padding='valid')
-    branch_1 = conv3d_bn(x, 256, 1)
-    branch_1 = conv3d_bn(branch_1, 256, 3)
-    branch_1 = conv3d_bn(branch_1, 384, 3, strides=2, padding='valid')
-    branch_pool = MaxPooling3D(3, strides=2, padding='valid')(x)
+    branch_0 = conv3d_bn(x, 192, (2,2,3), strides=(2,2,2),padding='valid')
+    branch_1 = conv3d_bn(x, 128, 1)
+    branch_1 = conv3d_bn(branch_1, 128, 2)
+    branch_1 = conv3d_bn(branch_1, 192, (2,2,3), strides=(2,2,2), padding='valid')
+    branch_pool = MaxPooling3D((2,2,3),strides=(2,2,2) , padding='valid')(x)
     branches = [branch_0, branch_1, branch_pool]
     x = Concatenate(axis=channel_axis, name='mixed_6a')(branches)
 
     # 20x block17 (Inception-ResNet-B block): 17 x 17 x 1088
-    for block_idx in range(1, 21):
+    for block_idx in range(1, 6):
         x = inception_resnet_block(x,
                                    scale=0.1,
                                    block_type='block17',
                                    block_idx=block_idx)
 
-    # Mixed 7a (Reduction-B block): 8 x 8 x 2080
-    branch_0 = conv3d_bn(x, 256, 1)
-    branch_0 = conv3d_bn(branch_0, 384, 3, strides=2, padding='valid')
-    branch_1 = conv3d_bn(x, 256, 1)
-    branch_1 = conv3d_bn(branch_1, 288, 3, strides=2, padding='valid')
-    branch_2 = conv3d_bn(x, 256, 1)
-    branch_2 = conv3d_bn(branch_2, 288, 3)
-    branch_2 = conv3d_bn(branch_2, 320, 3, strides=2, padding='valid')
-    branch_pool = MaxPooling3D(3, strides=2, padding='valid')(x)
-    branches = [branch_0, branch_1, branch_2, branch_pool]
-    x = Concatenate(axis=channel_axis, name='mixed_7a')(branches)
-
-    # 10x block8 (Inception-ResNet-C block): 8 x 8 x 2080
-    for block_idx in range(1, 10):
-        x = inception_resnet_block(x,
-                                   scale=0.2,
-                                   block_type='block8',
-                                   block_idx=block_idx)
     x = inception_resnet_block(x,
                                scale=1.,
                                activation=None,
@@ -400,11 +384,10 @@ def InceptionResNetV2(input_tensor=None,
                                block_idx=10)
 
     # Final convolution block: 8 x 8 x 1536
-    x = conv3d_bn(x, 1536, 1, name='conv_7b')
+    x = conv3d_bn(x, 1024, 1, name='conv_7b')
 
     if pooling == 'avg':
         x = GlobalAveragePooling3D()(x)
     elif pooling == 'max':
         x = GlobalMaxPooling3D()(x)
-
     return x
