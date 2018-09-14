@@ -62,6 +62,10 @@ def replace_with_var(x):
 def parseArguments():
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        "--data",
+        action="store_true", default = False,
+        help="Is this real data?")
+    parser.add_argument(
         "--dataset_config",
         help="main config file, user-specific",
         type=str, default='default.cfg')
@@ -73,6 +77,10 @@ def parseArguments():
         "--max_num_events",
         help="The maximum number of frames to be processed",
         type=int, default=-1)
+    parser.add_argument(
+        "--folder",
+        help="Give folders to process",
+        type=str, required=False)
     parser.add_argument(
         "--filelist",
         help="Path to a filelist to be processed",
@@ -133,8 +141,9 @@ for key in x.keys():
     inputs.append((key, x[key]))
 for key in y.keys():
     inputs.append((key, y[key]))
-for q in z['quantiles'].split(','):
-    inputs.append(('{}_{}_pct_charge_quantile'.format(z['type'], q.strip().replace('.', '_')),
+for q in np.linspace(0., 1., int(z['quantiles']) + 1):
+    print q
+    inputs.append(('{}_{}_pct_charge_quantile'.format(z['type'], str(round(q, 3)).replace('.', '_')),
                    'wf_quantiles(waveform, {})[\'{}\']'.format(q, z['type'])))
 
 # This is the dictionary used to store the input data
@@ -229,9 +238,10 @@ def produce_data_dict(i3_file, num_events):
     tray.AddModule("I3Reader", "source",
                    Filenamelist=[geometry_file,
                                  i3_file],)
-    tray.AddModule(cuts, 'cuts', Streams=[icetray.I3Frame.Physics])
-    tray.AddModule(event_picker, "event_picker",
-                   Streams=[icetray.I3Frame.Physics])
+    if not args['data']:
+        tray.AddModule(cuts, 'cuts', Streams=[icetray.I3Frame.Physics])
+        tray.AddModule(event_picker, "event_picker",
+                      Streams=[icetray.I3Frame.Physics])
     tray.AddModule("Delete",
                    "old_keys_cleanup",
                    keys=['CalibratedWaveformRange'])
@@ -360,7 +370,9 @@ if __name__ == "__main__":
     elif args['files'] is not None:
         filelist = [args['files']]
         outfile = os.path.join(outfolder,filelist[0][0].split('/')[-1].replace('.i3.bz2', '.h5'))
-
+    elif args['folder'] is not None:
+	filelist = [[os.path.join(args['folder'],i) for i in os.listdir(args['folder']) if '.i3' in i]]
+        outfile = './data.h5'
     else:
         raise Exception('No input files given')
 
@@ -419,7 +431,12 @@ if __name__ == "__main__":
             # shuffeling of the files
             num_events = len(events['reco_vals'])
             print('The I3 File has {} events'.format(num_events))
-            shuff = np.random.choice(num_events, num_events, replace=False)
+            if num_events == 0:
+                 continue
+            if not args['data']:
+                shuff = np.random.choice(num_events, num_events, replace=False)
+            else:
+                shuff = np.arange(num_events)
             for i in shuff:
                 print i
                 TotalEventCounter += 1

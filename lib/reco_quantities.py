@@ -258,7 +258,7 @@ def wf_quantiles(wfs, quantile, srcs=['ATWD', 'FADC']):
         wf = wfs[src_loc.index(src)]
         t = wf.time + np.linspace(0, len(wf.waveform) * wf.bin_width, len(wf.waveform))
         charge_pdf = np.cumsum(wf.waveform) / np.cumsum(wf.waveform)[-1]
-        ret[src] = t[np.where(charge_pdf > quantile)[0][0]]
+        ret[src] = t[np.where(charge_pdf >= quantile)[0][0]]
     return ret
 
 
@@ -270,6 +270,10 @@ def get_dir(p_frame, gcdfile, which=""):
         return neutrino.dir.y
     if which == "z":
         return neutrino.dir.z
+    if which == "zenith":
+        return neutrino.dir.zenith
+    if which == "azmimuth":
+        return neutrino.dir.azimuth
 
 def get_inelasticity(p_frame, gcdfile):
     I3Tree = p_frame['I3MCTree']
