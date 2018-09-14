@@ -58,12 +58,12 @@ def prepare_io_shapes(inputs, outputs, exp_file):
             test_arr = np.array(inp_file['reco_vals'][var][0])
             res_shape = np.shape(np.squeeze(tr(test_arr, inp_file["reco_vals"][:][0])))
             if res_shape == ():
-                res_shape = (1,)
+                 res_shape = (1,)
             print(br,var,res_shape)
             out_shapes[br][var] = res_shape
             out_transformations[br][var] = tr
         if len(outputs[br]["variables"]) > 1:
-            out_shapes[br]["general"] = \
+           out_shapes[br]["general"] = \
                 res_shape + (len(outputs[br]["variables"]),)
         else:
             if len(res_shape) > 1:
@@ -84,13 +84,15 @@ def parse_reference_output(cfg_file):
     ref_outputs = func_model_def.reference_outputs
     return ref_outputs
 
-def parse_functional_model(cfg_file, exp_file):
+def parse_functional_model(cfg_file, exp_file, only_model=False):
     # fancy relative imports..
     sys.path.append(os.path.dirname(cfg_file))
     sys.path.append(os.getcwd()+"/"+os.path.dirname(cfg_file))
     mname = os.path.splitext(os.path.basename(cfg_file))[0]
     func_model_def = importlib.import_module(mname)
     sys.path.pop()
+    if only_model:
+        return func_model_def
     # except Exception:
     #    raise Exception('Import of model.py failed: {}'.format(cfg_file))
     inputs = func_model_def.inputs
@@ -100,7 +102,6 @@ def parse_functional_model(cfg_file, exp_file):
         loss_dict['loss_weights'] = func_model_def.loss_weights
     if hasattr(func_model_def, 'loss_functions'):
         loss_dict['loss'] = func_model_def.loss_functions
-    print() 
     in_shapes, in_trans, out_shapes, out_trans = \
         prepare_io_shapes(inputs, outputs, exp_file)
     print('----In  Shapes-----\n {}'.format(in_shapes))

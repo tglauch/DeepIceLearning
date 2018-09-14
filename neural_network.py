@@ -254,6 +254,12 @@ if __name__ == "__main__":
         run_info['Files'] = input_files
         run_info['mc_location'] = mc_location
         run_info['Test_Inds'] = test_inds
+        run_info['inp_shapes'] = inp_shapes
+        run_info['out_shapes'] = out_shapes
+        run_info['inp_trans'] = inp_trans
+        run_info['out_trans'] = out_trans
+        run_info['loss_dict'] = loss_dict
+      
         np.save(os.path.join(save_path, 'run_info.npy'), run_info)
 
 # Train the Model #########################################################

@@ -112,7 +112,10 @@ def read_input_len_shapes(file_location, input_files, virtual_len=-1):
     """
     file_len = []
     for run, input_file in enumerate(input_files):
-        data_file = os.path.join(file_location, '{}'.format(input_file))
+        if not os.path.isabs(input_file):
+            data_file = os.path.join(file_location, input_file)
+        else:
+            data_file = input_file
         file_handler = tables.open_file(data_file, 'r')
         if run == 0:
             test_shape = file_handler.root._v_attrs.shape
@@ -220,6 +223,8 @@ def generator(batch_size, file_handlers, inds,
                         batch_input[j][i] = pre_append
                 temp_in = []
         for j, var_array in enumerate(out_variables):
+            if val_run:
+                continue
             for k, var in enumerate(var_array):
                 temp_cur_file = cur_file
                 close_h5file(t_file)
@@ -299,7 +304,10 @@ def generator(batch_size, file_handlers, inds,
             cur_file = temp_cur_file
             cur_event_id = temp_cur_event_id
             up_to = temp_up_to
-        yield (batch_input, batch_out)
+        if val_run:
+            yield batch_input
+        else:
+            yield (batch_input, batch_out)
 
 
 def read_NN_weights(args_dict, model):
