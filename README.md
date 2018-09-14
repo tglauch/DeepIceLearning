@@ -15,7 +15,7 @@ In order create a MC dataset run something like
 
 or add the `--data` option if you are using real data
 
-or the corresponding submit file
+The corresponding submit file can be used similarly 
 
 `python create_dataset_dagman.py --dataset_config config_file_for_the_dataset --files_per_job num_i3files_per_job`
 
