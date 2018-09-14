@@ -31,8 +31,12 @@ or when sending the job to a (multi-gpu) cluster. Run from within the `submit_sc
 
 # 3. apply.py
 
-Once a network is trained one might want to apply it to a set of data. For this just run something like 
+Once a network is trained one might want to apply it to a set of MC data. For this just run something like 
 
-`bash apply_env.sh --folder path_to_trained_network_folder --main_config path_to_corresponding_cfg_file --batch_size 256 --model name_of_the_model_file --weights name_of_the_weights_file`
+`bash apply_env.sh --folder path_to_trained_network_folder --main_config path_to_cfg_file --batch_size xx --model name_of_the_model_file --weights name_of_the_weights_file`
+
+If you want to apply it to 'real' event data use instead
+
+`bash apply_env.sh --folder path_to_trained_network_folder --main_config path_to_cfg_file --batch_size xx --model name_of_the_model_file --weights name_of_the_weights_file --data data_file(s)`
 
 
