@@ -91,6 +91,12 @@ except Exception:
 parser_dict = {s: dict(parser.items(s)) for s in parser.sections()}
 backend = parser.get('Basics', 'keras_backend')
 
+if 'kwargs' in parser_dict.keys():
+    kwargs = parser_dict['kwargs']
+else:
+    kwargs = dict()
+
+
 os.environ["KERAS_BACKEND"] = backend
 if backend == 'theano':
     os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=gpu,floatX=float32"
@@ -259,7 +265,8 @@ if __name__ == "__main__":
         run_info['inp_trans'] = inp_trans
         run_info['out_trans'] = out_trans
         run_info['loss_dict'] = loss_dict
-      
+        run_info['kwargs'] = kwargs
+
         np.save(os.path.join(save_path, 'run_info.npy'), run_info)
 
 # Train the Model #########################################################
@@ -317,7 +324,7 @@ if __name__ == "__main__":
     model.fit_generator(
         generator(
             batch_size, file_handlers, train_inds, inp_shapes,
-            inp_trans, out_shapes, out_trans),
+            inp_trans, out_shapes, out_trans, **kwargs),
         steps_per_epoch=int(math.ceil(
             (np.sum([k[1] - k[0] for k in train_inds]) / batch_size)) / epoch_divider),
         validation_data=generator(

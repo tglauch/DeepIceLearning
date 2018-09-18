@@ -136,7 +136,7 @@ def read_input_len_shapes(file_location, input_files, virtual_len=-1):
 
 def generator(batch_size, file_handlers, inds,
               inp_shape_dict, inp_transformations,
-              out_shape_dict, out_transformations, val_run=False):
+              out_shape_dict, out_transformations, val_run=False, **kwargs):
 
     """ This function is a real braintwister and presumably really bad implemented.
     It produces all input and output data and applies the transformations
@@ -279,7 +279,8 @@ def generator(batch_size, file_handlers, inds,
                     slice_ind = [slice(None)] * batch_out[j][i].ndim
                     slice_ind[-1] = slice(k, k + 1, 1)
                     pre_append = var[1](temp_out[i],
-                                        t_file['reco_vals'][:][event_list[i][1]])
+                                        r_vals = t_file['reco_vals'][:][event_list[i][1]],
+                                        **kwargs)
                     if var == 'time':
                         pre_append[pre_append == np.inf] = -1
                     if len(var_array) > 1:
@@ -325,3 +326,5 @@ def read_NN_weights(args_dict, model):
         print('Initalize the model without pre-trained weights')
 
     return model
+
+

@@ -129,6 +129,7 @@ if __name__ == "__main__":
     out_shapes = run_info['out_shapes']
     inp_trans = run_info['inp_trans']
     out_trans = run_info['out_trans']
+    kwargs = run_info['kwargs']
     base_model = base_model.model(inp_shapes, out_shapes)
     ngpus = args['ngpus']
     args["load_weights"] = os.path.join(DATA_DIR, args["weights"])
@@ -174,7 +175,8 @@ if __name__ == "__main__":
                   inp_trans,
                   out_shapes,
                   out_trans,
-                  val_run=True),
+                  val_run=True,
+                  **kwargs),
         steps=steps_per_epoch,
         verbose=1,
         max_q_size=2)
