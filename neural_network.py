@@ -322,7 +322,7 @@ if __name__ == "__main__":
             (np.sum([k[1] - k[0] for k in train_inds]) / batch_size)) / epoch_divider),
         validation_data=generator(
             batch_size, file_handlers, valid_inds, inp_shapes,
-            inp_trans, out_shapes, out_trans, val_run=True),
+            inp_trans, out_shapes, out_trans, use_data=False),
         validation_steps=math.ceil(
             np.sum([k[1] - k[0] for k in valid_inds]) / batch_size) / epoch_divider,
         callbacks=[CSV_log, early_stop, best_model, MemoryCallback(), every_model],
