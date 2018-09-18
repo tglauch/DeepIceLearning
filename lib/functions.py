@@ -136,7 +136,8 @@ def read_input_len_shapes(file_location, input_files, virtual_len=-1):
 
 def generator(batch_size, file_handlers, inds,
               inp_shape_dict, inp_transformations,
-              out_shape_dict, out_transformations, val_run=False, **kwargs):
+              out_shape_dict, out_transformations,
+              use_data=False, **kwargs):
 
     """ This function is a real braintwister and presumably really bad implemented.
     It produces all input and output data and applies the transformations
@@ -223,7 +224,7 @@ def generator(batch_size, file_handlers, inds,
                         batch_input[j][i] = pre_append
                 temp_in = []
         for j, var_array in enumerate(out_variables):
-            if val_run:
+            if use_data:
                 continue
             for k, var in enumerate(var_array):
                 temp_cur_file = cur_file
@@ -296,16 +297,15 @@ def generator(batch_size, file_handlers, inds,
             up_to = inds[0][1]
         else:
             if temp_cur_file != cur_file:
-                if not val_run:
-                    print(' \n CPU RAM Usage {:.2f} GB'.
-                          format(resource.getrusage(
-                                 resource.RUSAGE_SELF).ru_maxrss / 1e6))
-                    print(' GPU MEM : {:.2f} GB \n \n'.
-                          format(gpu_memory() / 1e3))
+                print(' \n CPU RAM Usage {:.2f} GB'.
+                      format(resource.getrusage(
+                             resource.RUSAGE_SELF).ru_maxrss / 1e6))
+                print(' GPU MEM : {:.2f} GB \n \n'.
+                      format(gpu_memory() / 1e3))
             cur_file = temp_cur_file
             cur_event_id = temp_cur_event_id
             up_to = temp_up_to
-        if val_run:
+        if use_data:
             yield batch_input
         else:
             yield (batch_input, batch_out)

@@ -145,6 +145,7 @@ if __name__ == "__main__":
 
     # Saving the Final Model and Calculation/Saving of Result for Test Dataset ####
     if args['data'] is None:
+        use_data = False
         file_handlers = [os.path.join(mc_location, file_name)
                          for file_name in input_files]
         t_c = 0
@@ -157,6 +158,7 @@ if __name__ == "__main__":
         num_events = np.sum([k[1] - k[0] for k in test_inds])
         print('Apply the NN to {} events'.format(num_events))
     else:
+        use_data = True
         file_handlers = input_files
         file_len = read_input_len_shapes('', input_files)
         test_inds = [(0, tot_len)for tot_len in file_len]
@@ -175,13 +177,13 @@ if __name__ == "__main__":
                   inp_trans,
                   out_shapes,
                   out_trans,
-                  val_run=True,
+                  use_data=use_data,
                   **kwargs),
         steps=steps_per_epoch,
         verbose=1,
         max_q_size=2)
-    for p in  prediction:
-        print p
+    #for p in  prediction:
+    #    print p
     reference_outputs = mp.parse_reference_output(conf_model_file)
     #print('Reference output-vars: ', reference_outputs)
     ## add to first out-branch:
@@ -238,7 +240,7 @@ if __name__ == "__main__":
     else:
         o_file = args['outfile']
     if MANUAL_writeout_pred_and_exit:
-        pickle.dump({#"mc_truth": mc_truth,
+        pickle.dump({"mc_truth": mc_truth,
                      "prediction": prediction,
                      "reco_vals": reco_vals,
                      "IC_HitDOMs": IC_hit_vals,
