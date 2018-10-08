@@ -9,11 +9,13 @@ The main functionalities are provided by essentially three scripts and their cor
 
 This file converts a set of i3files into training data. Training data files consist of 3d input tensors in the format 11x10x60 for IceCube and 3x5x60 for Deep core. The values to be saved to the tensor are defined in a config file (see `/configs/create_dataset_default.cfg`), classical examples are time at which x% of the charge are collected, the overall number of hits, total collected charge...Also a set of `reco_vals` can be defined which are quantities that are later used as training output of the network or can be used for analyzing the network.
 
-In order create a dataset run something like
+In order create a MC dataset run something like
 
 `python create_dataset_dagman.py --dataset_config file_to_dataset_config_file`
 
-or the corresponding submit file
+or add the `--data` option if you are using real data
+
+The corresponding submit file can be used similarly 
 
 `python create_dataset_dagman.py --dataset_config config_file_for_the_dataset --files_per_job num_i3files_per_job`
 
@@ -31,8 +33,12 @@ or when sending the job to a (multi-gpu) cluster. Run from within the `submit_sc
 
 # 3. apply.py
 
-Once a network is trained one might want to apply it to a set of data. For this just run something like 
+Once a network is trained one might want to apply it to a set of MC data. For this just run something like 
 
-`bash apply_env.sh --folder path_to_trained_network_folder --main_config path_to_corresponding_cfg_file --batch_size 256 --model name_of_the_model_file --weights name_of_the_weights_file`
+`bash apply_env.sh --folder path_to_trained_network_folder --main_config path_to_cfg_file --batch_size xx --model name_of_the_model_file --weights name_of_the_weights_file`
+
+If you want to apply it to 'real' event data use instead
+
+`bash apply_env.sh --folder path_to_trained_network_folder --main_config path_to_cfg_file --batch_size xx --model name_of_the_model_file --weights name_of_the_weights_file --data data_file(s)`
 
 

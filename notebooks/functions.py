@@ -3,17 +3,18 @@ import numpy
 from fancy_plot import *
 # from plot_conf import *
 import itertools
+import copy
 
 def retag_classify(ClassLabel):
     class_scheme = {0:0, 1:0, 2:1, 3:1, 4:1, 5:2, 6:2, 7:0, 8:1, 9:0}
-    ClassLabelRetag = ClassLabel
+    ClassLabelRetag = copy.deepcopy(ClassLabel)
     for key in class_scheme.keys():
         ClassLabelRetag[ClassLabel == key] = class_scheme[key]
     return ClassLabelRetag
 
 def retag_classify_startTrack(ClassLabel):
     class_scheme = {0:0, 1:0, 2:1, 3:3, 4:1, 5:2, 6:2, 7:0, 8:1, 9:0}
-    ClassLabelRetag = ClassLabel
+    ClassLabelRetag = copy.deepcopy(ClassLabel)
     for key in class_scheme.keys():
         ClassLabelRetag[ClassLabel == key] = class_scheme[key]
     return ClassLabelRetag

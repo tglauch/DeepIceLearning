@@ -97,42 +97,6 @@ def time_prepare(x):
     ret[ret == np.inf] = replace_with
     return ret
 
-
-def oneHotEncode_EventType_simple(x):
-    """
-    This function one hot encodes the input for the event 
-    types cascade, tracks, doubel-bang
-    """
-    # define universe of possible input values
-    onehot_encoded = []
-    universe = [1, 2, 3]
-    for i in range(len(universe)):
-        if x == universe[i]:
-            value = 1.
-        else:
-            value = 0.
-        onehot_encoded.append(value)
-    return onehot_encoded
-
-
-def oneHotEncode_EventType_noDoubleBang_simple(x):
-    """
-    This function one hot encodes the input
-    """
-    # define universe of possible input values
-    onehot_encoded = []
-    universe = [1, 2, 3]
-    for i in range(len(universe)):
-        if x == universe[i]:
-            value = 1.
-        else:
-            value = 0.
-        onehot_encoded.append(value)
-    if onehot_encoded == [0., 0., 1.]:
-        onehot_encoded = [1.0, 0.0, 0.0]
-    return onehot_encoded[:-1]
-
-
 def log_of_sum(x):
     return np.log10(np.sum(x) + 0.0001)
 
@@ -140,43 +104,7 @@ def log_of_sum(x):
 def max_min_delta_log(x):
     return np.log10(np.max(x) - np.min(x))
 
-
-def oneHotEncode_01(x, r_vals=None):
-    """
-    This function one hot encodes the input for a binary label 
-    """
-    # define universe of possible input values
-    onehot_encoded = []
-    universe = [0, 1]
-    for i in range(len(universe)):
-        if x == universe[i]:
-            value = 1.
-        else:
-            value = 0.
-        onehot_encoded.append(value)
-    return onehot_encoded
-
-
-def oneHotEncode_EventType_exact(x, r_vals=None):
-    """
-    This function one hot encodes the input for the event
-    types cascade, tracks, doubel-bang
-    """
-    # define universe of possible input values
-    onehot_encoded = []
-    # universe has to defined depending on the problem,
-    # in this implementation integers are neccesary
-    universe = [0, 1, 2, 3, 4, 5, 6]
-    for i in range(len(universe)):
-        if x == universe[i]:
-            value = 1.
-        else:
-            value = 0.
-        onehot_encoded.append(value)
-    return onehot_encoded
-
-
-def oneHotEncode_3_evtypes(x, r_vals=None):
+def oneHotEncode_3_evtypes(x, r_vals=None, **kwargs):
     """
     This function one hot encodes the input for the event
     types cascade, tracks, doubel-bang
@@ -192,7 +120,7 @@ def oneHotEncode_3_evtypes(x, r_vals=None):
     return mapping[int(x)]
 
 
-def oneHotEncode_db(x, r_vals=None):
+def oneHotEncode_db(x, r_vals=None, **kwargs):
     """
     This function one hot encode for event type  doubel-bang, no-double bang
     """
@@ -207,7 +135,7 @@ def oneHotEncode_db(x, r_vals=None):
     return mapping[int(x)]
 
 
-def oneHotEncode_4_evtypes(x, r_vals=None):
+def oneHotEncode_4_evtypes(x, r_vals=None, **kwargs):
     """
     This function one hot encodes the input for the event types 
     cascade, tracks, doubel-bang, starting tracks
@@ -222,7 +150,7 @@ def oneHotEncode_4_evtypes(x, r_vals=None):
     return mapping[int(x)]
 
 
-def oneHotEncode_Starting_padding(x, r_vals):
+def oneHotEncode_Starting_padding(x, r_vals=None, **kwargs):
     pos = [r_vals[14], r_vals[15], r_vals[16]]
     dir = [r_vals[17], r_vals[18], r_vals[19]]
     gcdfile = "/cvmfs/icecube.opensciencegrid.org/data/GCD/GeoCalibDetectorStatus_2013.56429_V0.i3.gz"
