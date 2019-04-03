@@ -41,21 +41,30 @@ def calc_depositedE(physics_frame, gcd_file):
             losses += p.energy 
     return losses
 
-def calc_hitDOMs(physics_frame, gcd_file):
-    hitDOMs = 0
+def calc_hitDOMs(physics_frame, gcd_file, which=""):
+    IC_hitDOMs = 0
+    DC_hitDOMs = 0
+    DC = [79, 80, 81, 82, 83, 84, 85, 86]
     pulses = physics_frame["InIceDSTPulses"]
     # apply the pulsemask --> make it an actual mapping of omkeys to pulses
     pulses = pulses.apply(physics_frame)
     for key, pulses in pulses:
-        hitDOMs += 1
-    return hitDOMs
+        if key[0] in DC:
+            DC_hitDOMs +=1
+        else:
+            IC_hitDOMs +=1
+    if which == "IC":
+        return IC_hitDOMs
+    if which == "DC":
+        return DC_hitDOMs
+
 
 
 def starting(p_frame, gcdfile):
     I3Tree = p_frame['I3MCTree']
     neutrino = get_the_right_particle(p_frame, gcdfile)
     primary_list = I3Tree.get_primaries()
-    surface = icecube.MuonGun.ExtrudedPolygon.from_file(gcdfile, padding=100)
+    surface = icecube.MuonGun.ExtrudedPolygon.from_file(gcdfile, padding=0)
     intersections = surface.intersection(neutrino.pos + neutrino.length * neutrino.dir, neutrino.dir)
     if intersections.first <= 0 and intersections.second > 0:
         starting = 0  # starting event
@@ -73,7 +82,18 @@ def up_or_down(physics_frame, gcdfile):
     return up_or_down
 
 
-def coincidenceLabel(physics_frame, gcdfile):
+def coincidenceLabel_poly(physics_frame, gcdfile):
+    poly = physics_frame['PolyplopiaCount']
+    #print "Poly {}".format(poly)
+    if poly == icetray.I3Int(0):
+        coincidence = 0
+    #elif poly == icetray.I3Int(0):
+    #    coincidence = 0
+    else:
+        coincidence = 1
+    return coincidence
+
+def coincidenceLabel_primary(physics_frame, gcdfile):
     primary_list = physics_frame["I3MCTree"].get_primaries()
     if len(primary_list) > 1:
         coincidence = 1
@@ -96,7 +116,7 @@ def tau_decay_length(p_frame, gcdfile):
 # stopping or through-going
 
 def has_signature(p, gcdfile):
-    surface = MuonGun.ExtrudedPolygon.from_file(gcdfile, padding=100)
+    surface = MuonGun.ExtrudedPolygon.from_file(gcdfile, padding=0)
     intersections = surface.intersection(p.pos, p.dir)
     if p.is_neutrino:
         return -1
@@ -158,6 +178,9 @@ def find_particle(p, I3Tree, gcdfile):
 # determines after the level, where one is found
     t_list = []
     children = I3Tree.children(p)
+    #print "Len Children {}".format(len(children))
+    if len(children) > 3:
+        return []
     IC_hit = np.any([(has_signature(tp, gcdfile) != -1) for tp in children])
     if IC_hit:
         if p.pdg_encoding not in nu_pdg:
@@ -234,6 +257,63 @@ def classify(p_frame, gcdfile):
                 if has_signature(children[tau_ind], gcdfile) == 2:
                     return 4  # Stopping Track
 
+def track_length_in_detector(p_frame, gcdfile):
+    I3Tree = p_frame['I3MCTree']
+    neutrino = get_the_right_particle(p_frame, gcdfile)
+    children = I3Tree.children(neutrino)
+    p_types = [np.abs(child.pdg_encoding) for child in children]
+    p_strings = [child.type_string for child in children]
+    surface = MuonGun.ExtrudedPolygon.from_file(gcdfile, padding=0)
+    classify_result = classify(p_frame, gcdfile)
+    
+    if classify_result in [0, 1, 5, 7]: #NC event, Cascade, Double Bang, Glashow Cascade  -> no track length
+        return -1
+        
+    if (13 in p_types):
+        mu_ind = p_types.index(13)
+#################################################################################
+        if 'Hadrons' not in p_strings:
+            if has_signature(children[mu_ind], gcdfile) == 0: # 0=Starting #??????????????????
+                return -1  # Glashow Track
+#################################################################################
+        p = children[mu_ind]
+        intersections = surface.intersection(p.pos, p.dir)  
+        if has_signature(children[mu_ind], gcdfile) == 0:
+            return intersections.second # Starting Track
+        if has_signature(children[mu_ind], gcdfile) == 1:
+            return intersections.second-intersections.first # Through Going Track 
+        if has_signature(children[mu_ind], gcdfile) == 2:
+            return p.length-intersections.first # Stopping Track
+    if (15 in p_types):
+        tau_ind = p_types.index(15)
+#################################################################################
+        # consider to use the interactiontype here...
+        if 'Hadrons' not in p_strings:
+            return -1  # Glashow Tau
+#################################################################################
+        had_ind = p_strings.index('Hadrons')
+        try:
+            tau_child = I3Tree.children(children[tau_ind])[-1]
+        except:
+            tau_child = None
+        if tau_child:
+            p = tau_child
+            intersections = surface.intersection(p.pos, p.dir)
+            if has_signature(tau_child, gcdfile) == 0:
+                return intersections.second # Starting Track
+            if has_signature(tau_child, gcdfile) == 1:
+                return intersections.second-intersections.first # Through Going Track
+            if has_signature(tau_child, gcdfile) == 2:
+                return p.length-intersections.first # Stopping Track, Stopping Tau        
+        else: # Tau Decay Length to large, so no childs are simulated
+            p = children[tau_ind]
+            intersections = surface.intersection(p.pos, p.dir)
+            if has_signature(children[tau_ind], gcdfile) == 0:
+                return intersections.second # Starting Track
+            if has_signature(children[tau_ind], gcdfile) == 1:
+                return intersections.second-intersections.first # Through Going Track
+            if has_signature(children[tau_ind], gcdfile) == 2:
+                return p.length-intersections.first # Stopping Track
 
 def time_of_percentage(charges, times, percentage):
     charges = charges.tolist()
@@ -248,6 +328,7 @@ def time_of_percentage(charges, times, percentage):
 
 
 # calculate a quantile
+# based on the waveform
 def wf_quantiles(wfs, quantile, srcs=['ATWD', 'FADC']):
     ret = dict()
     src_loc = [wf.source.name for wf in wfs]
@@ -258,8 +339,18 @@ def wf_quantiles(wfs, quantile, srcs=['ATWD', 'FADC']):
         wf = wfs[src_loc.index(src)]
         t = wf.time + np.linspace(0, len(wf.waveform) * wf.bin_width, len(wf.waveform))
         charge_pdf = np.cumsum(wf.waveform) / np.cumsum(wf.waveform)[-1]
-        ret[src] = t[np.where(charge_pdf >= quantile)[0][0]]
+        ret[src] = t[np.where(charge_pdf > quantile)[0][0]]
     return ret
+
+#based on the pulses
+def pulses_quantiles(charges, times, quantile):
+    tot_charge = np.sum(charges)    
+    cut = tot_charge*quantile
+    progress = 0
+    for i, charge in enumerate(charges):
+        progress += charge
+        if progress >= cut:
+            return times[i]
 
 
 def get_dir(p_frame, gcdfile, which=""):
@@ -270,10 +361,6 @@ def get_dir(p_frame, gcdfile, which=""):
         return neutrino.dir.y
     if which == "z":
         return neutrino.dir.z
-    if which == "zenith":
-        return neutrino.dir.zenith
-    if which == "azmimuth":
-        return neutrino.dir.azimuth
 
 def get_inelasticity(p_frame, gcdfile):
     I3Tree = p_frame['I3MCTree']
@@ -296,3 +383,29 @@ def get_vertex(p_frame, gcdfile, which=""):
         return I3Tree.children(neutrino)[0].pos.y    
     if which == "z":
         return I3Tree.children(neutrino)[0].pos.z
+
+def millipede_rel_highest_loss(frame, gcdfile):
+    e_losses = [i.energy for i in frame['SplineMPE_MillipedeHighEnergyMIE'] if i.energy > 0.]
+    if len(e_losses) == 0:
+        return 0
+    return np.max(e_losses) / np.sum(e_losses)
+
+
+def millipede_n_losses(frame, gcdfile):
+    e_losses = [i.energy for i in frame['SplineMPE_MillipedeHighEnergyMIE'] if i.energy > 0.]
+    return len(e_losses)
+
+
+def millipede_std(frame, gcdfile):
+    e_losses = [i.energy for i in frame['SplineMPE_MillipedeHighEnergyMIE'] if i.energy>0.]
+    if len(e_losses) == 0:
+        return 0
+    return np.std(e_losses)/np.mean(e_losses)
+
+
+def millipede_max_loss(frame, gcdfile):
+    e_losses = [i.energy for i in frame['SplineMPE_MillipedeHighEnergyMIE'] if i.energy>0.]
+    if len(e_losses) == 0:
+        return 0
+    return np.amax(e_losses)
+

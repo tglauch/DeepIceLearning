@@ -213,3 +213,35 @@ def make_Deepcore_Grid(geometry):
              odom.om - 1)
 
     return grid, dom_list_ret
+
+def make_stefans_grid(geometry):
+    # loads the grid as implemented and transforms it to the new geometry suggested by Stefan C.
+    grid = dict()
+    grid_old, dom_list_ret = make_autoHexGrid(geometry)
+
+    for key in dom_list_ret:
+        #print "x old: {}".format(grid_old[key][0])
+        #print "y: {}".format(grid_old[key][1])
+        # ideas to not hardcode the trafo are welcome
+        if grid_old[key][1] == 0:
+            x_new = grid_old[key][0]+2
+        elif grid_old[key][1] in [1, 2]:
+            x_new = grid_old[key][0]+1
+        elif grid_old[key][1] in [3, 4]:
+            x_new = grid_old[key][0]
+        elif grid_old[key][1] in [5, 6]:
+            x_new = grid_old[key][0]-1
+        elif grid_old[key][1] in [7, 8]:
+            x_new = grid_old[key][0]-2
+        elif grid_old[key][1] == 9:
+            x_new = grid_old[key][0]-3   
+        else:
+            raise NameError('Wrong geometry was used as Input')
+        #print "x_new: {}".format(x_new)
+        #print "----------------------------------------"
+        grid[key] = \
+            (x_new, #x
+             grid_old[key][1], #equals the old y
+             grid_old[key][2]) #equals the old z 
+            
+    return grid, dom_list_ret

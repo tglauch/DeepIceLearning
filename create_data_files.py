@@ -18,6 +18,7 @@ small differences when processing data for the diffuse dataset
 '''
 
 from icecube import dataio, icetray, WaveCalibrator
+from icecube import dataclasses, paraboloid, simclasses, recclasses, spline_reco
 from icecube.trigger_sim.modules.time_shifter import I3TimeShifter
 from I3Tray import *
 from scipy.stats import moment, skew, kurtosis
@@ -28,13 +29,15 @@ import argparse
 import os, sys
 from configparser import ConfigParser
 from lib.reco_quantities import *
-from lib.functions import read_variables
-import lib.transformations
+from lib.functions_create_dataset import read_variables,cuts, get_stream, get_most_E_muon_info, median, get_t0
+#import lib.transformations
 import cPickle as pickle
 import random
 import lib.ic_grid as fu
 import time
 import logging
+from icecube.phys_services.which_split import which_split
+import time
 
 
 def replace_with_var(x):
@@ -62,10 +65,6 @@ def replace_with_var(x):
 def parseArguments():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--data",
-        action="store_true", default = False,
-        help="Is this real data?")
-    parser.add_argument(
         "--dataset_config",
         help="main config file, user-specific",
         type=str, default='default.cfg')
@@ -77,10 +76,6 @@ def parseArguments():
         "--max_num_events",
         help="The maximum number of frames to be processed",
         type=int, default=-1)
-    parser.add_argument(
-        "--folder",
-        help="Give folders to process",
-        type=str, required=False)
     parser.add_argument(
         "--filelist",
         help="Path to a filelist to be processed",
@@ -112,20 +107,21 @@ hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
 logger.setLevel(logging.DEBUG)
 
-
 # File paths
 geometry_file = str(dataset_configparser.get('Basics', 'geometry_file'))
 outfolder = str(dataset_configparser.get('Basics', 'out_folder'))
 pulsemap_key = str(dataset_configparser.get('Basics', 'PulseSeriesMap'))
 dtype, settings = read_variables(dataset_configparser)
 waveform_key = str(dataset_configparser.get('Basics', 'Waveforms'))
-settings.append(('variable', '["CalibratedWaveforms"]'))
+if not dataset_configparser['Input_Waveforms1']['ignore']:
+    settings.append(('variable', '["CalibratedWaveforms"]'))
 settings.append(('variable', '{}'.format(pulsemap_key)))
 print settings
 # Parse Input Features
 x = dataset_configparser['Input_Charges']
 y = dataset_configparser['Input_Times']
 z = dataset_configparser['Input_Waveforms1']
+pulses_input = dataset_configparser['Input_Pulses']
 scale_class = dict()
 print dataset_configparser.keys()
 if 'Scale_Class' in dataset_configparser.keys():
@@ -136,21 +132,36 @@ if len(scale_class.keys()) > 0:
     max_scale = np.max([scale_class[key] for key in scale_class])
 else:
     max_scale = 1
+
 inputs = []
 for key in x.keys():
     inputs.append((key, x[key]))
 for key in y.keys():
     inputs.append((key, y[key]))
-for q in np.linspace(0., 1., int(z['quantiles']) + 1):
-    print q
-    inputs.append(('{}_{}_pct_charge_quantile'.format(z['type'], str(round(q, 3)).replace('.', '_')),
-                   'wf_quantiles(waveform, {})[\'{}\']'.format(q, z['type'])))
+if not z['ignore']:
+    quantiles = np.linspace(0, 1. - z['step_size'], (1. / z['step_size']))
+    for q in quantiles:
+        q = np.round(q, 2)
+        inputs.append(('{}_{}_pct_charge_quantile'.format(z['type'], q.strip().replace('.', '_')),
+                       'wf_quantiles(waveform, {})[\'{}\']'.format(q, z['type'])))
+print "Pulses Ignore: {}".format(pulses_input['ignore'])
+if pulses_input['ignore'] == "False":
+    quantiles_pulses = np.linspace(0, 1 - float(pulses_input['step_size_pulses']),
+                                  (1 / float(pulses_input['step_size_pulses'])))
+    for q in quantiles_pulses:
+        q = np.round(q, 3)
+        inputs.append(('{}_{}_pct_charge_quantile'.format('pulse', str(q).strip().replace('.', '_')),
+                       'pulses_quantiles(charges, times, {})'.format(q))) # pulses that are passed as argument needs to be defined
+
+
 
 # This is the dictionary used to store the input data
 events = dict()
 events['reco_vals'] = []
-events['waveforms'] = []
 events['pulses'] = []
+events['waveforms'] = []
+events['pulses_timeseries'] = []
+events['t0'] = []
 
 
 def save_to_array(phy_frame):
@@ -161,54 +172,71 @@ def save_to_array(phy_frame):
     Returns:
         True (IceTray standard)
     """
-
     reco_arr = []
-    wf = None
+    if not z['ignore']:
+        wf = None
     pulses = None
     if phy_frame is None:
         print('Physics Frame is None')
         return False
     for el in settings:
-        if el[1] == '["CalibratedWaveforms"]':
-            try:
-                wf = phy_frame["CalibratedWaveforms"]
-            except Exception:
-                print('uuupus {}'.format(el[1]))
-                return False
+        if not z['ignore']:
+            print z['ignore']
+            if el[1] == '["CalibratedWaveforms"]':
+                try:
+                    wf = phy_frame["CalibratedWaveforms"]
+                except Exception as inst:
+                    print('uuupus {}'.format(el[1]))
+                    print inst
+                    return False
         elif el[1] == pulsemap_key:
             try:
                 pulses = phy_frame[pulsemap_key].apply(phy_frame)
-            except Exception:
-                print('uuupus {}'.format(el[1]))
+            except Exception as inst:
+                print('Failed to add pulses {}'.format(el[1]))
+                print inst
+                print('Skip')
                 return False
         elif el[0] == 'variable':
             try:
                 reco_arr.append(eval('phy_frame{}'.format(el[1])))
-            except Exception:
-                print('uuupus {}'.format(el[1]))
+            except Exception as inst:
+                print('Failed to append Reco Vals {}'.format(el[1]))
+                print inst
+                print('Skip')
                 return False
         elif el[0] == 'function':
             try:
                 reco_arr.append(
                     eval(el[1].replace('_icframe_', 'phy_frame, geometry_file')))
-            except Exception:
-                print('uuupus {}'.format(el[1]))
+            except Exception as inst:
+                print('Failed to evaluate function {}'.format(el[1]))
+                print(inst)
+                print('Skip')
                 return False
-        if (wf is not None) and (pulses is not None):
-            print('Gut')
-            events['waveforms'].append(wf)
-            events['pulses'].append(pulses)
-            events['reco_vals'].append(reco_arr)
+
+        # Removed part to append waveforms as it is depreciated
+    if pulses is not None:
+        tstr = 'Append Values for run_id {}, event_id {}'
+        eheader = phy_frame['I3EventHeader']
+        print(tstr.format(eheader.run_id, eheader.event_id))
+        events['t0'].append(get_t0(phy_frame))
+        events['pulses'].append(pulses)
+        events['reco_vals'].append(reco_arr)
+    else:
+        print('No pulses in Frame...Skip')
+        return False
     return
 
 
 def event_picker(phy_frame):
     try:
-        e_type = lib.reco_quantities.classify(phy_frame, geometry_file)
-    except Exception:
+        e_type = classify(phy_frame, geometry_file)
+    except Exception as inst:
         print('The following event could not be classified')
         print(phy_frame['I3EventHeader'])
         print('First particle {}'.format(phy_frame['I3MCTree'][0].pdg_encoding))
+	print(inst)
         return False
     rand = np.random.choice(range(1, max_scale+1))
     if e_type not in scale_class.keys():
@@ -231,94 +259,39 @@ def produce_data_dict(i3_file, num_events):
         True (IceTray standard)
     """
 
-    #time_shift_args = { "I3MCTreeNames": ["I3MCTree"],
-    #			"I3DOMLaunchSeriesMapNames": ["InIceRawData"]}
-
     tray = I3Tray()
     tray.AddModule("I3Reader", "source",
-                   Filenamelist=[geometry_file,
-                                 i3_file],)
-    if not args['data']:
-        tray.AddModule(cuts, 'cuts', Streams=[icetray.I3Frame.Physics])
+                   FilenameList=[geometry_file,
+                                 i3_file])
+
+    if False:  # only needed if waveforms are used
+        tray.AddModule(get_stream, "get_stream",
+                       Streams=[icetray.I3Frame.Physics])
+
+
         tray.AddModule(event_picker, "event_picker",
-                      Streams=[icetray.I3Frame.Physics])
-    tray.AddModule("Delete",
-                   "old_keys_cleanup",
-                   keys=['CalibratedWaveformRange'])
-    #tray.AddModule(I3TimeShifter, "T_Shifter", **time_shift_args )
-    tray.AddModule("I3WaveCalibrator", "sedan",
-                   Launches=waveform_key,
-                   Waveforms="CalibratedWaveforms",
-                   Errata="BorkedOMs",
-                   ATWDSaturationMargin=123,
-                   FADCSaturationMargin=0,)
-    tray.AddModule(save_to_array, 'save', Streams=[icetray.I3Frame.Physics])
+                       Streams=[icetray.I3Frame.Physics])
+        tray.AddModule("Delete",
+                       "old_keys_cleanup",
+                       keys=['CalibratedWaveformRange'])
+        tray.AddModule("I3WaveCalibrator", "sedan",
+                       Launches=waveform_key,
+                       Waveforms="CalibratedWaveforms",
+                       Errata="BorkedOMs",
+                       ATWDSaturationMargin=123,
+                       FADCSaturationMargin=0,)
+    tray.AddModule(cuts, 'cuts',
+                   Streams=[icetray.I3Frame.Physics])
+    tray.AddModule(get_most_E_muon_info, 'get_most_E_muon_info',
+                   Streams=[icetray.I3Frame.Physics])
+    tray.AddModule(save_to_array, 'save',
+                   Streams=[icetray.I3Frame.Physics])
     if num_events == -1:
         tray.Execute()
     else:
         tray.Execute(num_events)
     tray.Finish()
     return
-
-
-def cuts(phy_frame):
-    """Performe a pre-selection of events according
-       to the cuts defined in the config file
-
-    Args:
-        phy_frame, and IceCube I3File
-    Returns:
-        True (IceTray standard)
-    """
-    cuts = dataset_configparser['Cuts']
-    particle_type = phy_frame['I3MCTree'][0].pdg_encoding
-    RunID = phy_frame['I3EventHeader'].run_id
-    EventID = phy_frame['I3EventHeader'].event_id
-    # Checking for wierd event structures
-    if testing_event(phy_frame, geometry_file) == -1:
-        report = [particle_type, RunID, EventID, "EventTestingFailed"]
-        logger.info(report)
-        return False
-    ParticelList = [12, 14, 16]
-    if cuts['only_neutrino_as_primary_cut'] == "ON":
-        if abs(phy_frame['MCPrimary'].pdg_encoding) not in ParticelList:
-            report = [particle_type, RunID, EventID, "NeutrinoPrimaryCut"]
-            logger.info(report)
-            return False
-    if cuts['max_energy_cut'] == "ON":
-        energy_cutoff = cuts['max_energy_cutoff']
-        if calc_depositedE(phy_frame) > energy_cutoff:
-            report = [particle_type, RunID, EventID, "MaximalEnergyCut"]
-            logger.info(report)
-            return False
-    if cuts['minimal_tau_energy'] == "ON":
-        I3Tree = phy_frame['I3MCTree']
-        primary_list = I3Tree.get_primaries()
-        if len(primary_list) == 1:
-            neutrino = I3Tree[0]
-        else:
-            for p in primary_list:
-                pdg = p.pdg_encoding
-                if abs(pdg) in ParticelList:
-                    neutrino = p
-        minimal_tau_energy = int(cuts['minimal_tau_energy'])
-        if abs(neutrino.pdg_encoding) == 16:
-            if calc_depositedE(phy_frame) < minimal_tau_energy:
-                report = [particle_type, RunID, EventID, "MinimalTauEnergyCut"]
-                flogger.info(report)
-                return False
-    if cuts['min_energy_cut'] == "ON":
-        energy_cutoff = int(cuts['min_energy_cutoff'])
-        if calc_depositedE(phy_frame) < energy_cutoff:
-            report = [particle_type, RunID, EventID, "MinimalEnergyCut"]
-            logger.info(report)
-            return False
-    if cuts['min_hit_DOMs_cut'] == "ON":
-        if calc_hitDOMs(phy_frame) < cuts['min_hit_DOMs']:
-            report = [particle_type, RunID, EventID, "HitDOMsCut"]
-            logger.info(report)
-            return False
-    return True
 
 
 def average(x, y):
@@ -344,11 +317,11 @@ if __name__ == "__main__":
         input_shape = eval(input_shape_par)
         grid, DOM_list = fu.make_grid_dict(input_shape, geo)
     else:
-        input_shape = [11, 10, 60]
-        grid, DOM_list = fu.make_autoHexGrid(geo)
+        input_shape = [10, 10, 60]
+        grid, DOM_list = fu.make_stefans_grid(geo)
 
-    input_shape_DC = [5, 3, 60]
-    grid_DC, DOM_list_DC = fu.make_Deepcore_Grid(geo)
+#    input_shape_DC = [5, 3, 60]
+#    grid_DC, DOM_list_DC = fu.make_Deepcore_Grid(geo)
 
     # Create HDF5 File ##########
     if not os.path.exists(outfolder):
@@ -361,18 +334,20 @@ if __name__ == "__main__":
             for i in xrange(len(args['filelist'])):
                 a = pickle.load(open(args['filelist'][i], 'r'))
                 filelist.append(a)
-            # path of outfile could be changed to a new folder for a  better overview
             outfile = args['filelist'][0].replace('.pickle', '.h5')
 
         elif args['filelist'] is not None:
-            filelist = pickle.load(open(args['filelist'], 'r'))
-            outfile = args['filelist'].replace('.pickle', '.h5')
+            filelist = pickle.load(open(args['filelist'][0], 'r'))
+            outfile = args['filelist'][0].replace('.pickle', '.h5')
     elif args['files'] is not None:
         filelist = [args['files']]
-        outfile = os.path.join(outfolder,filelist[0][0].split('/')[-1].replace('.i3.bz2', '.h5'))
-    elif args['folder'] is not None:
-	filelist = [[os.path.join(args['folder'],i) for i in os.listdir(args['folder']) if '.i3' in i]]
-        outfile = './data.h5'
+        if filelist[0][0].split('/')[-1][-3:] == "zst":
+            outfile = os.path.join(outfolder,filelist[0][0].split('/')[-1].replace('.i3.zst', '.h5'))
+        if filelist[0][0].split('/')[-1][-3:] == "b2z":
+            outfile = os.path.join(outfolder,filelist[0][0].split('/')[-1].replace('.i3.bz2', '.h5'))
+        else:
+            print "Take compreshion format of I3-File into account"
+
     else:
         raise Exception('No input files given')
 
@@ -380,10 +355,12 @@ if __name__ == "__main__":
         os.remove(outfile)
 
     FILTERS = tables.Filters(complib='zlib', complevel=9)
+    print "OUT: {}".format(outfile)
     with tables.open_file(
         outfile, mode="w", title="Events for training the NN",
             filters=FILTERS) as h5file:
         input_features = []
+        print "Inputs: {}".format(inputs)
         for inp in inputs:
             print 'Generate Input Feature {}'.format('IC_{}'.format(inp[0]))
             feature = h5file.create_earray(
@@ -391,14 +368,14 @@ if __name__ == "__main__":
                 (0, input_shape[0], input_shape[1], input_shape[2], 1),
                 title='IC_{}'.format(inp[1]))
             feature.flush()
-            print 'Generate Input Feature {}'.format('DC_{}'.format(inp[0]))        
+#            print 'Generate Input Feature {}'.format('DC_{}'.format(inp[0]))        
             input_features.append(feature)
-            feature = h5file.create_earray(
-                h5file.root, 'DC_{}'.format(inp[0]), tables.Float64Atom(),
-                (0, input_shape_DC[0], input_shape_DC[1], input_shape_DC[2], 1),
-                title='DC_{}'.format(inp[1]))
-            feature.flush()
-            input_features.append(feature)
+#            feature = h5file.create_earray(
+#                h5file.root, 'DC_{}'.format(inp[0]), tables.Float64Atom(),
+#                (0, input_shape_DC[0], input_shape_DC[1], input_shape_DC[2], 1),
+#                title='DC_{}'.format(inp[1]))
+#            feature.flush()
+#            input_features.append(feature)
         reco_vals = tables.Table(h5file.root, 'reco_vals',
                                  description=dtype)
         h5file.root._v_attrs.shape = input_shape
@@ -414,16 +391,21 @@ if __name__ == "__main__":
         event_files = []
         starttime = time.time()
         print len(filelist[0])
+        print filelist
         while statusInFilelist < len(filelist[0]):
             timestamp = time.time()
             events['reco_vals'] = []
-            events['waveforms'] = []
+            if not z['ignore']:
+                events['waveforms'] = []
             events['pulses'] = []
             counterSim = 0
             while counterSim < len(filelist):
                 print('Attempt to read {}'.format(filelist[counterSim][statusInFilelist]))
-                produce_data_dict(filelist[counterSim][statusInFilelist],
-                                      args['max_num_events'])
+                print('File to read Type {}'.format(type(filelist[counterSim][statusInFilelist])))
+                print "Number of Events {}".format(args['max_num_events'])
+                t3 = time.time()
+                produce_data_dict(str(filelist[counterSim][statusInFilelist]),
+                                  args['max_num_events'])
                 counterSim = counterSim + 1
             print('--- Run {} --- Countersim is {} --'.format(statusInFilelist,
                                                               counterSim))
@@ -431,14 +413,8 @@ if __name__ == "__main__":
             # shuffeling of the files
             num_events = len(events['reco_vals'])
             print('The I3 File has {} events'.format(num_events))
-            if num_events == 0:
-                 continue
-            if not args['data']:
-                shuff = np.random.choice(num_events, num_events, replace=False)
-            else:
-                shuff = np.arange(num_events)
+            shuff = np.random.choice(num_events, num_events, replace=False)
             for i in shuff:
-                print i
                 TotalEventCounter += 1
                 reco_arr = events['reco_vals'][i]
                 if not len(reco_arr) == len(dtype):
@@ -452,18 +428,15 @@ if __name__ == "__main__":
                     continue
 
                 pulses = events['pulses'][i]
-                waveforms = events['waveforms'][i]
+                if not z['ignore']:
+                    waveforms = events['waveforms'][i]
                 final_dict = dict()
-                for omkey in waveforms.keys():
-                    if omkey in pulses.keys():
-                        charges = np.array([p.charge for p in pulses[omkey][:]])
-                        times = np.array([p.time for p in pulses[omkey][:]])
-                        widths = np.array([p.width for p in pulses[omkey][:]])
-                    else:
-                        widths = np.array([0])
-                        times = np.array([0])
-                        charges = np.array([0])
-                    waveform = waveforms[omkey]
+                for omkey in pulses.keys():
+                    charges = np.array([p.charge for p in pulses[omkey][:]])
+                    times = np.array([p.time for p in pulses[omkey][:]]) - events['t0'][i]
+                    widths = np.array([p.width for p in pulses[omkey][:]])
+                    if not z['ignore']:
+                        waveform = waveforms[omkey]
                     final_dict[(omkey.string, omkey.om)] = \
                         [eval(inp[1]) for inp in inputs]
                 for inp_c, inp in enumerate(inputs):
@@ -475,17 +448,17 @@ if __name__ == "__main__":
                         if dom in final_dict:
                             f_slice[0][gpos[0]][gpos[1]][gpos[2]][0] = \
                                 final_dict[dom][inp_c]
-                    input_features[2 * inp_c].append(f_slice)
+                    input_features[inp_c].append(f_slice)
 
-                    f_slice = np.zeros((1, input_shape_DC[0],
-                                        input_shape_DC[1],
-                                        input_shape_DC[2], 1))
-                    for dom in DOM_list_DC:
-                        gpos = grid_DC[dom]
-                        if dom in final_dict:
-                            f_slice[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                final_dict[dom][inp_c]
-                    input_features[2 * inp_c + 1].append(f_slice)
+#                    f_slice = np.zeros((1, input_shape_DC[0],
+#                                        input_shape_DC[1],
+#                                        input_shape_DC[2], 1))
+#                    for dom in DOM_list_DC:
+#                        gpos = grid_DC[dom]
+#                        if dom in final_dict:
+#                            f_slice[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+#                                final_dict[dom][inp_c]
+#                    input_features[2 * inp_c + 1].append(f_slice)
 
             print('Flush data to HDF File')
             for inp_feature in input_features:

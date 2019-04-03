@@ -1,6 +1,6 @@
 import os
 
-
+tdict={'kta': '2:00:00', 'long': '48:00:00', 'gpu':'168:00:00'}
 def make_condor(executable, request_gpus, request_memory, requirements, addpath,
                 arguments, thisfolder):
     submit_info = '\
@@ -27,29 +27,37 @@ def make_condor(executable, request_gpus, request_memory, requirements, addpath,
 
 
 def make_slurm(executable, request_gpus, request_memory, condor_folder, file_location,
-               arguments, thisfolder, exclude='nothing'):
+               arguments, thisfolder, exclude='nothing', partition='gpu', ex_type='bash', log_name=None):
 
+    if log_name == None:
+	log_name = executable
     if exclude != '':
         exclude_node = '#SBATCH --exclude {} \n'.format(exclude)
+    else:
+        exclude_node = "" 
 
 # Please do not ident!!!
     submit_info = '#!/usr/bin/env bash\n\
-#SBATCH --time=168:00:00\n\
-#SBATCH --partition=gpu\n\
+#SBATCH --time={time}\n\
+#SBATCH --partition={part}\n\
 #SBATCH --gres=gpu:{req_gpus}\n\
 #SBATCH --mem={req_mem} \n\
-#SBATCH --error={cond_fold}/{script}.err\n\
-#SBATCH --output={cond_fold}/{script}.out\n\
+#SBATCH --error={cond_fold}/{log_name}.err\n\
+#SBATCH --output={cond_fold}/{log_name}.out\n\
 {excl_node}\
 \n\
-bash {thisfolder}/submit_scripts/{script} {args} \n'.format(
+{ex_type} {thisfolder}/submit_scripts/{script} {args} \n'.format(
         script = executable,\
         req_gpus = request_gpus,\
         req_mem = int(request_memory),\
         cond_fold = condor_folder,\
         args = arguments,\
         thisfolder = thisfolder,\
-        excl_node = exclude_node)
+        excl_node = exclude_node,\
+	part=partition,
+	time=tdict[partition],
+        log_name=log_name,
+	ex_type=ex_type)
 
     return submit_info
 

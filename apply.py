@@ -129,7 +129,6 @@ if __name__ == "__main__":
     out_shapes = run_info['out_shapes']
     inp_trans = run_info['inp_trans']
     out_trans = run_info['out_trans']
-    kwargs = run_info['kwargs']
     base_model = base_model.model(inp_shapes, out_shapes)
     ngpus = args['ngpus']
     args["load_weights"] = os.path.join(DATA_DIR, args["weights"])
@@ -177,8 +176,7 @@ if __name__ == "__main__":
                   inp_trans,
                   out_shapes,
                   out_trans,
-                  use_data=use_data,
-                  **kwargs),
+                  use_data=use_data),
         steps=steps_per_epoch,
         verbose=1,
         max_q_size=2)
@@ -210,17 +208,17 @@ if __name__ == "__main__":
             reco_vals = temp_truth
         else:
             reco_vals = np.concatenate([reco_vals, temp_truth])
-        IC_hit_DOMs_list = []
-        DC_hit_DOMs_list = []
-        for k in xrange(up - down):
-            IC_charge = file_handler["IC_charge"][down + k]
-            DC_charge = file_handler["DC_charge"][down + k]
-            IC_hitDOMs = np.count_nonzero(IC_charge)
-            IC_hit_DOMs_list.append(IC_hitDOMs)
-            DC_hitDOMs = np.count_nonzero(DC_charge)
-            DC_hit_DOMs_list.append(DC_hitDOMs)
-        IC_hit_vals.extend(IC_hit_DOMs_list)
-        DC_hit_vals.extend(DC_hit_DOMs_list)
+        #IC_hit_DOMs_list = []
+        #DC_hit_DOMs_list = []
+        #for k in xrange(up - down):
+            #IC_charge = file_handler["IC_charge"][down + k]
+            #DC_charge = file_handler["DC_charge"][down + k]
+            #IC_hitDOMs = np.count_nonzero(IC_charge)
+            #IC_hit_DOMs_list.append(IC_hitDOMs)
+            #DC_hitDOMs = np.count_nonzero(DC_charge)
+            #DC_hit_DOMs_list.append(DC_hitDOMs)
+        #IC_hit_vals.extend(IC_hit_DOMs_list)
+        #DC_hit_vals.extend(DC_hit_DOMs_list)
 
     if args['data'] is None:
         dtype = np.dtype([(var + '_truth', np.float64)
@@ -242,9 +240,9 @@ if __name__ == "__main__":
     if MANUAL_writeout_pred_and_exit:
         pickle.dump({"mc_truth": mc_truth,
                      "prediction": prediction,
-                     "reco_vals": reco_vals,
-                     "IC_HitDOMs": IC_hit_vals,
-                     "DC_HitDOMs": DC_hit_vals},
-                    open(o_file, "wc"))
+                     "reco_vals": reco_vals},
+                     #"IC_HitDOMs": IC_hit_vals,
+                     #"DC_HitDOMs": DC_hit_vals},
+                     open(o_file, "wc"))
         print(' \n Finished .... Exiting.....')
         exit(0)

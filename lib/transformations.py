@@ -2,8 +2,27 @@
 # coding: utf-8
 
 import numpy as np
-from keras.utils import to_categorical
+#from keras.utils import to_categorical
 from scipy.stats import norm
+#from icecube import dataclasses
+#import icecube.MuonGun
+from six.moves import configparser
+
+
+
+## to define parameters in a config file
+#parser = configparser.ConfigParser()
+#if args.__dict__['continue'] != 'None' and args.main_config == 'None':
+#    save_path = args.__dict__['continue']
+#    config_file = os.path.join(save_path, 'config.cfg')
+#else:
+#    config_file = args.main_config
+#try:
+#    parser.read(config_file)
+#except Exception:
+#    raise Exception('Config File is missing!!!!')
+#parser_dict = {s: dict(parser.items(s)) for s in parser.sections()}
+#backend = parser.get('Basics', 'keras_backend')
 
 
 def identity(x, r_vals=None):
@@ -67,11 +86,11 @@ def smeared_one_hot_encode_logbinned(E):
     return smeared_hot_output / np.sum(smeared_hot_output)
 
 
-def one_hot_encode_logbinned(x):
-    bins = np.linspace(3, 7, 50)
-    bin_indcs = np.digitize(np.log10(x), bins)
-    one_hot_output = to_categorical(bin_indcs, len(bins))
-    return one_hot_output
+#def one_hot_encode_logbinned(x):
+#    bins = np.linspace(3, 7, 50)
+#    bin_indcs = np.digitize(np.log10(x), bins)
+#    one_hot_output = to_categorical(bin_indcs, len(bins))
+#    return one_hot_output
 
 
 def zenith_to_binary(x):
@@ -97,6 +116,42 @@ def time_prepare(x):
     ret[ret == np.inf] = replace_with
     return ret
 
+
+def oneHotEncode_EventType_simple(x):
+    """
+    This function one hot encodes the input for the event 
+    types cascade, tracks, doubel-bang
+    """
+    # define universe of possible input values
+    onehot_encoded = []
+    universe = [1, 2, 3]
+    for i in range(len(universe)):
+        if x == universe[i]:
+            value = 1.
+        else:
+            value = 0.
+        onehot_encoded.append(value)
+    return onehot_encoded
+
+
+def oneHotEncode_EventType_noDoubleBang_simple(x):
+    """
+    This function one hot encodes the input
+    """
+    # define universe of possible input values
+    onehot_encoded = []
+    universe = [1, 2, 3]
+    for i in range(len(universe)):
+        if x == universe[i]:
+            value = 1.
+        else:
+            value = 0.
+        onehot_encoded.append(value)
+    if onehot_encoded == [0., 0., 1.]:
+        onehot_encoded = [1.0, 0.0, 0.0]
+    return onehot_encoded[:-1]
+
+
 def log_of_sum(x):
     return np.log10(np.sum(x) + 0.0001)
 
@@ -104,7 +159,43 @@ def log_of_sum(x):
 def max_min_delta_log(x):
     return np.log10(np.max(x) - np.min(x))
 
-def oneHotEncode_3_evtypes(x, r_vals=None, **kwargs):
+
+def oneHotEncode_01(x, r_vals=None):
+    """
+    This function one hot encodes the input for a binary label 
+    """
+    # define universe of possible input values
+    onehot_encoded = []
+    universe = [0, 1]
+    for i in range(len(universe)):
+        if x == universe[i]:
+            value = 1.
+        else:
+            value = 0.
+        onehot_encoded.append(value)
+    return onehot_encoded
+
+
+def oneHotEncode_EventType_exact(x, r_vals=None):
+    """
+    This function one hot encodes the input for the event
+    types cascade, tracks, doubel-bang
+    """
+    # define universe of possible input values
+    onehot_encoded = []
+    # universe has to defined depending on the problem,
+    # in this implementation integers are neccesary
+    universe = [0, 1, 2, 3, 4, 5, 6]
+    for i in range(len(universe)):
+        if x == universe[i]:
+            value = 1.
+        else:
+            value = 0.
+        onehot_encoded.append(value)
+    return onehot_encoded
+
+
+def oneHotEncode_3_evtypes(x, r_vals=None):
     """
     This function one hot encodes the input for the event
     types cascade, tracks, doubel-bang
@@ -120,7 +211,7 @@ def oneHotEncode_3_evtypes(x, r_vals=None, **kwargs):
     return mapping[int(x)]
 
 
-def oneHotEncode_db(x, r_vals=None, **kwargs):
+def oneHotEncode_db(x, r_vals=None):
     """
     This function one hot encode for event type  doubel-bang, no-double bang
     """
@@ -129,13 +220,20 @@ def oneHotEncode_db(x, r_vals=None, **kwargs):
     ndoublebang = [1., 0.]
     doublebang = [0., 1.]
 
+    cut_tau = 10. # aus config auslesen, no hardcode
+    if int(x) in [5, 6]:
+        if r_vals[8] >= cut_tau:
+            return doublebang
+        else:
+            return ndoublebang
+
     mapping = {0: ndoublebang, 1: ndoublebang, 2: ndoublebang, 3: ndoublebang,
                4: ndoublebang, 5: doublebang, 6: doublebang, 7: ndoublebang,
                8: ndoublebang, 9: ndoublebang}
     return mapping[int(x)]
 
 
-def oneHotEncode_4_evtypes(x, r_vals=None, **kwargs):
+def oneHotEncode_4_evtypes(x, r_vals=None):
     """
     This function one hot encodes the input for the event types 
     cascade, tracks, doubel-bang, starting tracks
@@ -149,17 +247,155 @@ def oneHotEncode_4_evtypes(x, r_vals=None, **kwargs):
                5: doublebang, 6: doublebang, 7: cascade, 8: track, 9: cascade}
     return mapping[int(x)]
 
+def oneHotEncode_4_evtypes_tau_decay_length(x, r_vals):
+    """
+    This function one hot encodes the input for the event types 
+    cascade, tracks, doubel-bang, starting tracks
+    """
+    cascade = [1., 0., 0., 0.]
+    track = [0., 1., 0., 0.]
+    doublebang = [0., 0., 1., 0.]
+    s_track = [0., 0., 0., 1.]
+    
+    cut = 5. # aus config auslesen, no hardcode
+    # map x to possible classes
+    if int(x) in [5, 6]:
+        if r_vals[8] >= cut:
+            return doublebang
+        else:
+            return cascade
+    else:
+        mapping = {0: cascade, 1: cascade, 2: track, 3: s_track, 4: track,
+                   5: doublebang, 6: doublebang, 7: cascade, 8: track, 9: cascade}
+        return mapping[int(x)]
 
-def oneHotEncode_Starting_padding(x, r_vals=None, **kwargs):
-    pos = [r_vals[14], r_vals[15], r_vals[16]]
-    dir = [r_vals[17], r_vals[18], r_vals[19]]
+
+def oneHotEncode_Starting_padding0(x, r_vals):
+    nope = [1., 0.]
+    starting = [0., 1.]
+    pos = dataclasses.I3Position(r_vals["vert_x"], r_vals["vert_y"], r_vals["vert_z"])
+    dir = dataclasses.I3Direction(r_vals["dir_x"], r_vals["dir_y"], r_vals["dir_z"])
     gcdfile = "/cvmfs/icecube.opensciencegrid.org/data/GCD/GeoCalibDetectorStatus_2013.56429_V0.i3.gz"
-    padding = 100
+    padding = 0 # aus config auslesen, no hardcode
+#    print "Used Padding:  {}m".format(padding)
+#    print parser_dict
+#    print pos
+#    print dir
+#    print "Nice"  
+ 
     surface = icecube.MuonGun.ExtrudedPolygon.from_file(gcdfile,
                                                         padding=padding)
     intersections = surface.intersection(pos, dir)
     if intersections.first <= 0 and intersections.second > 0:
-        starting = 0  # starting event
+        starting = starting  # starting event
     else:
-        starting = 1  # through-going or stopping event
+        starting = nope  # through-going or stopping event
     return starting
+
+
+def oneHotEncode_4_evtypes_tau_decay_length_strack_length(x, r_vals):
+    """
+    This function one hot encodes the input for the event types 
+    cascade, tracks, doubel-bang, starting tracks
+    """
+    cascade = [1., 0., 0., 0.]
+    track = [0., 1., 0., 0.]
+    doublebang = [0., 0., 1., 0.]
+    s_track = [0., 0., 0., 1.]
+
+    cut_tau = 5. # aus config auslesen, no hardcode
+    cut_track = 75.  # aus config auslesen, no hardcode
+    # map x to possible classes
+    if int(x) in [5, 6]:
+        if r_vals[8] >= cut_tau:
+            return doublebang
+        else:
+            return cascade
+    elif int(x) in [3]:
+        if r_vals[22] >= cut_track:
+            return s_track
+        else:
+            return cascade 
+    else:
+        mapping = {0: cascade, 1: cascade, 2: track, 3: s_track, 4: track,
+                   5: doublebang, 6: doublebang, 7: cascade, 8: track, 9: cascade}
+        return mapping[int(x)]
+
+
+def oneHotEncode_4_evtypes_tau_decay_length_strack_length_10(x, r_vals):
+    """
+    This function one hot encodes the input for the event types 
+    cascade, tracks, doubel-bang, starting tracks
+    """
+    cascade = [1., 0., 0., 0.]
+    track = [0., 1., 0., 0.]
+    doublebang = [0., 0., 1., 0.]
+    s_track = [0., 0., 0., 1.]
+
+    cut_tau = 10. # aus config auslesen, no hardcode
+    cut_track = 75.  # aus config auslesen, no hardcode
+    # map x to possible classes
+    if int(x) in [5, 6]:
+        if r_vals[8] >= cut_tau:
+            return doublebang
+        else:
+            return cascade
+    elif int(x) in [3]:
+        if r_vals[22] >= cut_track:
+            return s_track
+        else:
+            return cascade
+    else:
+        mapping = {0: cascade, 1: cascade, 2: track, 3: s_track, 4: track,
+                   5: doublebang, 6: doublebang, 7: cascade, 8: track, 9: cascade}
+        return mapping[int(x)]
+
+
+def oneHotEncode_3_evtypes_strack_length_75(x, r_vals):
+    """
+    This function one hot encodes the input for the event types 
+    cascade, tracks, doubel-bang, starting tracks
+    """
+    cascade_db = [1., 0., 0.]
+    track = [0., 1., 0.]
+    s_track = [0., 0., 1.]
+
+    cut_track = 75.  # aus config auslesen, no hardcode
+    # map x to possible classes
+    if int(x) in [3]:
+        if r_vals[22] >= cut_track:
+            return s_track
+        else:
+            return cascade_db
+    else:
+        mapping = {0: cascade_db, 1: cascade_db, 2: track, 3: s_track, 4: track,
+                   5: cascade_db, 6: cascade_db, 7: cascade_db, 8: track, 9: cascade_db}
+        return mapping[int(x)]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

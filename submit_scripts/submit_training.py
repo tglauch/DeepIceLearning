@@ -113,7 +113,7 @@ else:
 arguments += ' --ngpus {} '.format(request_gpus)
 if workload_manager == 'slurm':
     if args['continue'] != 'None':
-                submit_info = make_slurm("nn_continue_env.sh",\
+                submit_info = make_slurm("nn_env.sh",\
                              request_gpus,\
                              float(request_memory) * 1e3,\
                              condor_out_folder,\
@@ -156,8 +156,9 @@ submitfile_full = os.path.join(condor_out_folder, 'submit.sub')
 with open(submitfile_full, "wc") as file:
     file.write(submit_info)
 
-copyfile(args["main_config"], os.path.join(save_path, 'config.cfg'))
-copyfile(args["model"], os.path.join(save_path, model_name.split('/')[-1]))
+if args['continue'] == 'None':
+    copyfile(args["main_config"], os.path.join(save_path, 'config.cfg'))
+    copyfile(args["model"], os.path.join(save_path, model_name.split('/')[-1]))
 
 if workload_manager == 'slurm':
     os.system("sbatch {}".format(submitfile_full))

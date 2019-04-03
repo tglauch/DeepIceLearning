@@ -14,13 +14,15 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+import sys
 import os
 from six.moves import configparser
 import socket
 import argparse
 import h5py
-import lib.model_parse as mp
-import sys
+sys.path.append(os.path.join(os.path.abspath(".."),'lib'))
+print os.path.abspath("..")
+import model_parse as mp
 
 
 def parseArguments():
@@ -91,12 +93,6 @@ except Exception:
 parser_dict = {s: dict(parser.items(s)) for s in parser.sections()}
 backend = parser.get('Basics', 'keras_backend')
 
-if 'kwargs' in parser_dict.keys():
-    kwargs = parser_dict['kwargs']
-else:
-    kwargs = dict()
-
-
 os.environ["KERAS_BACKEND"] = backend
 if backend == 'theano':
     os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=gpu,floatX=float32"
@@ -134,9 +130,33 @@ import argparse
 import time
 import shelve
 from keras.utils import multi_gpu_model
-from lib.functions import *
 from keras.utils import plot_model
-import lib.individual_loss
+#import individual_loss
+import transformations
+from functions import *
+
+##################################################################
+from keras.callbacks import Callback
+
+class WeightsSaver(Callback):
+    def __init__(self, N):
+        self.N = N
+        self.batch = 0
+
+    def on_batch_end(self, batch, logs={}):
+        if self.batch % self.N == 0:
+            name = os.path.join(save_path, "model_all_epochs/batch/weights_batch%06d.npy" % self.batch)
+            self.model.save_weights(name)
+        self.batch += 1
+
+class LearningRateTrackerAdam(Callback):
+    def on_epoch_end_2(self, epoch, logs={}):
+        optimizer = self.model.optimizer
+        beta_1 = optimizer.beta_1
+        lr = K.eval(optimizer.lr * (1. / (1. + optimizer.decay * optimizer.iterations)))
+        print('\nLR: {:.6f}\n'.format(lr))
+
+##################################################################
 
 if __name__ == "__main__":
 
@@ -195,6 +215,9 @@ if __name__ == "__main__":
         os.makedirs(save_path)
     if not os.path.exists(save_path + "/model_all_epochs"):
         os.makedirs(save_path + "/model_all_epochs")
+    if not os.path.exists(save_path + "/model_all_epochs/batch"):
+        os.makedirs(save_path + "/model_all_epochs/batch")
+
 
     train_val_test_ratio = [
         float(parser.get('Training_Parameters', 'training_fraction')),
@@ -264,9 +287,8 @@ if __name__ == "__main__":
         run_info['out_shapes'] = out_shapes
         run_info['inp_trans'] = inp_trans
         run_info['out_trans'] = out_trans
-        run_info['loss_dict'] = loss_dict
-        run_info['kwargs'] = kwargs
-
+        #run_info['loss_dict'] = loss_dict
+      
         np.save(os.path.join(save_path, 'run_info.npy'), run_info)
 
 # Train the Model #########################################################
@@ -310,6 +332,7 @@ if __name__ == "__main__":
     all_epoch_folder = os.path.join(save_path, "model_all_epochs")
     if not os.path.exists(all_epoch_folder):
         os.makedirs(all_epoch_folder)
+        os.makedirs(os.path.join(all_epochs_folder, "batch"))
     print('Created Folder {}'.format(all_epoch_folder))
     every_model = ParallelModelCheckpoint(
         model = model_serial,
@@ -324,7 +347,7 @@ if __name__ == "__main__":
     model.fit_generator(
         generator(
             batch_size, file_handlers, train_inds, inp_shapes,
-            inp_trans, out_shapes, out_trans, **kwargs),
+            inp_trans, out_shapes, out_trans),
         steps_per_epoch=int(math.ceil(
             (np.sum([k[1] - k[0] for k in train_inds]) / batch_size)) / epoch_divider),
         validation_data=generator(
@@ -332,7 +355,7 @@ if __name__ == "__main__":
             inp_trans, out_shapes, out_trans, use_data=False),
         validation_steps=math.ceil(
             np.sum([k[1] - k[0] for k in valid_inds]) / batch_size) / epoch_divider,
-        callbacks=[CSV_log, early_stop, best_model, MemoryCallback(), every_model],
+        callbacks=[CSV_log, early_stop, best_model, MemoryCallback(), every_model], #, WeightsSaver(int(parser.get('Training_Parameters', 'save_every_x_batches')))],
         epochs=int(parser.get('Training_Parameters', 'epochs')),
         verbose=int(parser.get('Training_Parameters', 'verbose')),
         max_q_size=int(parser.get('Training_Parameters', 'max_queue_size')))
