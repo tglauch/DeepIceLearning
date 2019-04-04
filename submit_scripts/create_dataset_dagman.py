@@ -44,13 +44,10 @@ if __name__ == '__main__':
     for a in args.__dict__:
         print str(a) + ": " + str(args.__dict__[a])
     print"############################################\n "
-    dataset_parser = ConfigParser()
-    dataset_parser.read(args.dataset_config)
-    os.environ["icetray_path"] = dataset_parser['Basics']['icetray_path']
-    os.environ["python_env"] = dataset_parser['Basics']['python_env'] 
-
     Resc = args.__dict__["rescue"]
     if Resc == '':
+        dataset_parser = ConfigParser()
+        dataset_parser.read(args.dataset_config)
         today = str(datetime.datetime.now()).\
             replace(" ", "-").split(".")[0].replace(":", "-")
 
