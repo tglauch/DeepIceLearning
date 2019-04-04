@@ -8,28 +8,17 @@ from scipy.stats import norm
 #import icecube.MuonGun
 from six.moves import configparser
 
-
-
-## to define parameters in a config file
-#parser = configparser.ConfigParser()
-#if args.__dict__['continue'] != 'None' and args.main_config == 'None':
-#    save_path = args.__dict__['continue']
-#    config_file = os.path.join(save_path, 'config.cfg')
-#else:
-#    config_file = args.main_config
-#try:
-#    parser.read(config_file)
-#except Exception:
-#    raise Exception('Config File is missing!!!!')
-#parser_dict = {s: dict(parser.items(s)) for s in parser.sections()}
-#backend = parser.get('Basics', 'keras_backend')
-
+def log10(x, r_vals=None):
+    if x >0:
+        return np.log10(x)
+    else:
+        return 0
 
 def identity(x, r_vals=None):
     return x
 
 
-def centralize(x):
+def centralize(x, r_vals=None):
     if np.std(x) > 0.:
         return ((x - np.mean(x)) / np.std(x))
     else:

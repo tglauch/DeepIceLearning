@@ -355,7 +355,7 @@ if __name__ == "__main__":
             inp_trans, out_shapes, out_trans, use_data=False),
         validation_steps=math.ceil(
             np.sum([k[1] - k[0] for k in valid_inds]) / batch_size) / epoch_divider,
-        callbacks=[CSV_log, early_stop, best_model, MemoryCallback(), every_model], #, WeightsSaver(int(parser.get('Training_Parameters', 'save_every_x_batches')))],
+        callbacks=[], #[CSV_log, early_stop, best_model, MemoryCallback(), WeightsSaver(int(parser.get('Training_Parameters', 'save_every_x_batches')))],
         epochs=int(parser.get('Training_Parameters', 'epochs')),
         verbose=int(parser.get('Training_Parameters', 'verbose')),
         max_q_size=int(parser.get('Training_Parameters', 'max_queue_size')))

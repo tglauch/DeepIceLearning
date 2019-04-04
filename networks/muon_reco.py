@@ -29,18 +29,20 @@ inputs["Branch_IC_time"] = {"variables": ["IC_charge", "IC_first_charge", "IC_ti
 
 # define outputs for each branch
 outputs = OrderedDict()
-outputs["Out1"] = {"variables": ["mu_dir_x", "mu_dir_y", "mu_dir_z"],
-                   "transformations": [tr.identity, tr.identity, tr.identity]}
-
-outputs["Out2"] = {"variables": ["mu_e_on_entry"],
+outputs["Out1"] = {"variables": ["mu_dir_x"],
+                   "transformations": [tr.identity]}
+outputs["Out2"] = {"variables": ["mu_dir_y"],
+                   "transformations": [tr.identity]}
+outputs["Out3"] = {"variables": ["mu_dir_z"],
+                   "transformations": [tr.identity]}
+outputs["Out4"] = {"variables": ["mu_e_on_entry"],
                    "transformations": [tr.log10]}
-
 reference_outputs = []
 
 # Step 3: Define loss functions
 
-loss_weights = {'Target1': 1., 'Target2': 1}
-loss_functions = ["mean_squared_error", "mean_squared_error"]
+loss_weights = {'Target1': 1., 'Target2': 1, 'Target3':1, 'Target4':1}
+loss_functions = ["mean_squared_error", "mean_squared_error", "mean_squared_error", "mean_squared_error"]
 
 
 # Step 4: Define the model using Keras functional API
@@ -77,20 +79,20 @@ def InceptionResNetV2_small(input_tensor=None,
 
     # Stem block: 35 x 35 x 192
     x = bunit.conv3d_bn(input_tensor, 32, kernel, padding='same')
-#    x = bunit.conv3d_bn(x, 32, kernel, padding='same')
-    x = bunit.conv3d_bn(x, 64, kernel)
+    x = bunit.conv3d_bn(x, 16, kernel, padding='same')
+    x = bunit.conv3d_bn(x, 32, kernel)
     x = MaxPooling3D((1,1,2), strides=1)(x)
     x = bunit.conv3d_bn(x, 40, 1, padding='same')
     x = bunit.conv3d_bn(x, 48, kernel, padding='same')
-    x = MaxPooling3D((2,2,3), strides=(1,1,2))(x)
+    x = MaxPooling3D((2,2,3), strides=(1,1,3))(x)
 
     # Mixed 5b (Inception-A block): 35 x 35 x 320
-    branch_0 = bunit.conv3d_bn(x, 96, 1, padding='same')
-    branch_1 = bunit.conv3d_bn(x, 48, 1)
-    branch_1 = bunit.conv3d_bn(branch_1, 64, 5, padding='same')
-    branch_2 = bunit.conv3d_bn(x, 64, 1)
-    branch_2 = bunit.conv3d_bn(branch_2, 96, 3)
-    branch_2 = bunit.conv3d_bn(branch_2, 96, 3, padding='same')
+    branch_0 = bunit.conv3d_bn(x, 48, 1, padding='same')
+    branch_1 = bunit.conv3d_bn(x, 24, 1)
+    branch_1 = bunit.conv3d_bn(branch_1, 24, 5, padding='same')
+    branch_2 = bunit.conv3d_bn(x, 32, 1)
+    branch_2 = bunit.conv3d_bn(branch_2, 48, 3)
+    branch_2 = bunit.conv3d_bn(branch_2, 48, 3, padding='same')
     branch_pool = AveragePooling3D(3,1, padding='same')(x)
     branch_pool = bunit.conv3d_bn(branch_pool, 64, 1)
     branches = [branch_0, branch_1, branch_2, branch_pool]
@@ -99,36 +101,36 @@ def InceptionResNetV2_small(input_tensor=None,
     x = Concatenate(axis=channel_axis, name='mixed_5b')(branches)
 
     # 10x block35 (Inception-ResNet-A block): 35 x 35 x 320
-    for block_idx in range(1, 11):
+    for block_idx in range(1, 3):
         x = bunit.inception_resnet_block(x,
                                    scale=0.17,
                                    block_type='block35',
                                    block_idx=block_idx)
 
     # Mixed 6a (Reduction-A block): 17 x 17 x 1088
-    branch_0 = bunit.conv3d_bn(x, 192, (2,2,3), strides=(2,2,2),padding='valid')
-    branch_1 = bunit.conv3d_bn(x, 128, 1)
-    branch_1 = bunit.conv3d_bn(branch_1, 128, 2)
-    branch_1 = bunit.conv3d_bn(branch_1, 192, (2,2,3), strides=(2,2,2), padding='valid')
-    branch_pool = MaxPooling3D((2,2,3),strides=(2,2,2) , padding='valid')(x)
+    branch_0 = bunit.conv3d_bn(x, 64, (2,2,3), strides=(2,2,3),padding='valid')
+    branch_1 = bunit.conv3d_bn(x, 32, 1)
+    branch_1 = bunit.conv3d_bn(branch_1, 32, 2)
+    branch_1 = bunit.conv3d_bn(branch_1, 64, (2,2,3), strides=(2,2,3), padding='valid')
+    branch_pool = MaxPooling3D((2,2,3),strides=(2,2,3) , padding='valid')(x)
     branches = [branch_0, branch_1, branch_pool]
     x = Concatenate(axis=channel_axis, name='mixed_6a')(branches)
 
     # 20x block17 (Inception-ResNet-B block): 17 x 17 x 1088
-    for block_idx in range(1, 11):
+    for block_idx in range(1, 3):
         x = bunit.inception_resnet_block(x,
                                    scale=0.1,
                                    block_type='block17',
                                    block_idx=block_idx)
 
-    x = bunit.inception_resnet_block(x,
-                               scale=1.,
-                               activation=None,
-                               block_type='block8',
-                               block_idx=10)
+#    x = bunit.inception_resnet_block(x,
+#                               scale=1.,
+#                               activation=None,
+#                               block_type='block8',
+#                               block_idx=10)
 
     # Final convolution block: 8 x 8 x 1536
-    x = bunit.conv3d_bn(x, 3200, 1, name='conv_7b')
+    x = bunit.conv3d_bn(x, 1800, 1, name='conv_7b')
 
     if pooling == 'avg':
         x = GlobalAveragePooling3D()(x)
@@ -152,10 +154,17 @@ def model(input_shapes, output_shapes):
     output_b2 = Dense(output_shapes["Out2"]["general"][0],\
                           activation="relu",\
                           name="Target2")(z1)
+    output_b3 = Dense(output_shapes["Out3"]["general"][0],\
+                          activation="relu",\
+                          name="Target3")(z1)
+    output_b4 = Dense(output_shapes["Out4"]["general"][0],\
+                          activation="relu",\
+                          name="Target4")(z1)
 
 
     model = keras.models.Model(inputs=[input_b1],
-                               outputs=[output_b1, output_b2])
+                               outputs=[output_b1, output_2,
+                                        output_3, output_4])
     print(model.summary())
     return model
 
