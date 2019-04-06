@@ -23,10 +23,9 @@ import block_units as bunit
 inputs = OrderedDict()
 
 
-
 inputs["Branch_IC_time"] = {"variables": ["IC_charge", "IC_first_charge", "IC_time_first",
                                          "IC_pulse_0_5_pct_charge_quantile", "IC_num_pulses"],
-                     "transformations": [tr.identity, tr.identity, tr.centralize, tr.centralize, tr.identity]}
+                     "transformations": [tr.identity, tr.identity, tr.IC_centralize, tr.IC_centralize, tr.identity]}
 
 inputs["High_Level_Recos"] = {"variables": ["casc_score", "muex" ,"muex_sigma", "spline_mpe_zenith",
                                             "spline_mpe_azimuth", "trunc_e", "cog_rho","rlogl", "sdir_e",

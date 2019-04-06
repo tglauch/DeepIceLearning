@@ -317,13 +317,13 @@ if __name__ == "__main__":
         mode='auto',
         period=1)
 
+    n_steps = int(np.sum([math.ceil((1.*(k[1]-k[0])/batch_size)) for k in train_inds]))
     model.fit_generator(
-        generator(
+        generator_v2(
             batch_size, file_handlers, train_inds, inp_shapes,
             inp_trans, out_shapes, out_trans),
-        steps_per_epoch=int(math.ceil(
-            (np.sum([k[1] - k[0] for k in train_inds]) / batch_size))),
-        validation_data=generator(
+        steps_per_epoch=n_steps,
+        validation_data=generator_v2(
             batch_size, file_handlers, valid_inds, inp_shapes,
             inp_trans, out_shapes, out_trans, use_data=False),
         validation_steps=math.ceil(
@@ -332,7 +332,7 @@ if __name__ == "__main__":
                    WeightsSaver(int(parser.get('Training_Parameters', 'save_every_x_batches')), save_path)],
         epochs=int(parser.get('Training_Parameters', 'epochs')),
         verbose=int(parser.get('Training_Parameters', 'verbose')),
-        max_q_size=int(parser.get('Training_Parameters', 'max_queue_size')))
+        max_q_size=int(parser.get('Training_Parameters', 'max_queue_size')),)
 
 
     # Saving a visualization of the model 

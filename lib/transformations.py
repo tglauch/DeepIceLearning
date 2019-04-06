@@ -8,15 +8,18 @@ from scipy.stats import norm
 #import icecube.MuonGun
 from six.moves import configparser
 
-def log10(x, r_vals=None):
-    if x >0:
-        return np.log10(x)
-    else:
-        return 0
-
 def identity(x, r_vals=None):
     return x
 
+def IC_centralize(x, r_vals=None, axis=(1,2,3)):
+    return ((x - np.mean(x, axis=axis)[:,np.newaxis,np.newaxis,np.newaxis]))\
+            / np.std(x, axis=axis)[:,np.newaxis,np.newaxis,np.newaxis]
+
+def log10(x, r_vals=None):
+    mask = (x >0.)
+    x[mask] = np.log10(1.*x[mask])
+    x[~mask] = 0.
+    return x
 
 def centralize(x, r_vals=None):
     if np.std(x) > 0.:

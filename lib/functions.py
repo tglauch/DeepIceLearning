@@ -22,6 +22,7 @@ import tables
 import resource
 import h5py
 from keras.callbacks import Callback
+import time
 
 class WeightsSaver(Callback):
     def __init__(self, N, save_path):
@@ -146,6 +147,81 @@ def read_input_len_shapes(file_location, input_files, virtual_len=-1):
     return file_len
 
 
+def generator_v2(batch_size, file_handlers, inds,
+              inp_shape_dict, inp_transformations,
+              out_shape_dict, out_transformations, use_data=False):
+
+    """ This function is a real braintwister and presumably really bad implemented.
+    It produces all input and output data and applies the transformations
+    as defined in the network definition file.
+
+    Arguments:
+    batch size : the batch size per gpu
+    file_location: path to the folder containing the training files
+    file_list: list of files used for the training
+    inds: the index range used for the dataset
+    inp_shape_dict: A dictionary with the input shape for each branch
+    inp_transformations: Dictionary with input variable name and function
+    out_shape_dict: A dictionary with the output shape for each branch
+    out_transformations: Dictionary with out variable name and function
+
+    Returns:
+    batch_input : a batch of input data
+    batch_out: a batch of output data
+
+    """
+
+    in_branches = [(branch, inp_shape_dict[branch]['general'])
+                   for branch in inp_shape_dict]
+    out_branches = [(branch, out_shape_dict[branch]['general'])
+                    for branch in out_shape_dict]
+    inp_variables = [[(i, inp_transformations[branch[0]][i])
+                      for i in inp_transformations[branch[0]]]
+                     for branch in in_branches]
+    out_variables = [[(i, out_transformations[branch[0]][i])
+                      for i in out_transformations[branch[0]]]
+                     for branch in out_branches]
+    cur_file = 0
+    ind_lo = inds[0][0] - batch_size
+    ind_hi = inds[0][0]
+    in_data = h5py.File(file_handlers[cur_file])
+    while True:
+        t0 = time.time()
+        inp_data = []
+        out_data = []
+        ind_lo += batch_size
+        ind_hi += batch_size
+        if ind_lo > inds[cur_file][1]:
+            cur_file += 1
+            print('Open File {}'.format(file_handlers[cur_file]))
+            in_data = h5py.File(file_handlers[cur_file])
+            ind_lo = inds[cur_file][0]
+            ind_hi = ind_lo + batch_size  
+        for k, b in enumerate(in_branches):
+            batch_input = np.zeros((batch_size,)+in_branches[k][1])
+            for j, f in enumerate(inp_variables[k]):
+                if f[0] in in_data.keys():
+                    pre_data = np.squeeze(in_data[f[0]][ind_lo:ind_hi])
+                    batch_input[:,:,:,:,j] = f[1](pre_data)
+                else:
+                    pre_data = np.squeeze(in_data['reco_vals'][f[0]][ind_lo:ind_hi])
+                    batch_input[:,j]=f[1](pre_data)
+            inp_data.append(batch_input)
+            
+        for k, b in enumerate(out_branches):
+            batch_output = np.zeros((batch_size,)+out_branches[k][1])
+            for j, f in enumerate(out_variables[k]):
+                pre_data = np.squeeze(in_data['reco_vals'][f[0]][ind_lo:ind_hi])
+                batch_output[:,j]=f[1](pre_data)
+            out_data.append(batch_output)
+        t1 = time.time()
+        print('\n generate batch in {}s '.format((t1-t0)))
+        if use_data:
+            yield inp_data
+        else:
+            yield (inp_data, out_data)
+
+
 def generator(batch_size, file_handlers, inds,
               inp_shape_dict, inp_transformations,
               out_shape_dict, out_transformations, use_data=False):
@@ -194,6 +270,7 @@ def generator(batch_size, file_handlers, inds,
     t_file = None
     while True:
         loop_counter += 1
+        t0 = time.time()
         for j, var_array in enumerate(inp_variables):
             for k, var in enumerate(var_array):
                 temp_cur_file = cur_file
@@ -237,8 +314,6 @@ def generator(batch_size, file_handlers, inds,
                     slice_ind = [slice(None)] * batch_input[j][i].ndim
                     slice_ind[-1] = slice(k, k + 1, 1)
                     pre_append = var[1](temp_in[i])
-                    if var == 'time':
-                        pre_append[pre_append == np.inf] = -1
                     if len(var_array) > 1:
                         batch_input[j][i][slice_ind] = pre_append
                     else:
@@ -325,6 +400,12 @@ def generator(batch_size, file_handlers, inds,
             cur_file = temp_cur_file
             cur_event_id = temp_cur_event_id
             up_to = temp_up_to
+        t1 = time.time()
+        print('Time for one loop {}s'.format(t1-t0))
+        print(type(batch_input))
+        print(np.shape(batch_input))
+        print(type(batch_out))
+        print(np.shape(batch_out))
         if use_data:
             yield batch_input
         else:
