@@ -21,6 +21,19 @@ import numpy as np
 import tables
 import resource
 import h5py
+from keras.callbacks import Callback
+
+class WeightsSaver(Callback):
+    def __init__(self, N, save_path):
+        self.N = N
+        self.batch = 0
+        self.save_path = save_path
+
+    def on_batch_end(self, batch, logs={}):
+        if self.batch % self.N == 0:
+            name = os.path.join(self.save_path, "model_all_epochs/batch/weights_batch%06d.npy" % self.batch)
+            self.model.save_weights(name)
+        self.batch += 1
 
 class ParallelModelCheckpoint(keras.callbacks.ModelCheckpoint):
     def __init__(self,model,filepath, monitor='val_loss', verbose=0,
@@ -110,11 +123,8 @@ def read_input_len_shapes(file_location, input_files, virtual_len=-1):
     file_len : List of number of events for each file
 
     """
-    #print file_location
-    #print input_files
     file_len = []
     for run, input_file in enumerate(input_files):
-        #print input_file
         if not os.path.isabs(input_file):
             data_file = os.path.join(file_location, input_file)
         else:
@@ -128,7 +138,6 @@ def read_input_len_shapes(file_location, input_files, virtual_len=-1):
                     'The input files arrays do not have the same shape')
         if virtual_len == -1:
             data_len = len(file_handler.root.reco_vals)
-                #file_handler.root._v_attrs.len
         else:
             data_len = virtual_len
             print('Only use the first {} Monte Carlo Events'.format(data_len))
@@ -196,15 +205,25 @@ def generator(batch_size, file_handlers, inds,
                 while cur_len < batch_size:
                     fill_batch = batch_size - cur_len
                     if fill_batch < (temp_up_to - temp_cur_event_id):
-                        temp_in.extend(
-                            t_file[var[0]]
-                            [temp_cur_event_id:temp_cur_event_id + fill_batch])
+                        if var[0] in t_file.keys():
+                            temp_in.extend(
+                                t_file[var[0]]
+                                [temp_cur_event_id:temp_cur_event_id + fill_batch])
+                        else:
+                            temp_in.extend(
+                                t_file['reco_vals'][var[0]]
+                                [temp_cur_event_id:temp_cur_event_id + fill_batch])
                         cur_len += fill_batch
                         temp_cur_event_id += fill_batch
                     else:
-                        temp_in.extend(
-                            t_file[var[0]]
-                            [temp_cur_event_id:temp_up_to])
+                        if var[0] in t_file.keys():
+                            temp_in.extend(
+                                t_file[var[0]]
+                                [temp_cur_event_id:temp_up_to])
+                        else:
+                            temp_in.extend(
+                                t_file['reco_vals'][var[0]]
+                                [temp_cur_event_id:temp_up_to])
                         cur_len += temp_up_to - temp_cur_event_id
                         t_file.close()
                         temp_cur_file += 1

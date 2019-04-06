@@ -111,7 +111,8 @@ if cuda_path not in os.environ['LD_LIBRARY_PATH'].split(os.pathsep):
     except Exception, exc:
         print 'Failed re-exec:', exc
     sys.exit(1)
-
+print(os.environ['LD_LIBRARY_PATH'])
+print(os.environ['PATH'])
 if backend == 'tensorflow':
     print('Run with backend Tensorflow')
     import tensorflow as tf
@@ -135,32 +136,9 @@ from keras.utils import plot_model
 import transformations
 from functions import *
 
-##################################################################
-from keras.callbacks import Callback
-
-class WeightsSaver(Callback):
-    def __init__(self, N):
-        self.N = N
-        self.batch = 0
-
-    def on_batch_end(self, batch, logs={}):
-        if self.batch % self.N == 0:
-            name = os.path.join(save_path, "model_all_epochs/batch/weights_batch%06d.npy" % self.batch)
-            self.model.save_weights(name)
-        self.batch += 1
-
-class LearningRateTrackerAdam(Callback):
-    def on_epoch_end_2(self, epoch, logs={}):
-        optimizer = self.model.optimizer
-        beta_1 = optimizer.beta_1
-        lr = K.eval(optimizer.lr * (1. / (1. + optimizer.decay * optimizer.iterations)))
-        print('\nLR: {:.6f}\n'.format(lr))
-
-##################################################################
-
 if __name__ == "__main__":
 
-    # Process Command Line Arguments #########################################
+    # Process Command Line Arguments 
 
     file_location = parser.get('Basics', 'thisfolder')
 
@@ -182,7 +160,7 @@ if __name__ == "__main__":
         print "Continuing training. Loaded dict : ", run_info
         print "Input files: ", input_files
 
-    # Build-up a new Model ###########################################
+    # Build-up a new Model
 
     else:
         mc_location = parser.get('Basics', 'mc_path')
@@ -266,6 +244,8 @@ if __name__ == "__main__":
         optimizer_used = keras.optimizers.Adam(
             lr=float(parser.get('Training_Parameters', 'learning_rate')))
 
+
+    # Multi GPU stuff
     ngpus = args.__dict__['ngpus']
     if ngpus > 1:
         model_serial = read_NN_weights(args.__dict__, base_model)
@@ -278,6 +258,8 @@ if __name__ == "__main__":
     model.compile(optimizer=optimizer_used, **loss_dict)
     print(os.system("nvidia-smi"))
 
+
+    # save run info
     if args.__dict__['continue'] == 'None':
         run_info = dict()
         run_info['Files'] = input_files
@@ -319,15 +301,7 @@ if __name__ == "__main__":
             'Training_Parameters', 'single_gpu_batch_size'))
     file_handlers = [os.path.join(mc_location, file_name)
                      for file_name in input_files]
-    t_c = 0
-    while t_c < len(test_inds):
-        if (test_inds[t_c][1] - test_inds[t_c][0]) <= 1:
-            del valid_inds[t_c]
-            del train_inds[t_c]
-            del test_inds[t_c]
-            del file_handlers[t_c]
-        else:
-            t_c += 1
+
     # saving model every epoch
     all_epoch_folder = os.path.join(save_path, "model_all_epochs")
     if not os.path.exists(all_epoch_folder):
@@ -343,19 +317,19 @@ if __name__ == "__main__":
         mode='auto',
         period=1)
 
-    epoch_divider = int(parser.get('Training_Parameters', 'epoch_divider'))
     model.fit_generator(
         generator(
             batch_size, file_handlers, train_inds, inp_shapes,
             inp_trans, out_shapes, out_trans),
         steps_per_epoch=int(math.ceil(
-            (np.sum([k[1] - k[0] for k in train_inds]) / batch_size)) / epoch_divider),
+            (np.sum([k[1] - k[0] for k in train_inds]) / batch_size))),
         validation_data=generator(
             batch_size, file_handlers, valid_inds, inp_shapes,
             inp_trans, out_shapes, out_trans, use_data=False),
         validation_steps=math.ceil(
-            np.sum([k[1] - k[0] for k in valid_inds]) / batch_size) / epoch_divider,
-        callbacks=[], #[CSV_log, early_stop, best_model, MemoryCallback(), WeightsSaver(int(parser.get('Training_Parameters', 'save_every_x_batches')))],
+            np.sum([k[1] - k[0] for k in valid_inds]) / batch_size) ,
+        callbacks=[CSV_log, early_stop, best_model, MemoryCallback(),
+                   WeightsSaver(int(parser.get('Training_Parameters', 'save_every_x_batches')), save_path)],
         epochs=int(parser.get('Training_Parameters', 'epochs')),
         verbose=int(parser.get('Training_Parameters', 'verbose')),
         max_q_size=int(parser.get('Training_Parameters', 'max_queue_size')))

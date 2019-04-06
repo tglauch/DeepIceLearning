@@ -264,10 +264,10 @@ def inception_resnet_block(x, scale, block_type, block_idx, activation='relu'):
         branch_2 = conv3d_bn(branch_2, 32, 3)
         branches = [branch_0, branch_1, branch_2]
     elif block_type == 'block17':
-        branch_0 = conv3d_bn(x, 96, 1)
-        branch_1 = conv3d_bn(x, 64, 1)
-        branch_1 = conv3d_bn(branch_1, 80, (1, 1, 3))
-        branch_1 = conv3d_bn(branch_1, 96, (3, 3, 1))
+        branch_0 = conv3d_bn(x, 24, 1)
+        branch_1 = conv3d_bn(x, 16, 1)
+        branch_1 = conv3d_bn(branch_1, 24, (2, 2, 3))
+        branch_1 = conv3d_bn(branch_1, 24, (3, 3, 2))
         branches = [branch_0, branch_1]
     elif block_type == 'block8':
         branch_0 = conv3d_bn(x, 96, 1)

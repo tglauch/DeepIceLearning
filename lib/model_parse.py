@@ -35,7 +35,12 @@ def prepare_io_shapes(inputs, outputs, exp_file):
         inp_transformations[br] = {}
         for var, tr in zip(inputs[br]["variables"],
                            inputs[br]["transformations"]):
-            test_arr = np.array(inp_file[var][0])
+            if var in inp_file.keys():
+                test_arr = np.array(inp_file[var][0])
+            elif var in inp_file['reco_vals'].dtype.names:
+                test_arr = np.array(inp_file['reco_vals'][var][0])
+            else:
+                print('{} does not exists in the input file'.format(var))
             res_shape = np.shape(np.squeeze(tr(test_arr))) if not \
                     isinstance(tr(test_arr), np.float) else (1,)
             print(br,var,res_shape)
@@ -93,8 +98,6 @@ def parse_functional_model(cfg_file, exp_file, only_model=False):
     sys.path.pop()
     if only_model:
         return func_model_def
-    # except Exception:
-    #    raise Exception('Import of model.py failed: {}'.format(cfg_file))
     inputs = func_model_def.inputs
     outputs = func_model_def.outputs
     loss_dict = {}
