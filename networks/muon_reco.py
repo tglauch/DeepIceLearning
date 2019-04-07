@@ -24,8 +24,9 @@ inputs = OrderedDict()
 
 
 inputs["Branch_IC_time"] = {"variables": ["IC_charge", "IC_first_charge", "IC_time_first",
-                                         "IC_pulse_0_5_pct_charge_quantile", "IC_num_pulses"],
-                     "transformations": [tr.identity, tr.identity, tr.IC_centralize, tr.IC_centralize, tr.identity]}
+                                          "IC_pulse_0_5_pct_charge_quantile", "IC_num_pulses"],
+                            "transformations": [tr.identity, tr.identity, tr.IC_std_one,
+                                                tr.IC_std_one, tr.identity]}
 
 inputs["High_Level_Recos"] = {"variables": ["casc_score", "muex" ,"muex_sigma", "spline_mpe_zenith",
                                             "spline_mpe_azimuth", "trunc_e", "cog_rho","rlogl", "sdir_e",
@@ -43,7 +44,7 @@ outputs = OrderedDict()
 #outputs["Out3"] = {"variables": ["mu_dir_z"],
 #                   "transformations": [tr.identity]}
 outputs["Out1"] = {"variables": ["mu_e_on_entry"],
-                   "transformations": [tr.log10]}
+                   "transformations": [tr.identity]}
 reference_outputs = []
 
 # Step 3: Define loss functions

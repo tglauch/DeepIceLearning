@@ -11,6 +11,9 @@ from six.moves import configparser
 def identity(x, r_vals=None):
     return x
 
+def IC_std_one(x, r_vals=None, axis=(1,2,3)):
+    return  x / np.std(x, axis=axis)[:,np.newaxis,np.newaxis,np.newaxis]
+
 def IC_centralize(x, r_vals=None, axis=(1,2,3)):
     return ((x - np.mean(x, axis=axis)[:,np.newaxis,np.newaxis,np.newaxis]))\
             / np.std(x, axis=axis)[:,np.newaxis,np.newaxis,np.newaxis]

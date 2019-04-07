@@ -191,14 +191,22 @@ def generator_v2(batch_size, file_handlers, inds,
         out_data = []
         ind_lo += batch_size
         ind_hi += batch_size
+        if ind_hi > inds[cur_file][1]:
+            ind_hi = inds[cur_file][1]
         if ind_lo > inds[cur_file][1]:
             cur_file += 1
+            if cur_file == len(file_handlers):
+                cur_file=0
             print('Open File {}'.format(file_handlers[cur_file]))
+            in_data.close()
             in_data = h5py.File(file_handlers[cur_file])
             ind_lo = inds[cur_file][0]
-            ind_hi = ind_lo + batch_size  
+            ind_hi = ind_lo + batch_size
+        arr_size = np.min([batch_size, ind_hi - ind_lo])
+
+        # Generate Input Data  
         for k, b in enumerate(in_branches):
-            batch_input = np.zeros((batch_size,)+in_branches[k][1])
+            batch_input = np.zeros((arr_size,)+in_branches[k][1])
             for j, f in enumerate(inp_variables[k]):
                 if f[0] in in_data.keys():
                     pre_data = np.squeeze(in_data[f[0]][ind_lo:ind_hi])
@@ -208,12 +216,15 @@ def generator_v2(batch_size, file_handlers, inds,
                     batch_input[:,j]=f[1](pre_data)
             inp_data.append(batch_input)
             
+        # Generate Output Data
         for k, b in enumerate(out_branches):
-            batch_output = np.zeros((batch_size,)+out_branches[k][1])
+            batch_output = np.zeros((arr_size,)+out_branches[k][1])
             for j, f in enumerate(out_variables[k]):
                 pre_data = np.squeeze(in_data['reco_vals'][f[0]][ind_lo:ind_hi])
                 batch_output[:,j]=f[1](pre_data)
             out_data.append(batch_output)
+
+        # Return
         t1 = time.time()
         print('\n generate batch in {}s '.format((t1-t0)))
         if use_data:
