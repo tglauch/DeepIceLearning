@@ -116,18 +116,17 @@ waveform_key = str(dataset_configparser.get('Basics', 'Waveforms'))
 if not dataset_configparser['Input_Waveforms1']['ignore']:
     settings.append(('variable', '["CalibratedWaveforms"]'))
 settings.append(('variable', '{}'.format(pulsemap_key)))
-print settings
+print('Settings: {}'.format(settings))
 # Parse Input Features
 x = dataset_configparser['Input_Charges']
 y = dataset_configparser['Input_Times']
 z = dataset_configparser['Input_Waveforms1']
 pulses_input = dataset_configparser['Input_Pulses']
 scale_class = dict()
-print dataset_configparser.keys()
 if 'Scale_Class' in dataset_configparser.keys():
     for key in dataset_configparser['Scale_Class'].keys():
         scale_class[int(key)] = int(dataset_configparser['Scale_Class'][key])
-print scale_class
+print('Scale classes like {}'.format(scale_class))
 if len(scale_class.keys()) > 0:
     max_scale = np.max([scale_class[key] for key in scale_class])
 else:
