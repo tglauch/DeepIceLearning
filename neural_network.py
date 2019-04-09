@@ -332,7 +332,8 @@ if __name__ == "__main__":
                    WeightsSaver(int(parser.get('Training_Parameters', 'save_every_x_batches')), save_path)],
         epochs=int(parser.get('Training_Parameters', 'epochs')),
         verbose=int(parser.get('Training_Parameters', 'verbose')),
-        max_queue_size=int(parser.get('Training_Parameters', 'max_queue_size')),)
+        max_queue_size=int(parser.get('Training_Parameters', 'max_queue_size')),
+        use_multiprocessing=False)
 
 
     # Saving a visualization of the model 

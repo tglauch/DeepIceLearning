@@ -44,7 +44,7 @@ outputs = OrderedDict()
 #outputs["Out3"] = {"variables": ["mu_dir_z"],
 #                   "transformations": [tr.identity]}
 outputs["Out1"] = {"variables": ["mu_e_on_entry"],
-                   "transformations": [tr.identity]}
+                   "transformations": [tr.log10]}
 reference_outputs = []
 
 # Step 3: Define loss functions
@@ -110,7 +110,7 @@ def InceptionResNetV2_small(input_tensor=None,
     # 10x block35 (Inception-ResNet-A block): 35 x 35 x 320
     for block_idx in range(1, 3):
         x = bunit.inception_resnet_block(x,
-                                   scale=0.1,
+                                   scale=0.4,
                                    block_type='block35',
                                    block_idx=block_idx)
 
@@ -126,7 +126,7 @@ def InceptionResNetV2_small(input_tensor=None,
     # 20x block17 (Inception-ResNet-B block): 17 x 17 x 1088
     for block_idx in range(1, 3):
         x = bunit.inception_resnet_block(x,
-                                   scale=0.1,
+                                   scale=0.4,
                                    block_type='block17',
                                    block_idx=block_idx)
 
@@ -177,13 +177,15 @@ def model(input_shapes, output_shapes):
 
     output_b1 = Dense(128,activation="relu")(z1)
     tot_net = concatenate([output_b1, z2], axis=1)
-    tot_net = bunit.Dense_Residual(256, 256, tot_net)
-    tot_net = BatchNormalization()(tot_net)
-    tot_net = Dropout(rate=0.4)(tot_net)
-    tot_net = bunit.Dense_Residual(256, 128, tot_net)
-    tot_net = BatchNormalization()(tot_net)
-    tot_net = Dropout(rate=0.4)(tot_net)
-    tot_net = bunit.Dense_Residual(128, 128, tot_net)
+    tot_net = bunit.dense_block(256, tot_net)
+    tot_net = bunit.dense_block(128, tot_net)
+    #tot_net = bunit.Dense_Residual(256, 128, tot_net)
+    #tot_net = BatchNormalization()(tot_net)
+    #tot_net = Dropout(rate=0.4)(tot_net)
+    #tot_net = bunit.Dense_Residual(128, 128, tot_net)
+    #tot_net = BatchNormalization()(tot_net)
+    #tot_net = Dropout(rate=0.4)(tot_net)
+    #tot_net = bunit.Dense_Residual(128, 128, tot_net)
 
     output_tot = Dense(output_shapes["Out1"]["general"][0],\
                           activation="relu",\
