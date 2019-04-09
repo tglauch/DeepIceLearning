@@ -13,7 +13,6 @@ def make_condor(executable, request_gpus, request_memory, requirements, addpath,
             output       = {addp}/{script}.out \n\
             error        = {addp}/{script}.err \n\
             stream_output = True \n\
-            getenv = True \n\
             IWD = {folder} \n\
             arguments =  {args} \n\
             queue 1 \n '.format(script=executable,\
