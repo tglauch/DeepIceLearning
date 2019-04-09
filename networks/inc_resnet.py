@@ -24,33 +24,23 @@ inputs = OrderedDict()
 
 
 
-inputs["Branch_IC_time"] = {"variables": ["IC_time_first", "IC_ATWD_0_05_pct_charge_quantile", "IC_ATWD_0_1_pct_charge_quantile",\
-                                   "IC_ATWD_0_15_pct_charge_quantile", "IC_ATWD_0_2_pct_charge_quantile", "IC_ATWD_0_25_pct_charge_quantile",\
-                                   "IC_ATWD_0_3_pct_charge_quantile", "IC_ATWD_0_35_pct_charge_quantile", "IC_ATWD_0_4_pct_charge_quantile",\
-                                   "IC_ATWD_0_45_pct_charge_quantile", "IC_ATWD_0_5_pct_charge_quantile", "IC_ATWD_0_55_pct_charge_quantile",\
-                                   "IC_ATWD_0_6_pct_charge_quantile", "IC_ATWD_0_65_pct_charge_quantile", "IC_ATWD_0_7_pct_charge_quantile",\
-                                   "IC_ATWD_0_75_pct_charge_quantile","IC_ATWD_0_8_pct_charge_quantile", "IC_ATWD_0_85_pct_charge_quantile",\
-                                   "IC_ATWD_0_9_pct_charge_quantile","IC_ATWD_0_95_pct_charge_quantile", "IC_charge"],
-                     "transformations": [tr.centralize, tr.centralize, tr.centralize,\
-                                         tr.centralize, tr.centralize, tr.centralize,\
-                                         tr.centralize, tr.centralize, tr.centralize,\
-                                         tr.centralize, tr.centralize, tr.centralize,\
-                                         tr.centralize, tr.centralize, tr.centralize,\
-                                         tr.centralize, tr.centralize, tr.centralize,\
-                                         tr.centralize, tr.centralize, tr.centralize]}
+inputs["Branch_IC_time"] = {"variables": ["IC_charge", "IC_first_charge", "IC_time_first", "IC_pulse_0_5_pct_charge_quantile"],
+                     "transformations": [tr.identity, tr.identity, tr.centralize, tr.centralize]}
 
 # define outputs for each branch
 outputs = OrderedDict()
-outputs["Out1"] = {"variables": ["ClassificationLabel"],
-                   "transformations": [tr.oneHotEncode_4_evtypes]}
+outputs["Out1"] = {"variables": ["mu_dir_x", "mu_dir_y", "mu_dir_z"],
+                   "transformations": [tr.identity, tr.identity, tr.identity]}
 
+outputs["Out2"] = {"variables": ["mu_e_on_entry"],
+                   "transformations": [tr.log10]}
 
 reference_outputs = []
 
 # Step 3: Define loss functions
 
-loss_weights = {'Target1': 1.}
-loss_functions = ["categorical_crossentropy"]
+loss_weights = {'Target1': 1., 'Target2': 1}
+loss_functions = ["mean_squared_error", "mean_squared_error"]
 
 
 # Step 4: Define the model using Keras functional API
@@ -87,11 +77,11 @@ def InceptionResNetV2_small(input_tensor=None,
 
     # Stem block: 35 x 35 x 192
     x = bunit.conv3d_bn(input_tensor, 32, kernel, padding='same')
-    x = bunit.conv3d_bn(x, 32, kernel, padding='same')
+#    x = bunit.conv3d_bn(x, 32, kernel, padding='same')
     x = bunit.conv3d_bn(x, 64, kernel)
     x = MaxPooling3D((1,1,2), strides=1)(x)
-    x = bunit.conv3d_bn(x, 80, 1, padding='same')
-    x = bunit.conv3d_bn(x, 96, kernel, padding='same')
+    x = bunit.conv3d_bn(x, 40, 1, padding='same')
+    x = bunit.conv3d_bn(x, 48, kernel, padding='same')
     x = MaxPooling3D((2,2,3), strides=(1,1,2))(x)
 
     # Mixed 5b (Inception-A block): 35 x 35 x 320
@@ -157,12 +147,15 @@ def model(input_shapes, output_shapes):
                      name = "Input-Branch1")
     z1 = InceptionResNetV2_small(input_b1, pooling='avg')
     output_b1 = Dense(output_shapes["Out1"]["general"][0],\
-                          activation="softmax",\
+                          activation="relu",\
                           name="Target1")(z1)
+    output_b2 = Dense(output_shapes["Out2"]["general"][0],\
+                          activation="relu",\
+                          name="Target2")(z1)
 
 
     model = keras.models.Model(inputs=[input_b1],
-                               outputs=[output_b1])
+                               outputs=[output_b1, output_b2])
     print(model.summary())
     return model
 

@@ -8,28 +8,23 @@ from scipy.stats import norm
 #import icecube.MuonGun
 from six.moves import configparser
 
-
-
-## to define parameters in a config file
-#parser = configparser.ConfigParser()
-#if args.__dict__['continue'] != 'None' and args.main_config == 'None':
-#    save_path = args.__dict__['continue']
-#    config_file = os.path.join(save_path, 'config.cfg')
-#else:
-#    config_file = args.main_config
-#try:
-#    parser.read(config_file)
-#except Exception:
-#    raise Exception('Config File is missing!!!!')
-#parser_dict = {s: dict(parser.items(s)) for s in parser.sections()}
-#backend = parser.get('Basics', 'keras_backend')
-
-
 def identity(x, r_vals=None):
     return x
 
+def IC_std_one(x, r_vals=None, axis=(1,2,3)):
+    return  x / np.std(x, axis=axis)[:,np.newaxis,np.newaxis,np.newaxis]
 
-def centralize(x):
+def IC_centralize(x, r_vals=None, axis=(1,2,3)):
+    return ((x - np.mean(x, axis=axis)[:,np.newaxis,np.newaxis,np.newaxis]))\
+            / np.std(x, axis=axis)[:,np.newaxis,np.newaxis,np.newaxis]
+
+def log10(x, r_vals=None):
+    mask = (x >0.)
+    x[mask] = np.log10(1.*x[mask])
+    x[~mask] = 0.
+    return x
+
+def centralize(x, r_vals=None):
     if np.std(x) > 0.:
         return ((x - np.mean(x)) / np.std(x))
     else:

@@ -85,7 +85,7 @@ import numpy as np
 import keras
 from keras.models import Sequential, load_model
 import h5py
-from lib.functions import generator
+from lib.functions import generator_v2
 import math
 import numpy.lib.recfunctions as rfn
 from lib.functions import read_NN_weights, read_input_len_shapes
@@ -161,29 +161,27 @@ if __name__ == "__main__":
         file_handlers = input_files
         file_len = read_input_len_shapes('', input_files)
         test_inds = [(0, tot_len)for tot_len in file_len]
-    steps_per_epoch = math.ceil(np.sum([k[1] - k[0] for k in
-                                       test_inds]) / args['batch_size'])
+    steps_per_epoch = int(np.sum([math.ceil((1.*(k[1]-k[0])/args['batch_size']))
+                                   for k in test_inds]))
 
     if steps_per_epoch == 0:
         print "steps per epoch is 0, therefore manually set to 1"
         steps_per_epoch = 1
 
     prediction = model.predict_generator(
-        generator(args['batch_size'],
-                  file_handlers,
-                  test_inds,
-                  inp_shapes,
-                  inp_trans,
-                  out_shapes,
-                  out_trans,
-                  use_data=use_data),
+        generator_v2(args['batch_size'],
+                    file_handlers,
+                    test_inds,
+                    inp_shapes,
+                    inp_trans,
+                    out_shapes,
+                    out_trans,
+                    use_data=use_data),
         steps=steps_per_epoch,
         verbose=1,
-        max_q_size=2)
-    #for p in  prediction:
-    #    print p
+        max_queue_size=10,
+        use_multiprocessing=False)
     reference_outputs = mp.parse_reference_output(conf_model_file)
-    #print('Reference output-vars: ', reference_outputs)
     ## add to first out-branch:
     outbranch0 = out_shapes.keys()[0]
     for ref_out in reference_outputs:

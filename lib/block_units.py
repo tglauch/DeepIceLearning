@@ -256,24 +256,24 @@ def inception_resnet_block(x, scale, block_type, block_idx, activation='relu'):
             `'block17'` or `'block8'`.
     """
     if block_type == 'block35':
-        branch_0 = conv3d_bn(x, 32, 1)
-        branch_1 = conv3d_bn(x, 32, 1)
-        branch_1 = conv3d_bn(branch_1, 32, 3)
-        branch_2 = conv3d_bn(x, 32, 1)
-        branch_2 = conv3d_bn(branch_2, 48, 3)
-        branch_2 = conv3d_bn(branch_2, 64, 3)
+        branch_0 = conv3d_bn(x, 16, 1)
+        branch_1 = conv3d_bn(x, 16, 1)
+        branch_1 = conv3d_bn(branch_1, 16, 3)
+        branch_2 = conv3d_bn(x, 16, 1)
+        branch_2 = conv3d_bn(branch_2, 24, 3)
+        branch_2 = conv3d_bn(branch_2, 32, 3)
         branches = [branch_0, branch_1, branch_2]
     elif block_type == 'block17':
-        branch_0 = conv3d_bn(x, 192, 1)
-        branch_1 = conv3d_bn(x, 128, 1)
-        branch_1 = conv3d_bn(branch_1, 160, (1, 1, 3))
-        branch_1 = conv3d_bn(branch_1, 192, (3, 3, 1))
+        branch_0 = conv3d_bn(x, 24, 1)
+        branch_1 = conv3d_bn(x, 16, 1)
+        branch_1 = conv3d_bn(branch_1, 24, (2, 2, 3))
+        branch_1 = conv3d_bn(branch_1, 24, (3, 3, 2))
         branches = [branch_0, branch_1]
     elif block_type == 'block8':
-        branch_0 = conv3d_bn(x, 192, 1)
-        branch_1 = conv3d_bn(x, 192, 1)
-        branch_1 = conv3d_bn(branch_1, 224, (1, 1 ,3))
-        branch_1 = conv3d_bn(branch_1, 256, (2, 2, 1))
+        branch_0 = conv3d_bn(x, 96, 1)
+        branch_1 = conv3d_bn(x, 96, 1)
+        branch_1 = conv3d_bn(branch_1, 112, (1, 1 ,3))
+        branch_1 = conv3d_bn(branch_1, 128, (2, 2, 1))
         branches = [branch_0, branch_1]
     else:
         raise ValueError('Unknown Inception-ResNet block type. '
