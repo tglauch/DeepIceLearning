@@ -81,6 +81,11 @@ def parseArguments():
         help="Path to a filelist to be processed",
         type=str, nargs="+", required=False)
     parser.add_argument(
+        "--memory_saving",
+        help="If you want to save memory by only doing \
+              len(filelist) events at the same time",
+        action="store_true", default=False)
+    parser.add_argument(
         "--version",
         action="version", version='%(prog)s - Version 1.0')
     args = parser.parse_args()
@@ -388,25 +393,36 @@ if __name__ == "__main__":
         TotalEventCounter = 0
         skipped_frames = 0
         statusInFilelist = 0
-        event_files = []
         starttime = time.time()
-        print len(filelist[0])
-        print filelist
-        while statusInFilelist < len(filelist[0]):
-            timestamp = time.time()
+
+        # be careful here, if the filelists don't have the same length you will
+        # get a dataset that is *not* completely shuffeled
+        # if you want to have this guranteed, than either turn of the memory saving mode
+        # or give filelists of the same length
+
+        if not args['memory_saving']:
+            filelist = np.concatenate(filelist)
+            nloops = 1
+        else:
+            nloops = np.max([len(f) for f in filelist])
+        while statusInFilelist < nloops:
             events['reco_vals'] = []
             if not z['ignore']:
                 events['waveforms'] = []
             events['pulses'] = []
             counterSim = 0
-            while counterSim < len(filelist):
-                print('Attempt to read {}'.format(filelist[counterSim][statusInFilelist]))
-                print('File to read Type {}'.format(type(filelist[counterSim][statusInFilelist])))
-                print "Number of Events {}".format(args['max_num_events'])
-                t3 = time.time()
-                produce_data_dict(str(filelist[counterSim][statusInFilelist]),
-                                  args['max_num_events'])
-                counterSim = counterSim + 1
+            if not args['memory_saving']:
+                for f in filelist:
+                    print('Attempt to read {}'.format(f))
+                    print "Number of Events {}".format(args['max_num_events'])
+                    produce_data_dict(str(f),args['max_num_events'])                    
+            else:
+                while counterSim < len(filelist):
+                    print('Attempt to read {}'.format(filelist[counterSim][statusInFilelist]))
+                    print "Number of Events {}".format(args['max_num_events'])
+                    produce_data_dict(str(filelist[counterSim][statusInFilelist]),
+                                      args['max_num_events'])
+                    counterSim = counterSim + 1
             print('--- Run {} --- Countersim is {} --'.format(statusInFilelist,
                                                               counterSim))
             statusInFilelist += 1
@@ -468,7 +484,7 @@ if __name__ == "__main__":
         print("\n -----------------------------")
         print('###### Run Summary ###########')
         print('Processed: {} Frames \n Skipped {}'.format(TotalEventCounter,
-                                                          skipped_frames))
+                                                          skipped_framese)
         print("-----------------------------\n")
         print("Finishing...")
         h5file.root._v_attrs.len = TotalEventCounter
