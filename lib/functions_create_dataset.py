@@ -4,7 +4,16 @@ import numpy as np
 import icecube.MuonGun
 from icecube import dataclasses, dataio, simclasses
 import scipy.stats as st
+from icecube.weighting.weighting import from_simprod
 
+def calc_gen_ow(frame, gcdfile):
+    soft = from_simprod(11029)
+    hard_lowE = from_simprod(11069)
+    hard_highE = from_simprod(11070)
+    generator = soft+hard_highE+hard_lowE
+    ow = generator(frame['MCPrimary1'].energy, frame['I3MCWeightDict']['PrimaryNeutrinoType'],
+                   np.cos(frame['MCPrimary1'].dir.zenith))
+    return ow
 
 def get_t0(frame, puls_key='InIceDSTPulses'):
     pulses = frame[puls_key]
