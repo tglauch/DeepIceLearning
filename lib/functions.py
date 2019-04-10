@@ -147,9 +147,9 @@ def read_input_len_shapes(file_location, input_files, virtual_len=-1):
     return file_len
 
 
-def generator_v2(batch_size, file_handlers, inds,
-              inp_shape_dict, inp_transformations,
-              out_shape_dict, out_transformations, use_data=False):
+def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
+                 inp_transformations,out_shape_dict, out_transformations,
+                 weighting_function=None, use_data=False):
 
     """ This function is a real braintwister and presumably really bad implemented.
     It produces all input and output data and applies the transformations
@@ -157,8 +157,7 @@ def generator_v2(batch_size, file_handlers, inds,
 
     Arguments:
     batch size : the batch size per gpu
-    file_location: path to the folder containing the training files
-    file_list: list of files used for the training
+    file_handlers: list of files used for the training
     inds: the index range used for the dataset
     inp_shape_dict: A dictionary with the input shape for each branch
     inp_transformations: Dictionary with input variable name and function
@@ -182,28 +181,14 @@ def generator_v2(batch_size, file_handlers, inds,
                       for i in out_transformations[branch[0]]]
                      for branch in out_branches]
     cur_file = 0
-    ind_lo = inds[0][0] - batch_size
-    ind_hi = inds[0][0]
-    in_data = h5py.File(file_handlers[cur_file])
+    ind_lo = inds[0][0]
+    ind_hi = inds[0][0] + batch_size
+    in_data = h5py.File(file_handlers[0])
     while True:
         t0 = time.time()
         inp_data = []
         out_data = []
-        ind_lo += batch_size
-        ind_hi += batch_size
-        if ind_hi > inds[cur_file][1]:
-            ind_hi = inds[cur_file][1]
-        if ind_lo > inds[cur_file][1]:
-            cur_file += 1
-            if cur_file == len(file_handlers):
-                cur_file=0
-            print('Open File {}'.format(file_handlers[cur_file]))
-            in_data.close()
-            in_data = h5py.File(file_handlers[cur_file])
-            ind_lo = inds[cur_file][0]
-            ind_hi = ind_lo + batch_size
         arr_size = np.min([batch_size, ind_hi - ind_lo])
-
         # Generate Input Data  
         for k, b in enumerate(in_branches):
             batch_input = np.zeros((arr_size,)+in_branches[k][1])
@@ -224,7 +209,23 @@ def generator_v2(batch_size, file_handlers, inds,
                 batch_output[:,j]=f[1](pre_data)
             out_data.append(batch_output)
 
-        # Return
+
+        #Prepare next round
+        ind_lo += batch_size
+        ind_hi += batch_size
+        if ind_lo >= inds[cur_file][1]:
+            cur_file += 1
+            if cur_file == len(file_handlers):
+                cur_file=0
+            print('Open File {}'.format(file_handlers[cur_file]))
+            in_data.close()
+            in_data = h5py.File(file_handlers[cur_file])
+            ind_lo = inds[cur_file][0]
+            ind_hi = ind_lo + batch_size
+        elif ind_hi > inds[cur_file][1]:
+            ind_hi = inds[cur_file][1]
+
+        # Yield Result
         t1 = time.time()
         print('\n generate batch in {}s '.format((t1-t0)))
         if use_data:
