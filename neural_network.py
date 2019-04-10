@@ -326,7 +326,7 @@ if __name__ == "__main__":
         steps_per_epoch=training_steps,
         validation_data=generator_v2(
             batch_size, file_handlers, valid_inds, inp_shapes,
-            inp_trans, out_shapes, out_trans, use_data=False),
+            inp_trans, out_shapes, out_trans),
         validation_steps=validation_steps,
         callbacks=[CSV_log, early_stop, best_model, MemoryCallback(),
                    WeightsSaver(int(parser.get('Training_Parameters', 'save_every_x_batches')), save_path)],
