@@ -6,13 +6,19 @@ from icecube import dataclasses, dataio, simclasses
 import scipy.stats as st
 from icecube.weighting.weighting import from_simprod
 
+weight_info = {
+     '11029': {'nfiles': 3190,'nevents': 200000},
+     '11069': {'nfiles': 3920,'nevents': 5000},
+     '11070': {'nfiles': 997,'nevents': 400}, }
+
 def calc_gen_ow(frame, gcdfile):
     soft = from_simprod(11029)
     hard_lowE = from_simprod(11069)
     hard_highE = from_simprod(11070)
-    generator = soft+hard_highE+hard_lowE
+    generator = 3190 * soft + 3920 * hard_highE + 997 * hard_lowE
+    dataset = str(frame['I3EventHeader'].run_id)[0:5]
     ow = generator(frame['MCPrimary1'].energy, frame['I3MCWeightDict']['PrimaryNeutrinoType'],
-                   np.cos(frame['MCPrimary1'].dir.zenith))
+                   np.cos(frame['MCPrimary1'].dir.zenith))/weight_info[dataset]['nevents']
     return ow
 
 def get_t0(frame, puls_key='InIceDSTPulses'):

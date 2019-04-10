@@ -19,10 +19,24 @@ from icecube import dataclasses, dataio, icetray, MuonGun
 from icecube.icetray import I3Units
 import icecube.MuonGun
 import numpy as np
-
+from icecube.weighting.weighting import from_simprod
 
 nu_pdg = [12, 14, 16, -12, -14, -16]
 
+weight_info = {
+     '11029': {'nfiles': 3190,'nevents': 200000},
+     '11069': {'nfiles': 3920,'nevents': 5000},
+     '11070': {'nfiles': 997,'nevents': 400}, }
+
+def calc_gen_ow(frame, gcdfile):
+    soft = from_simprod(11029)
+    hard_lowE = from_simprod(11069)
+    hard_highE = from_simprod(11070)
+    generator = 3190 * soft + 3920 * hard_highE + 997 * hard_lowE
+    dataset = str(frame['I3EventHeader'].run_id)[0:5]
+    ow = 1.*generator(frame['MCPrimary1'].energy, frame['I3MCWeightDict']['PrimaryNeutrinoType'],
+                   np.cos(frame['MCPrimary1'].dir.zenith))/weight_info[dataset]['nevents']
+    return ow
 
 def calc_depositedE(physics_frame, gcd_file):
     I3Tree = physics_frame['I3MCTree']
