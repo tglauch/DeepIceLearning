@@ -203,11 +203,18 @@ def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
             
         # Generate Output Data
         for k, b in enumerate(out_branches):
+            if use_data:
+                continue
             batch_output = np.zeros((arr_size,)+out_branches[k][1])
             for j, f in enumerate(out_variables[k]):
                 pre_data = np.squeeze(in_data['reco_vals'][f[0]][ind_lo:ind_hi])
                 batch_output[:,j]=f[1](pre_data)
             out_data.append(batch_output)
+
+        if weighting_function == None:
+            weights = np.ones(arr_size)
+        else:
+            weights=weighting_function(in_data['reco_vals'][ind_lo:ind_hi])
 
 
         #Prepare next round
@@ -231,7 +238,7 @@ def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
         if use_data:
             yield inp_data
         else:
-            yield (inp_data, out_data)
+            yield (inp_data, out_data, weights)
 
 
 def generator(batch_size, file_handlers, inds,
