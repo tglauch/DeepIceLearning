@@ -24,10 +24,6 @@ def parseArguments():
         "--num_files",
         help="frac of the data that should be procesed",
         type=int, required=False)
-    parser.add_argument(
-        "--partnumber",
-        help="number of part that should be processed",
-        type=int, required=False)
     args = parser.parse_args()
     return args
 args = parseArguments().__dict__
@@ -36,14 +32,14 @@ args = parseArguments().__dict__
 request_gpus = 1
 request_memory = 1
 exclude = ""
-condor_out_folder = "/scratch9/mkron/data/hdf/condor"
-train_location = "/scratch9/mkron/data/hdf"
+condor_out_folder = os.path.join(args["outfolder"],"condor")
+train_location = args["outfolder"]
+#train_location = "/scratch9/mkron/data/hdf"
 thisfolder = "/scratch9/mkron/software/DeepIceLearning"
 
 print os.listdir(args["filelist"])
 file_list = [i for i in os.listdir(args['filelist']) if i[-3:]=='.h5']
 n_jobs = len(file_list)/args["num_files"]
-#print file_list
 
 for k in xrange(n_jobs):
 	file_listy = file_list[k*args["num_files"]:(k+1)*args["num_files"]]
@@ -53,8 +49,7 @@ for k in xrange(n_jobs):
         arguments += ' --filename {}_{}.h5'.format(args["filename"], k)
         arguments += ' --datadir {}'.format(args["filelist"]) 
 
-
-	submit_info = make_slurm("kick_type.py",\
+	submit_info = make_slurm("hdf_change.py",\
         	                     request_gpus,\
                 	             float(request_memory) * 1e3,\
                         	     condor_out_folder,\
@@ -67,9 +62,6 @@ for k in xrange(n_jobs):
 			             log_name='{}_{}'.format(args['filename'],k))
 
 
-
-
-	#print(submit_info)
 	submitfile_full = os.path.join(condor_out_folder, 'submit_{}_{}.sub'.format(args["filename"], k))
 	with open(submitfile_full, "wc") as file:
     		file.write(submit_info)

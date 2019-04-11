@@ -35,24 +35,15 @@ def parseArguments():
 args = parseArguments().__dict__
 
 
-#DATA_DIR = args["filelist"][0]
 SAVE_DIR = args['outfolder']
 outfile_name = args["filename"]
-#print DATA_DIR
-#print outfile_name
 DATA_DIR = args["datadir"]
-#SAVE_DIR = "/scratch9/mkron/data/"
-#outfile_name = "The_final_two.h5"
 input_shape = [10, 10, 60]
 FILTERS = tables.Filters(complib='zlib', complevel=9)
 picker_dict = {0:20, 1:75, 2:52, 3:30, 4:50, 5:100, 6:100, 7:100, 8:100, 9:100}
 db_picker = {0:1, 1:100} # 0 = kuerzer als 5, 10 meter
 
 
-#file_list = []
-#for (dirpath, dirnames, filenames) in os.walk(DATA_DIR):
-#    file_list.extend(filenames)
-#    break
 file_list = args["filelist"]
 print file_list
 print type(file_list)
@@ -77,7 +68,6 @@ with tables.open_file(outfile, mode="w", title="Events for training the NN",
     
     a= time.time()
     for fili in file_list:
-#    for fili in file_list[:1]:
         one_h5file = h5.File(os.path.join(DATA_DIR, fili))
         for k in xrange(len(one_h5file["reco_vals"])):
             class_n = one_h5file["reco_vals"][k]["ClassificationLabel"]
