@@ -133,6 +133,7 @@ import time
 import shelve
 from keras.utils import multi_gpu_model
 from keras.utils import plot_model
+from keras.callbacks import CSVLogger, EarlyStopping
 #import individual_loss
 import transformations
 from functions import *
@@ -288,12 +289,13 @@ if __name__ == "__main__":
         steps_per_epoch=training_steps,
         validation_data=generator_v2(
             batch_size, file_handlers, valid_inds, inp_shapes,
-            inp_trans, out_shapes, out_trans),
+            inp_trans, out_shapes, out_trans, weighting_function=w_func_gen),
         validation_steps=validation_steps,
-        callbacks=[CSV_log(os.path.join(save_path,'loss_logger.csv')),
-                   early_stop(int(parser.get('Training_Parameters', 'delta')),
-                              int(parser.get('Training_Parameters', 'patience')),
-                              int(parser.get('Training_Parameters', 'verbose'))),
+        callbacks=[CSVLogger(os.path.join(save_path,'loss_logger.csv'), append=True),
+                   EarlyStopping(min_delta=int(parser.get('Training_Parameters', 'delta')),
+                                 patience=int(parser.get('Training_Parameters', 'patience')),
+                                 verbose=int(parser.get('Training_Parameters', 'verbose')),
+                                 monitor='val_loss'),
                    best_model(model_serial,
                               os.path.join(save_path, "best_val_loss.npy"),
                               int(parser.get('Training_Parameters', 'verbose'))),
