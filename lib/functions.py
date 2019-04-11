@@ -46,6 +46,54 @@ class ParallelModelCheckpoint(keras.callbacks.ModelCheckpoint):
     def set_model(self, model):
         super(ParallelModelCheckpoint,self).set_model(self.single_model)
 
+class CSV_log(keras.callbacks.CSVLogger):
+    def __init__(self,
+                save_path,
+                append=True):
+        self.save_path = save_path
+
+class early_stop( keras.callbacks.EarlyStopping):
+    def __init__(self, min_delta, patience,
+                 verbose, monitor='val_loss', mode='auto'):
+        self.verbose = verbose
+
+class best_model(ParallelModelCheckpoint):
+    def __init__(self, model, filepath, verbose,
+                 monitor='val_loss',
+                 save_best_only=True,
+                 mode='auto',
+                 period=1):
+        self.verbose = verbose
+        self.single_model = model
+
+
+class every_model(ParallelModelCheckpoint):
+    def __init__(self, model, filepath, verbose,
+                 monitor='val_loss',
+                 save_best_only=False,
+                 mode='auto',
+                 period=1):
+        self.verbose = verbose
+        self.single_model = model
+
+def chose_optimizer(optimizer, learningrate):
+    if optimizer == "Nadam":
+        print "Optimizer: Nadam"
+        optimizer_used = keras.optimizers.Nadam(lr=learningrate)
+    elif optimizer == "Adam":
+        print "Optimizer: Adam"
+        optimizer_used = keras.optimizers.Adam(lr=learningrate)
+    elif optimizer == "SGD":
+        print "Optimizer: SGD"
+        optimizer_used = keras.optimizers.SGD(lr=learningrate)
+    elif optimizer == "RMSProb":
+        print "Optimizer: RMSProb"
+        optimizer_used = keras.optimizers.RMSprob(lr=learningrate)
+    else:
+        print "Optimizer unchoosen or unknown -> default: Adam"
+        optimizer_used = keras.optimizers.Adam(lr=learningrate)
+    return optimizer_used
+
 def close_h5file(file_obj):
     if isinstance(file_obj, h5py.File):   # Just HDF5 files
         try:

@@ -227,24 +227,8 @@ if __name__ == "__main__":
             os.path.join(mc_location, input_files[0]))
 
     # Choosing the Optimizer
-    if parser.get('Training_Parameters', 'optimizer') == "Nadam":
-        print "Optimizer: Nadam"
-        optimizer_used = keras.optimizers.Nadam(
-            lr=float(parser.get('Training_Parameters', 'learning_rate')))
-    elif parser.get('Training_Parameters', 'optimizer') == "Adam":
-        optimizer_used = keras.optimizers.Adam(
-            lr=float(parser.get('Training_Parameters', 'learning_rate')))
-    elif parser.get('Training_Parameters', 'optimizer') == "SGD":
-        optimizer_used = keras.optimizers.SGD(
-            lr=float(parser.get('Training_Parameters', 'learning_rate')))
-    elif parser.get('Training_Parameters', 'optimizer') == "RMSProb":
-        optimizer_used = keras.optimizers.RMSprop(
-            lr=float(parser.get('Training_Parameters', 'learning_rate')))
-    else:
-        print "Optimizer unchoosen or unknown -> default: Adam"
-        optimizer_used = keras.optimizers.Adam(
-            lr=float(parser.get('Training_Parameters', 'learning_rate')))
-
+    optimizer_used = chose_optimizer(parser.get('Training_Parameters', 'optimizer'),
+                                    float(parser.get('Training_Parameters', 'learning_rate')))
 
     w_func_str = parser.get('Training_Parameters','weighting')
     print('Use Weighting Function {}'.format(w_func_str))
@@ -282,32 +266,9 @@ if __name__ == "__main__":
       
         np.save(os.path.join(save_path, 'run_info.npy'), run_info)
 
-# Train the Model #########################################################
-
-    CSV_log = keras.callbacks.CSVLogger(
-        os.path.join(save_path,
-                     'loss_logger.csv'),
-        append=True)
-
-    early_stop = keras.callbacks.EarlyStopping(
-        monitor='val_loss',
-        min_delta=int(parser.get('Training_Parameters', 'delta')),
-        patience=int(parser.get('Training_Parameters', 'patience')),
-        verbose=int(parser.get('Training_Parameters', 'verbose')),
-        mode='auto')
-
-    best_model = ParallelModelCheckpoint(
-        model = model_serial,
-        filepath= os.path.join(save_path, "best_val_loss.npy"),
-        monitor='val_loss',
-        verbose=int(parser.get('Training_Parameters', 'verbose')),
-        save_best_only=True,
-        mode='auto',
-        period=1)
-
-    batch_size = int(
-        parser.get("GPU", "request_gpus")) * int(parser.get(
-            'Training_Parameters', 'single_gpu_batch_size'))
+# Train the Model 
+    batch_size = int(parser.get("GPU", "request_gpus")) * int(
+                     parser.get('Training_Parameters', 'single_gpu_batch_size'))
     file_handlers = [os.path.join(mc_location, file_name)
                      for file_name in input_files]
 
@@ -317,14 +278,6 @@ if __name__ == "__main__":
         os.makedirs(all_epoch_folder)
         os.makedirs(os.path.join(all_epochs_folder, "batch"))
     print('Created Folder {}'.format(all_epoch_folder))
-    every_model = ParallelModelCheckpoint(
-        model = model_serial,
-        filepath = os.path.join(save_path, "model_all_epochs/weights_{epoch:02d}.npy"),
-        monitor='val_loss',
-        verbose=int(parser.get('Training_Parameters', 'verbose')),
-        save_best_only=False,
-        mode='auto',
-        period=1)
 
     training_steps = int(np.sum([math.ceil((1.*(k[1]-k[0])/batch_size)) for k in train_inds]))
     validation_steps = int(np.sum([math.ceil((1.*(k[1]-k[0])/batch_size)) for k in valid_inds]))
@@ -337,7 +290,17 @@ if __name__ == "__main__":
             batch_size, file_handlers, valid_inds, inp_shapes,
             inp_trans, out_shapes, out_trans),
         validation_steps=validation_steps,
-        callbacks=[CSV_log, early_stop, best_model, MemoryCallback(),
+        callbacks=[CSV_log(os.path.join(save_path,'loss_logger.csv')),
+                   early_stop(int(parser.get('Training_Parameters', 'delta')),
+                              int(parser.get('Training_Parameters', 'patience')),
+                              int(parser.get('Training_Parameters', 'verbose'))),
+                   best_model(model_serial,
+                              os.path.join(save_path, "best_val_loss.npy"),
+                              int(parser.get('Training_Parameters', 'verbose'))),
+#                   every_model(model_serial,
+#                              os.path.join(save_path, "model_all_epochs/weights_{epoch:02d}.npy"),
+#                              int(parser.get('Training_Parameters', 'verbose'))),
+                   MemoryCallback(),
                    WeightsSaver(int(parser.get('Training_Parameters', 'save_every_x_batches')), save_path)],
         epochs=int(parser.get('Training_Parameters', 'epochs')),
         verbose=int(parser.get('Training_Parameters', 'verbose')),
