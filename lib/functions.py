@@ -183,7 +183,7 @@ def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
     cur_file = 0
     ind_lo = inds[0][0]
     ind_hi = inds[0][0] + batch_size
-    in_data = h5py.File(file_handlers[0])
+    in_data = h5py.File(file_handlers[0], 'r')
     while True:
         t0 = time.time()
         inp_data = []
@@ -226,7 +226,7 @@ def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
                 cur_file=0
             print('Open File {}'.format(file_handlers[cur_file]))
             in_data.close()
-            in_data = h5py.File(file_handlers[cur_file])
+            in_data = h5py.File(file_handlers[cur_file], 'r')
             ind_lo = inds[cur_file][0]
             ind_hi = ind_lo + batch_size
         elif ind_hi > inds[cur_file][1]:

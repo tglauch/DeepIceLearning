@@ -23,6 +23,7 @@ import h5py
 sys.path.append(os.path.join(os.path.abspath(".."),'lib'))
 print os.path.abspath("..")
 import model_parse as mp
+import importlib
 
 
 def parseArguments():
@@ -245,6 +246,14 @@ if __name__ == "__main__":
             lr=float(parser.get('Training_Parameters', 'learning_rate')))
 
 
+    w_func_str = parser.get('Training_Parameters','weighting')
+    print('Use Weighting Function {}'.format(w_func_str))
+    if w_func_str != 'None':
+        mod = importlib.import_module('weighting')
+        w_func = getattr(mod, 'weight_from_mc_fit')
+        w_func_gen = w_func(input_files, mc_location)
+    else:
+        w_func = None 
     # Multi GPU stuff
     ngpus = args.__dict__['ngpus']
     if ngpus > 1:
@@ -321,8 +330,8 @@ if __name__ == "__main__":
     validation_steps = int(np.sum([math.ceil((1.*(k[1]-k[0])/batch_size)) for k in valid_inds]))
     model.fit_generator(
         generator_v2(
-            batch_size, file_handlers, train_inds, inp_shapes,
-            inp_trans, out_shapes, out_trans),
+            batch_size, file_handlers, train_inds, inp_shapes, inp_trans,
+            out_shapes, out_trans, weighting_function=w_func_gen),
         steps_per_epoch=training_steps,
         validation_data=generator_v2(
             batch_size, file_handlers, valid_inds, inp_shapes,
