@@ -41,21 +41,11 @@ class ParallelModelCheckpoint(keras.callbacks.ModelCheckpoint):
                  save_best_only=False, save_weights_only=False,
                  mode='auto', period=1):
 		self.single_model = model
-		super(ParallelModelCheckpoint,self).__init__(filepath, monitor, verbose,save_best_only, save_weights_only,mode, period)
+		super(ParallelModelCheckpoint,self).__init__(filepath, monitor, verbose,save_best_only,
+                                                     save_weights_only,mode, period)
 
     def set_model(self, model):
         super(ParallelModelCheckpoint,self).set_model(self.single_model)
-
-
-class best_model(ParallelModelCheckpoint):
-    def __init__(self, model, filepath, verbose,
-                 monitor='val_loss',
-                 save_best_only=True,
-                 mode='auto',
-                 period=1):
-        self.verbose = verbose
-        self.single_model = model
-
 
 class every_model(ParallelModelCheckpoint):
     def __init__(self, model, filepath, verbose,

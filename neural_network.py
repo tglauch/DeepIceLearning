@@ -282,6 +282,16 @@ if __name__ == "__main__":
 
     training_steps = int(np.sum([math.ceil((1.*(k[1]-k[0])/batch_size)) for k in train_inds]))
     validation_steps = int(np.sum([math.ceil((1.*(k[1]-k[0])/batch_size)) for k in valid_inds]))
+    
+    best_model = ParallelModelCheckpoint(
+        model = model_serial,
+        filepath= os.path.join(save_path, "best_val_loss.npy"),
+        monitor='val_loss',
+        verbose=int(parser.get('Training_Parameters', 'verbose')),
+        save_best_only=True,
+        mode='auto',
+        period=1)
+
     model.fit_generator(
         generator_v2(
             batch_size, file_handlers, train_inds, inp_shapes, inp_trans,
@@ -296,9 +306,7 @@ if __name__ == "__main__":
                                  patience=int(parser.get('Training_Parameters', 'patience')),
                                  verbose=int(parser.get('Training_Parameters', 'verbose')),
                                  monitor='val_loss'),
-                   best_model(model_serial,
-                              os.path.join(save_path, "best_val_loss.npy"),
-                              int(parser.get('Training_Parameters', 'verbose'))),
+                    best_model,
 #                   every_model(model_serial,
 #                              os.path.join(save_path, "model_all_epochs/weights_{epoch:02d}.npy"),
 #                              int(parser.get('Training_Parameters', 'verbose'))),
