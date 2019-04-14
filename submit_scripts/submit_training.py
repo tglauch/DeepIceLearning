@@ -158,7 +158,7 @@ with open(submitfile_full, "wc") as file:
 
 if args['continue'] == 'None':
     copyfile(args["main_config"], os.path.join(save_path, 'config.cfg'))
-    copyfile(args["model"], os.path.join(save_path, model_name.split('/')[-1]))
+    copyfile(args["model"], os.path.join(save_path, 'model.py'))
 
 if workload_manager == 'slurm':
     os.system("sbatch {}".format(submitfile_full))

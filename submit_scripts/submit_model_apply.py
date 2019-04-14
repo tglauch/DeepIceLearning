@@ -15,24 +15,22 @@ def parseArguments():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--main_config",
-        help="main config file, user-specific",
-        type=str, default='default.cfg')
+        help="absolute path to main config file",
+        type=str)
     parser.add_argument(
         "--folder",
         type=str, required=True,
-        help="trainfolder ")
+        help="folder where all the config are saved")
     parser.add_argument(
         "--batch_size",
-        type=int, default='256',
-        help="trainfolder ")
+        type=int, default='32',
+        help="the batch size")
     parser.add_argument(
-        "--model",
-        type=str, required=True,
-        help="trainfolder ")
+        "--model", type=str,
+        help="absolute path to the model file")
     parser.add_argument(
-        "--weights",
-        type=str, default='best_val_loss.npy',
-        help="trainfolder ")
+        "--weights", type=str,
+        help="absolute path to the weights file")
     parser.add_argument(
         "--memory",
         help="specify the RAM requirements",
@@ -44,12 +42,19 @@ def parseArguments():
 
 args = parseArguments().__dict__
 parser = configparser.ConfigParser()
+if args['main_config'] == None:
+    args['main_config'] = os.path.join(args['folder'], 'config.cfg')
 parser.read(args["main_config"])
 parser_dict = {s:dict(parser.items(s)) for s in parser.sections()}
 
 train_location = parser.get('Basics', 'train_folder')
 workload_manager = parser.get('Basics', 'workload_manager')
 request_gpus = parser.get('GPU', 'request_gpus')
+
+if args['weights'] == None:
+    args['weights'] = os.path.join(args['folder'], 'best_val_loss.npy')
+if args['model'] == None:
+    args['model'] = os.path.join(args['folder'], 'model.py')
 if args['memory'] == -1:
     request_memory = parser.get('GPU', 'request_memory')
 else:
