@@ -73,7 +73,7 @@ def parseArguments():
         help="Folder for saving the output",
         type=str, default='None')
     args = parser.parse_args()
-    return args
+    return args.__dict__
 
 
 # Read config and load keras stuff #############
@@ -81,11 +81,11 @@ def parseArguments():
 print('Running on Hostcomputer {}'.format(socket.gethostname()))
 args = parseArguments()
 parser = configparser.ConfigParser()
-if args.__dict__['continue'] != 'None' and args.main_config == 'None':
-    save_path = args.__dict__['continue']
+if args['continue'] != 'None' and args['main_config'] == 'None':
+    save_path = args['continue']
     config_file = os.path.join(save_path, 'config.cfg')
 else:
-    config_file = args.main_config
+    config_file = args['main_config']
 try:
     parser.read(config_file)
 except Exception:
@@ -146,19 +146,19 @@ if __name__ == "__main__":
 
     print("\n ---------")
     print("You are running the script with arguments: ")
-    for a in args.__dict__:
-        print('{} : {}'.format(a, args.__dict__[a]))
+    for a in args.keys():
+        print('{} : {}'.format(a, args[a]))
     print("--------- \n")
 
-    if args.__dict__['continue'] != 'None':
-        save_path = args.__dict__['continue']
+    if args['continue'] != 'None':
+        save_path = args['continue']
         run_info = np.load(os.path.join(save_path, 'run_info.npy'))[()]
 
         mc_location = parser.get('Basics', 'mc_path')
         input_files = run_info['Files']
         if input_files == "['all']":
             input_files = os.listdir(mc_location)
-        conf_model_file = args.__dict__['model']
+        conf_model_file = args['model']
         print "Continuing training. Loaded dict : ", run_info
         print "Input files: ", input_files
 
@@ -166,24 +166,24 @@ if __name__ == "__main__":
 
     else:
         mc_location = parser.get('Basics', 'mc_path')
-        conf_model_file = args.__dict__['model']
-        if args.__dict__['input'] == 'all':
+        conf_model_file = args['model']
+        if args['input'] == 'all':
             input_files = [f for f in os.listdir(mc_location)
                            if os.path.isfile(
                            os.path.join(mc_location, f)) and f[-3:] == '.h5']
             print('Use the following input files for training: {}'.
                   format(input_files))
         else:
-            input_files = (args.__dict__['input']).split(':')
+            input_files = (args['input']).split(':')
 
-        if args.__dict__['save_folder'] != 'None':
-            save_path = args.__dict__['save_folder']
+        if args['save_folder'] != 'None':
+            save_path = args['save_folder']
         elif 'save_path' in parser_dict['Basics'].keys():
             save_path = parser.get('Basics', 'save_path')
         elif 'train_folder' in parser_dict["Basics"].keys():
             today = str(datetime.datetime.now()).\
                 replace(" ", "-").split(".")[0].replace(":", "-")
-            project_name = args.__dict__['project']
+            project_name = args['project']
             save_path = os.path.join(
                 parser.get('Basics', 'train_folder'),
                 '{}/{}'.format(project_name, today))
@@ -206,7 +206,7 @@ if __name__ == "__main__":
 
     file_len = read_input_len_shapes(mc_location,
                                      input_files,
-                                     virtual_len=args.__dict__['virtual_len'])
+                                     virtual_len=args['virtual_len'])
     train_frac = float(
         train_val_test_ratio[0]) / np.sum(train_val_test_ratio)
     valid_frac = float(
@@ -217,9 +217,18 @@ if __name__ == "__main__":
                   for tot_len in file_len]
     test_inds = [(int(tot_len * (train_frac + valid_frac)), tot_len - 1)
                  for tot_len in file_len]
-    print('Index ranges used for training: {}'.format(train_inds))
-    print('Index ranges used for validation: {}'.format(valid_inds))
-    print('Index ranges used for testing: {}'.format(test_inds))
+    print('Index ranges used for training: {} \n'.format(train_inds))
+    print('Index ranges used for validation: {} \n'.format(valid_inds))
+    print('Index ranges used for testing: {} \n'.format(test_inds))
+
+    w_func_str = parser.get('Training_Parameters','weighting')
+    print('Use Weighting Function {}'.format(w_func_str))
+    if w_func_str != 'None':
+        mod = importlib.import_module('weighting')
+        w_func = getattr(mod, w_func_str)
+        w_func_gen = w_func(input_files, mc_location)
+    else:
+        w_func_gen = None 
 
     # create model (new implementation, functional API of Keras)
     base_model, inp_shapes, inp_trans, out_shapes, out_trans, loss_dict = \
@@ -231,30 +240,24 @@ if __name__ == "__main__":
     optimizer_used = chose_optimizer(parser.get('Training_Parameters', 'optimizer'),
                                     float(parser.get('Training_Parameters', 'learning_rate')))
 
-    w_func_str = parser.get('Training_Parameters','weighting')
-    print('Use Weighting Function {}'.format(w_func_str))
-    if w_func_str != 'None':
-        mod = importlib.import_module('weighting')
-        w_func = getattr(mod, 'weight_from_mc_fit')
-        w_func_gen = w_func(input_files, mc_location)
-    else:
-        w_func = None 
     # Multi GPU stuff
-    ngpus = args.__dict__['ngpus']
+    ngpus = args['ngpus']
     if ngpus > 1:
-        model_serial = read_NN_weights(args.__dict__, base_model)
+        model_serial = read_NN_weights(args, base_model)
         model = multi_gpu_model(model_serial, gpus=ngpus)
+        equal_len = True
     else:
-        model = read_NN_weights(args.__dict__, base_model)
+        model = read_NN_weights(args, base_model)
         model_serial = model
+        equal_len = False
 
-    # Choosing the Loss function
+    # Compile the model with the given settings
     model.compile(optimizer=optimizer_used, **loss_dict)
     print(os.system("nvidia-smi"))
 
 
     # save run info
-    if args.__dict__['continue'] == 'None':
+    if args['continue'] == 'None':
         run_info = dict()
         run_info['Files'] = input_files
         run_info['mc_location'] = mc_location
@@ -295,11 +298,13 @@ if __name__ == "__main__":
     model.fit_generator(
         generator_v2(
             batch_size, file_handlers, train_inds, inp_shapes, inp_trans,
-            out_shapes, out_trans, weighting_function=w_func_gen),
+            out_shapes, out_trans, weighting_function=w_func_gen,
+            equal_len=equal_len),
         steps_per_epoch=training_steps,
         validation_data=generator_v2(
             batch_size, file_handlers, valid_inds, inp_shapes,
-            inp_trans, out_shapes, out_trans, weighting_function=w_func_gen),
+            inp_trans, out_shapes, out_trans, weighting_function=w_func_gen,
+            equal_len=equal_len),
         validation_steps=validation_steps,
         callbacks=[CSVLogger(os.path.join(save_path,'loss_logger.csv'), append=True),
                    EarlyStopping(min_delta=int(parser.get('Training_Parameters', 'delta')),

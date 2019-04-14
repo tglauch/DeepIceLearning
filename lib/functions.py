@@ -177,16 +177,18 @@ def read_input_len_shapes(file_location, input_files, virtual_len=-1):
 
 def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
                  inp_transformations,out_shape_dict, out_transformations,
-                 weighting_function=None, use_data=False):
+                 weighting_function=None, use_data=False, equal_len = False):
 
-    """ This function is a real braintwister and presumably really bad implemented.
-    It produces all input and output data and applies the transformations
+    """ This function generates the training batches for the neural network.
+    It load all input and output data and applies the transformations
     as defined in the network definition file.
 
     Arguments:
     batch size : the batch size per gpu
     file_handlers: list of files used for the training
+                   i.e. ['/path/to/file/A', 'path/to/file/B']
     inds: the index range used for the dataset
+          i.e. [(0,1000), (0,2000)]
     inp_shape_dict: A dictionary with the input shape for each branch
     inp_transformations: Dictionary with input variable name and function
     out_shape_dict: A dictionary with the output shape for each branch
@@ -197,7 +199,7 @@ def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
     batch_out: a batch of output data
 
     """
-
+    print('Run with inds {}'.format(inds))
     in_branches = [(branch, inp_shape_dict[branch]['general'])
                    for branch in inp_shape_dict]
     out_branches = [(branch, out_shape_dict[branch]['general'])
@@ -212,20 +214,26 @@ def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
     ind_lo = inds[0][0]
     ind_hi = inds[0][0] + batch_size
     in_data = h5py.File(file_handlers[0], 'r')
+    f_reco_vals = in_data['reco_vals']
+    t0 = time.time()
+    num_batches = 0 
     while True:
-        t0 = time.time()
         inp_data = []
         out_data = []
         arr_size = np.min([batch_size, ind_hi - ind_lo])
-        # Generate Input Data  
+        reco_vals = f_reco_vals[ind_lo:ind_hi]
+        # Generate Input Data
+        #print('\n Batch Info')
+        #print(ind_lo, ind_hi, arr_size)
+        #print('\n')
         for k, b in enumerate(in_branches):
             batch_input = np.zeros((arr_size,)+in_branches[k][1])
             for j, f in enumerate(inp_variables[k]):
                 if f[0] in in_data.keys():
-                    pre_data = np.squeeze(in_data[f[0]][ind_lo:ind_hi])
-                    batch_input[:,:,:,:,j] = f[1](pre_data)
+                    pre_data = np.array(np.squeeze(in_data[f[0]][ind_lo:ind_hi]), ndmin=4)
+                    batch_input[:,:,:,:,j] = np.atleast_1d(f[1](pre_data))
                 else:
-                    pre_data = np.squeeze(in_data['reco_vals'][f[0]][ind_lo:ind_hi])
+                    pre_data = np.squeeze(reco_vals[f[0]])
                     batch_input[:,j]=f[1](pre_data)
             inp_data.append(batch_input)
             
@@ -235,34 +243,38 @@ def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
                 continue
             batch_output = np.zeros((arr_size,)+out_branches[k][1])
             for j, f in enumerate(out_variables[k]):
-                pre_data = np.squeeze(in_data['reco_vals'][f[0]][ind_lo:ind_hi])
+                pre_data = np.squeeze(reco_vals[f[0]])
                 batch_output[:,j]=f[1](pre_data)
             out_data.append(batch_output)
 
         if weighting_function == None:
             weights = np.ones(arr_size)
         else:
-            weights=weighting_function(in_data['reco_vals'][ind_lo:ind_hi])
+            weights=weighting_function(reco_vals)
 
 
         #Prepare next round
         ind_lo += batch_size
         ind_hi += batch_size
-        if ind_lo >= inds[cur_file][1]:
+        if (ind_lo >= inds[cur_file][1]) | (equal_len & (ind_hi > inds[cur_file][1])):
             cur_file += 1
             if cur_file == len(file_handlers):
                 cur_file=0
-            print('Open File {}'.format(file_handlers[cur_file]))
+            t1 = time.time()
+            print('\n Open File: {} \n'.format(file_handlers[cur_file]))
+            print('\n Average Time per Batch: {}s \n'.format((t1-t0)/num_batches))
+            t0 = time.time()
+            num_batches = 0
             in_data.close()
             in_data = h5py.File(file_handlers[cur_file], 'r')
+            f_reco_vals = in_data['reco_vals']
             ind_lo = inds[cur_file][0]
             ind_hi = ind_lo + batch_size
         elif ind_hi > inds[cur_file][1]:
             ind_hi = inds[cur_file][1]
 
         # Yield Result
-        t1 = time.time()
-        print('\n generate batch in {}s '.format((t1-t0)))
+        num_batches += 1
         if use_data:
             yield inp_data
         else:

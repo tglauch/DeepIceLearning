@@ -47,11 +47,11 @@ def parseArguments():
         action="store_true",\
         help="Apply test after training? ")
     args = parser.parse_args()
-    return args
+    return args.__dict__
 
 
 
-args = parseArguments().__dict__
+args = parseArguments()
 parser = configparser.ConfigParser()
 if args['continue'] != 'None':
     parser.read(os.path.join(args["continue"], 'config.cfg'))
