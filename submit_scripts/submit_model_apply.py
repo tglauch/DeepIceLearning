@@ -32,6 +32,9 @@ def parseArguments():
         "--weights", type=str,
         help="absolute path to the weights file")
     parser.add_argument(
+        "--gpus", type=int,
+        help="number of gpus to be used")
+    parser.add_argument(
         "--memory",
         help="specify the RAM requirements",
         type=int, default=-1)
@@ -49,7 +52,10 @@ parser_dict = {s:dict(parser.items(s)) for s in parser.sections()}
 
 train_location = parser.get('Basics', 'train_folder')
 workload_manager = parser.get('Basics', 'workload_manager')
-request_gpus = parser.get('GPU', 'request_gpus')
+if args['gpus'] == None:
+    request_gpus = parser.get('GPU', 'request_gpus')
+else:
+    request_gpus = args['gpus']
 
 if args['weights'] == None:
     args['weights'] = os.path.join(args['folder'], 'best_val_loss.npy')
