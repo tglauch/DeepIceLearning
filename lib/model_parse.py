@@ -42,13 +42,16 @@ def prepare_io_shapes(inputs, outputs, exp_file):
             else:
                 print('{} does not exists in the input file'.format(var))
             res_shape = np.shape(np.squeeze(tr(test_arr))) if not \
-                    isinstance(tr(test_arr), np.float) else (1,)
+                    isinstance(tr(test_arr), np.float) else None
             print(br,var,res_shape)
             inp_shapes[br][var] = res_shape
             inp_transformations[br][var] = tr
         if len(inputs[br]["variables"]) > 1:
-            inp_shapes[br]["general"] = \
-                    res_shape + (len(inputs[br]["variables"]),)
+            if res_shape != None:
+                inp_shapes[br]["general"] = \
+                        res_shape + (len(inputs[br]["variables"]),)
+            else: 
+                inp_shapes[br]["general"] = (len(inputs[br]["variables"]),)
         else:
             if len(res_shape) >1:
                 inp_shapes[br]["general"] = res_shape + (1,)

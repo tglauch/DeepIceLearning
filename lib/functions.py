@@ -247,9 +247,7 @@ def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
                 batch_output[:,j]=f[1](pre_data)
             out_data.append(batch_output)
 
-        if weighting_function == None:
-            weights = np.ones(arr_size)
-        else:
+        if weighting_function != None:
             weights=weighting_function(reco_vals)
 
 
@@ -278,7 +276,10 @@ def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
         if use_data:
             yield inp_data
         else:
-            yield (inp_data, out_data, weights)
+            if weighting_function!=None:
+                yield (inp_data, out_data, weights)
+            else:
+                yield (inp_data, out_data)
 
 
 def read_NN_weights(args_dict, model):
