@@ -226,6 +226,12 @@ def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
         #print('\n Batch Info')
         #print(ind_lo, ind_hi, arr_size)
         #print('\n')
+        print(' \n \n \n ')
+        print(reco_vals['mu_e_on_entry'][0:10])        
+        if weighting_function != None:
+            weights=weighting_function(reco_vals)
+            #print weights
+        print(reco_vals['mu_e_on_entry'][0:10])
         for k, b in enumerate(in_branches):
             batch_input = np.zeros((arr_size,)+in_branches[k][1])
             for j, f in enumerate(inp_variables[k]):
@@ -246,10 +252,7 @@ def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
                 pre_data = np.squeeze(reco_vals[f[0]])
                 batch_output[:,j]=f[1](pre_data)
             out_data.append(batch_output)
-
-        if weighting_function != None:
-            weights=weighting_function(reco_vals)
-
+        print(reco_vals['mu_e_on_entry'][0:10])
 
         #Prepare next round
         ind_lo += batch_size

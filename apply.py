@@ -65,7 +65,7 @@ if not os.path.exists(cuda_path):
 if cuda_path not in os.environ['LD_LIBRARY_PATH'].split(os.pathsep):
     print('Setting Cuda Path...')
     os.environ["PATH"] += os.pathsep + cuda_path
-    os.environ['LD_LIBRARY_PATH'] += os.pathsep + cuda_path
+   os.environ['LD_LIBRARY_PATH'] += os.pathsep + cuda_path
     try:
         print('Attempt to Restart with new Cuda Path')
         os.execv(sys.argv[0], sys.argv)
@@ -73,6 +73,7 @@ if cuda_path not in os.environ['LD_LIBRARY_PATH'].split(os.pathsep):
         print 'Failed re-exec:', exc
         sys.exit(1)
 
+print os.environ['LD_LIBRARY_PATH'].split(os.pathsep)
 #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
 #os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 if backend == 'tensorflow':

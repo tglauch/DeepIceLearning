@@ -40,7 +40,7 @@ def scale_w_logE_pow3(mc_path, mc_loc, key='trunc_e'):
     for i in mc_path:
         x= h5py.File(os.path.join(mc_loc,i), 'r')
         vals = x['reco_vals'][key]
-        norm.append(np.log10(np.max([vals, np.ones(len(vals)) * 2], axis=0))**3)
+        norm.append(np.log10(np.max([vals, np.ones(len(vals)) * 100], axis=0))**3)
         x.close()
     N = len(np.concatenate(norm))
     norm = 1. * np.sum(np.concatenate(norm))
