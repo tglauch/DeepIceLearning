@@ -65,7 +65,7 @@ if not os.path.exists(cuda_path):
 if cuda_path not in os.environ['LD_LIBRARY_PATH'].split(os.pathsep):
     print('Setting Cuda Path...')
     os.environ["PATH"] += os.pathsep + cuda_path
-   os.environ['LD_LIBRARY_PATH'] += os.pathsep + cuda_path
+    os.environ['LD_LIBRARY_PATH'] += os.pathsep + cuda_path
     try:
         print('Attempt to Restart with new Cuda Path')
         os.execv(sys.argv[0], sys.argv)
@@ -182,11 +182,6 @@ if __name__ == "__main__":
         verbose=1,
         max_queue_size=10,
         use_multiprocessing=False)
-    reference_outputs = mp.parse_reference_output(conf_model_file)
-    ## add to first out-branch:
-    outbranch0 = out_shapes.keys()[0]
-    for ref_out in reference_outputs:
-        out_shapes[outbranch0][ref_out] = 1
     mc_truth = [[] for br in out_shapes.keys()
                 for var in out_shapes[br].keys()
                 if var != 'general']
