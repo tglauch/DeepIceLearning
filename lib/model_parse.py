@@ -54,9 +54,9 @@ def prepare_io_shapes(inputs, outputs, exp_file):
                 inp_shapes[br]["general"] = (len(inputs[br]["variables"]),)
         else:
             if len(res_shape) >1:
-                inp_shapes[br]["general"] = res_shape + (1,)
+                inp_shapes[br]["general"] = res_shape +  (1,)
             else:
-                inp_shapes[br]["general"] = res_shape
+                inp_shapes[br]["general"] = (1,)
 
     for br in outputs:
         out_shapes[br] = {}
@@ -108,12 +108,16 @@ def parse_functional_model(cfg_file, exp_file, only_model=False):
         loss_dict['loss_weights'] = func_model_def.loss_weights
     if hasattr(func_model_def, 'loss_functions'):
         loss_dict['loss'] = func_model_def.loss_functions
+    if hasattr(func_model_def, 'mask'):
+        mask_func = func_model_def.mask
+    else:
+        mask_func = None
     in_shapes, in_trans, out_shapes, out_trans = \
         prepare_io_shapes(inputs, outputs, exp_file)
     print('----In  Shapes-----\n {}'.format(in_shapes))
     print('----Out Shapes----- \n {}'.format(out_shapes))
     print('--- Loss Settings ---- \n {}'.format(loss_dict))
     model = func_model_def.model(in_shapes, out_shapes)
-    return model, in_shapes, in_trans, out_shapes, out_trans, loss_dict
+    return model, in_shapes, in_trans, out_shapes, out_trans, loss_dict, mask_func
 
 

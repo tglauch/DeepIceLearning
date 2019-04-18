@@ -8,6 +8,10 @@ from scipy.stats import norm
 #import icecube.MuonGun
 from six.moves import configparser
 
+
+def divide_10(x, r_vals=None):
+    return  x / 100.
+
 def divide_10000(x, r_vals=None):
     return  x / 10000.
 

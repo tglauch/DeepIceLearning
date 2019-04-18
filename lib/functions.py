@@ -177,7 +177,8 @@ def read_input_len_shapes(file_location, input_files, virtual_len=-1):
 
 def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
                  inp_transformations,out_shape_dict, out_transformations,
-                 weighting_function=None, use_data=False, equal_len = False):
+                 weighting_function=None, use_data=False, equal_len=False,
+                 mask_func=None):
 
     """ This function generates the training batches for the neural network.
     It load all input and output data and applies the transformations
@@ -199,6 +200,7 @@ def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
     batch_out: a batch of output data
 
     """
+
     print('Run with inds {}'.format(inds))
     in_branches = [(branch, inp_shape_dict[branch]['general'])
                    for branch in inp_shape_dict]
@@ -220,15 +222,24 @@ def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
     while True:
         inp_data = []
         out_data = []
+        weights = []
         arr_size = np.min([batch_size, ind_hi - ind_lo])
         reco_vals = f_reco_vals[ind_lo:ind_hi]
         # Generate Input Data
         #print('\n Batch Info')
         #print(ind_lo, ind_hi, arr_size)
         #print('\n')
-        if weighting_function != None:
-            weights=weighting_function(reco_vals)
-
+        for k, b in enumerate(out_branches):
+            for j, f in enumerate(out_variables[k]):
+                if weighting_function != None:
+                    tweights=weighting_function(reco_vals)
+                else:
+                    tweights=np.ones(arr_size)
+                if mask_func != None:
+                    mask = mask_func(reco_vals)
+                    tweights[mask] = 0
+            weights.append(tweights)
+            
         for k, b in enumerate(in_branches):
             batch_input = np.zeros((arr_size,)+in_branches[k][1])
             for j, f in enumerate(inp_variables[k]):
@@ -269,16 +280,13 @@ def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
             ind_hi = ind_lo + batch_size
         elif ind_hi > inds[cur_file][1]:
             ind_hi = inds[cur_file][1]
-
+       
         # Yield Result
         num_batches += 1
         if use_data:
             yield inp_data
         else:
-            if weighting_function!=None:
-                yield (inp_data, out_data, weights)
-            else:
-                yield (inp_data, out_data)
+            yield (inp_data, out_data, weights)
 
 
 def read_NN_weights(args_dict, model):

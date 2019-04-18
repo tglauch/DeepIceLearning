@@ -231,7 +231,7 @@ if __name__ == "__main__":
         w_func_gen = None 
 
     # create model (new implementation, functional API of Keras)
-    base_model, inp_shapes, inp_trans, out_shapes, out_trans, loss_dict = \
+    base_model, inp_shapes, inp_trans, out_shapes, out_trans, loss_dict, mask_func = \
         mp.parse_functional_model(
             conf_model_file,
             os.path.join(mc_location, input_files[0]))
@@ -299,7 +299,7 @@ if __name__ == "__main__":
         generator_v2(
             batch_size, file_handlers, train_inds, inp_shapes, inp_trans,
             out_shapes, out_trans, weighting_function=w_func_gen,
-            equal_len=equal_len),
+            equal_len=equal_len, mask_func=mask_func),
         steps_per_epoch=training_steps,
         validation_data=generator_v2(
             batch_size, file_handlers, valid_inds, inp_shapes,
@@ -324,9 +324,6 @@ if __name__ == "__main__":
 
 
     # Saving a visualization of the model 
-    plot_model(model, to_file=os.path.join(save_path, 'model.pdf'))
-    print('\n Model Visualisation saved')
-
 
     # Saving the Final Model and Calculation/Saving of Result for Test Dataset ####
 
