@@ -8,6 +8,8 @@ from scipy.stats import norm
 #import icecube.MuonGun
 from six.moves import configparser
 
+def divide_1000(x, r_vals=None):
+    return  x / 1000.
 
 def divide_10(x, r_vals=None):
     return  x / 100.
@@ -376,31 +378,4 @@ def oneHotEncode_3_evtypes_strack_length_75(x, r_vals):
         mapping = {0: cascade_db, 1: cascade_db, 2: track, 3: s_track, 4: track,
                    5: cascade_db, 6: cascade_db, 7: cascade_db, 8: track, 9: cascade_db}
         return mapping[int(x)]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

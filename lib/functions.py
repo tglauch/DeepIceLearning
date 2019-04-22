@@ -176,7 +176,7 @@ def read_input_len_shapes(file_location, input_files, virtual_len=-1):
 
 
 def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
-                 inp_transformations,out_shape_dict, out_transformations,
+                 inp_transformations, out_shape_dict, out_transformations,
                  weighting_function=None, use_data=False, equal_len=False,
                  mask_func=None):
 
@@ -202,6 +202,7 @@ def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
     """
 
     print('Run with inds {}'.format(inds))
+
     in_branches = [(branch, inp_shape_dict[branch]['general'])
                    for branch in inp_shape_dict]
     out_branches = [(branch, out_shape_dict[branch]['general'])
@@ -218,17 +219,16 @@ def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
     in_data = h5py.File(file_handlers[0], 'r')
     f_reco_vals = in_data['reco_vals']
     t0 = time.time()
-    num_batches = 0 
+    num_batches = 0
+ 
     while True:
         inp_data = []
         out_data = []
         weights = []
         arr_size = np.min([batch_size, ind_hi - ind_lo])
         reco_vals = f_reco_vals[ind_lo:ind_hi]
-        # Generate Input Data
-        #print('\n Batch Info')
-        #print(ind_lo, ind_hi, arr_size)
-        #print('\n')
+
+        #print('Generate Input Data')
         for k, b in enumerate(out_branches):
             for j, f in enumerate(out_variables[k]):
                 if weighting_function != None:
@@ -261,7 +261,7 @@ def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
                 batch_output[:,j]=f[1](pre_data)
             out_data.append(batch_output)
 
-        #Prepare next round
+        #Prepare Next Loop
         ind_lo += batch_size
         ind_hi += batch_size
         if (ind_lo >= inds[cur_file][1]) | (equal_len & (ind_hi > inds[cur_file][1])):

@@ -43,7 +43,6 @@ def prepare_io_shapes(inputs, outputs, exp_file):
                 print('{} does not exists in the input file'.format(var))
             res_shape = np.shape(np.squeeze(tr(test_arr))) if not \
                     isinstance(tr(test_arr), np.float) else None
-            print(br,var,res_shape)
             inp_shapes[br][var] = res_shape
             inp_transformations[br][var] = tr
         if len(inputs[br]["variables"]) > 1:
@@ -64,15 +63,22 @@ def prepare_io_shapes(inputs, outputs, exp_file):
         for var, tr in zip(outputs[br]["variables"],
                            outputs[br]["transformations"]):
             test_arr = np.array(inp_file['reco_vals'][var][0])
-            res_shape = np.shape(np.squeeze(tr(test_arr, inp_file["reco_vals"][:][0])))
+            res_shape = np.shape(np.squeeze(tr(test_arr, inp_file["reco_vals"][:][0]))) if not \
+                    isinstance(tr(test_arr), np.float) else None
             if res_shape == ():
                  res_shape = (1,)
             print(br,var,res_shape)
             out_shapes[br][var] = res_shape
             out_transformations[br][var] = tr
+        print('this {}'.format(outputs[br]["variables"]))
         if len(outputs[br]["variables"]) > 1:
-           out_shapes[br]["general"] = \
-                res_shape + (len(outputs[br]["variables"]),)
+            if res_shape != None:
+                print res_shape
+                out_shapes[br]["general"] = \
+                    (len(outputs[br]["variables"]),) # res_shape +
+            else:
+                out_shapes[br]["general"] = \
+                    (len(outputs[br]["variables"]),)
         else:
             if len(res_shape) > 1:
                 out_shapes[br]["general"] = res_shape + (1,)

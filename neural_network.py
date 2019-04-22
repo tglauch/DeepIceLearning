@@ -322,13 +322,5 @@ if __name__ == "__main__":
         max_queue_size=int(parser.get('Training_Parameters', 'max_queue_size')),
         use_multiprocessing=False)
 
-
-    # Saving a visualization of the model 
-
-    # Saving the Final Model and Calculation/Saving of Result for Test Dataset ####
-
-    model.save(os.path.join(save_path, 'final_network.h5'))  # save trained network
-    print('\n Saved the Model \n')
-
     print('\n Finished .... Exit.....')
 
