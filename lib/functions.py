@@ -213,6 +213,10 @@ def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
     out_variables = [[(i, out_transformations[branch[0]][i])
                       for i in out_transformations[branch[0]]]
                      for branch in out_branches]
+    print inp_transformations
+    print out_transformations
+    print inp_shape_dict
+    print out_shape_dict
     cur_file = 0
     ind_lo = inds[0][0]
     ind_hi = inds[0][0] + batch_size
