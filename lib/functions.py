@@ -41,10 +41,38 @@ class ParallelModelCheckpoint(keras.callbacks.ModelCheckpoint):
                  save_best_only=False, save_weights_only=False,
                  mode='auto', period=1):
 		self.single_model = model
-		super(ParallelModelCheckpoint,self).__init__(filepath, monitor, verbose,save_best_only, save_weights_only,mode, period)
+		super(ParallelModelCheckpoint,self).__init__(filepath, monitor, verbose,save_best_only,
+                                                     save_weights_only,mode, period)
 
     def set_model(self, model):
         super(ParallelModelCheckpoint,self).set_model(self.single_model)
+
+class every_model(ParallelModelCheckpoint):
+    def __init__(self, model, filepath, verbose,
+                 monitor='val_loss',
+                 save_best_only=False,
+                 mode='auto',
+                 period=1):
+        self.verbose = verbose
+        self.single_model = model
+
+def chose_optimizer(optimizer, learningrate):
+    if optimizer == "Nadam":
+        print "Optimizer: Nadam"
+        optimizer_used = keras.optimizers.Nadam(lr=learningrate)
+    elif optimizer == "Adam":
+        print "Optimizer: Adam"
+        optimizer_used = keras.optimizers.Adam(lr=learningrate)
+    elif optimizer == "SGD":
+        print "Optimizer: SGD"
+        optimizer_used = keras.optimizers.SGD(lr=learningrate)
+    elif optimizer == "RMSProb":
+        print "Optimizer: RMSProb"
+        optimizer_used = keras.optimizers.RMSprob(lr=learningrate)
+    else:
+        print "Optimizer unchoosen or unknown -> default: Adam"
+        optimizer_used = keras.optimizers.Adam(lr=learningrate)
+    return optimizer_used
 
 def close_h5file(file_obj):
     if isinstance(file_obj, h5py.File):   # Just HDF5 files
@@ -148,17 +176,20 @@ def read_input_len_shapes(file_location, input_files, virtual_len=-1):
 
 
 def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
-                 inp_transformations,out_shape_dict, out_transformations,
-                 weighting_function=None, use_data=False):
+                 inp_transformations, out_shape_dict, out_transformations,
+                 weighting_function=None, use_data=False, equal_len=False,
+                 mask_func=None):
 
-    """ This function is a real braintwister and presumably really bad implemented.
-    It produces all input and output data and applies the transformations
+    """ This function generates the training batches for the neural network.
+    It load all input and output data and applies the transformations
     as defined in the network definition file.
 
     Arguments:
     batch size : the batch size per gpu
     file_handlers: list of files used for the training
+                   i.e. ['/path/to/file/A', 'path/to/file/B']
     inds: the index range used for the dataset
+          i.e. [(0,1000), (0,2000)]
     inp_shape_dict: A dictionary with the input shape for each branch
     inp_transformations: Dictionary with input variable name and function
     out_shape_dict: A dictionary with the output shape for each branch
@@ -170,6 +201,8 @@ def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
 
     """
 
+    print('Run with inds {}'.format(inds))
+
     in_branches = [(branch, inp_shape_dict[branch]['general'])
                    for branch in inp_shape_dict]
     out_branches = [(branch, out_shape_dict[branch]['general'])
@@ -180,24 +213,45 @@ def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
     out_variables = [[(i, out_transformations[branch[0]][i])
                       for i in out_transformations[branch[0]]]
                      for branch in out_branches]
+    print inp_transformations
+    print out_transformations
+    print inp_shape_dict
+    print out_shape_dict
     cur_file = 0
     ind_lo = inds[0][0]
     ind_hi = inds[0][0] + batch_size
-    in_data = h5py.File(file_handlers[0])
+    in_data = h5py.File(file_handlers[0], 'r')
+    f_reco_vals = in_data['reco_vals']
+    t0 = time.time()
+    num_batches = 0
+ 
     while True:
-        t0 = time.time()
         inp_data = []
         out_data = []
+        weights = []
         arr_size = np.min([batch_size, ind_hi - ind_lo])
-        # Generate Input Data  
+        reco_vals = f_reco_vals[ind_lo:ind_hi]
+
+        #print('Generate Input Data')
+        for k, b in enumerate(out_branches):
+            for j, f in enumerate(out_variables[k]):
+                if weighting_function != None:
+                    tweights=weighting_function(reco_vals)
+                else:
+                    tweights=np.ones(arr_size)
+                if mask_func != None:
+                    mask = mask_func(reco_vals)
+                    tweights[mask] = 0
+            weights.append(tweights)
+            
         for k, b in enumerate(in_branches):
             batch_input = np.zeros((arr_size,)+in_branches[k][1])
             for j, f in enumerate(inp_variables[k]):
                 if f[0] in in_data.keys():
-                    pre_data = np.squeeze(in_data[f[0]][ind_lo:ind_hi])
-                    batch_input[:,:,:,:,j] = f[1](pre_data)
+                    pre_data = np.array(np.squeeze(in_data[f[0]][ind_lo:ind_hi]), ndmin=4)
+                    batch_input[:,:,:,:,j] = np.atleast_1d(f[1](pre_data))
                 else:
-                    pre_data = np.squeeze(in_data['reco_vals'][f[0]][ind_lo:ind_hi])
+                    pre_data = np.squeeze(reco_vals[f[0]])
                     batch_input[:,j]=f[1](pre_data)
             inp_data.append(batch_input)
             
@@ -207,228 +261,36 @@ def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
                 continue
             batch_output = np.zeros((arr_size,)+out_branches[k][1])
             for j, f in enumerate(out_variables[k]):
-                pre_data = np.squeeze(in_data['reco_vals'][f[0]][ind_lo:ind_hi])
+                pre_data = np.squeeze(reco_vals[f[0]])
                 batch_output[:,j]=f[1](pre_data)
             out_data.append(batch_output)
 
-        if weighting_function == None:
-            weights = np.ones(arr_size)
-        else:
-            weights=weighting_function(in_data['reco_vals'][ind_lo:ind_hi])
-
-
-        #Prepare next round
+        #Prepare Next Loop
         ind_lo += batch_size
         ind_hi += batch_size
-        if ind_lo >= inds[cur_file][1]:
+        if (ind_lo >= inds[cur_file][1]) | (equal_len & (ind_hi > inds[cur_file][1])):
             cur_file += 1
             if cur_file == len(file_handlers):
                 cur_file=0
-            print('Open File {}'.format(file_handlers[cur_file]))
+            t1 = time.time()
+            print('\n Open File: {} \n'.format(file_handlers[cur_file]))
+            print('\n Average Time per Batch: {}s \n'.format((t1-t0)/num_batches))
+            t0 = time.time()
+            num_batches = 0
             in_data.close()
-            in_data = h5py.File(file_handlers[cur_file])
+            in_data = h5py.File(file_handlers[cur_file], 'r')
+            f_reco_vals = in_data['reco_vals']
             ind_lo = inds[cur_file][0]
             ind_hi = ind_lo + batch_size
         elif ind_hi > inds[cur_file][1]:
             ind_hi = inds[cur_file][1]
-
+       
         # Yield Result
-        t1 = time.time()
-        print('\n generate batch in {}s '.format((t1-t0)))
+        num_batches += 1
         if use_data:
             yield inp_data
         else:
             yield (inp_data, out_data, weights)
-
-
-def generator(batch_size, file_handlers, inds,
-              inp_shape_dict, inp_transformations,
-              out_shape_dict, out_transformations, use_data=False):
-
-    """ This function is a real braintwister and presumably really bad implemented.
-    It produces all input and output data and applies the transformations
-    as defined in the network definition file.
-
-    Arguments:
-    batch size : the batch size per gpu
-    file_location: path to the folder containing the training files
-    file_list: list of files used for the training
-    inds: the index range used for the dataset
-    inp_shape_dict: A dictionary with the input shape for each branch
-    inp_transformations: Dictionary with input variable name and function
-    out_shape_dict: A dictionary with the output shape for each branch
-    out_transformations: Dictionary with out variable name and function
-
-    Returns:
-    batch_input : a batch of input data
-    batch_out: a batch of output data
-
-    """
-
-    in_branches = [(branch, inp_shape_dict[branch]['general'])
-                   for branch in inp_shape_dict]
-    out_branches = [(branch, out_shape_dict[branch]['general'])
-                    for branch in out_shape_dict]
-    inp_variables = [[(i, inp_transformations[branch[0]][i])
-                      for i in inp_transformations[branch[0]]]
-                     for branch in in_branches]
-    out_variables = [[(i, out_transformations[branch[0]][i])
-                      for i in out_transformations[branch[0]]]
-                     for branch in out_branches]
-    batch_input = [np.zeros((batch_size,) + branch[1])
-                   for branch in in_branches]
-    batch_out = [np.zeros((batch_size,) + branch[1])
-                 for branch in out_branches]
-    cur_file = 0
-    cur_event_id = inds[cur_file][0]
-    cur_len = 0
-    up_to = inds[cur_file][1]
-    loop_counter = 0
-    temp_out = []
-    temp_in = []
-    t_file = None
-    while True:
-        loop_counter += 1
-        t0 = time.time()
-        for j, var_array in enumerate(inp_variables):
-            for k, var in enumerate(var_array):
-                temp_cur_file = cur_file
-                close_h5file(t_file)
-                t_file = h5py.File(file_handlers[temp_cur_file], 'r')
-                temp_cur_event_id = cur_event_id
-                temp_up_to = up_to
-                cur_len = 0
-                while cur_len < batch_size:
-                    fill_batch = batch_size - cur_len
-                    if fill_batch < (temp_up_to - temp_cur_event_id):
-                        if var[0] in t_file.keys():
-                            temp_in.extend(
-                                t_file[var[0]]
-                                [temp_cur_event_id:temp_cur_event_id + fill_batch])
-                        else:
-                            temp_in.extend(
-                                t_file['reco_vals'][var[0]]
-                                [temp_cur_event_id:temp_cur_event_id + fill_batch])
-                        cur_len += fill_batch
-                        temp_cur_event_id += fill_batch
-                    else:
-                        if var[0] in t_file.keys():
-                            temp_in.extend(
-                                t_file[var[0]]
-                                [temp_cur_event_id:temp_up_to])
-                        else:
-                            temp_in.extend(
-                                t_file['reco_vals'][var[0]]
-                                [temp_cur_event_id:temp_up_to])
-                        cur_len += temp_up_to - temp_cur_event_id
-                        t_file.close()
-                        temp_cur_file += 1
-                        if temp_cur_file == len(file_handlers):
-                            break
-                        else:
-                            t_file = h5py.File(file_handlers[temp_cur_file], 'r')
-                            temp_cur_event_id = inds[temp_cur_file][0]
-                            temp_up_to = inds[temp_cur_file][1]
-                for i in range(len(temp_in)):
-                    slice_ind = [slice(None)] * batch_input[j][i].ndim
-                    slice_ind[-1] = slice(k, k + 1, 1)
-                    pre_append = var[1](temp_in[i])
-                    if len(var_array) > 1:
-                        batch_input[j][i][slice_ind] = pre_append
-                    else:
-                        batch_input[j][i] = pre_append
-                temp_in = []
-        for j, var_array in enumerate(out_variables):
-            if use_data:
-                continue
-            for k, var in enumerate(var_array):
-                temp_cur_file = cur_file
-                close_h5file(t_file)
-                t_file = h5py.File(file_handlers[temp_cur_file], 'r')
-                if j==0 and k==0:
-                    print('\n Open File (1) {}'.format(file_handlers[temp_cur_file]))
-                temp_cur_event_id = cur_event_id
-                temp_up_to = up_to
-                cur_len = 0
-                event_list = []
-                while cur_len < batch_size:
-                    fill_batch = batch_size - cur_len
-                    if fill_batch < (temp_up_to - temp_cur_event_id):
-                        temp_out.extend(
-                            t_file['reco_vals']
-                            [var[0]][temp_cur_event_id:temp_cur_event_id +
-                                     fill_batch])
-                        event_list.extend(zip(np.full(fill_batch, temp_cur_file),
-                                              range(temp_cur_event_id,
-                                                    temp_cur_event_id +
-                                                    fill_batch)))
-                        cur_len += fill_batch
-                        temp_cur_event_id += fill_batch
-                    else:
-                        temp_out.extend(
-                            t_file['reco_vals'][var[0]]
-                            [temp_cur_event_id:temp_up_to])
-                        event_list.extend(zip(np.full(temp_up_to -
-                                                      temp_cur_event_id,
-                                                      temp_cur_file),
-                                              range(temp_cur_event_id,
-                                                    temp_up_to)))
-                        cur_len += temp_up_to - temp_cur_event_id
-                        t_file.close()
-                        temp_cur_file += 1
-                        if temp_cur_file == len(file_handlers):
-                            break
-                        else:
-                            t_file = h5py.File(file_handlers[temp_cur_file], 'r')
-                            if j==0 and k==0:
-                                print('Open File (2) {}'.format(file_handlers[temp_cur_file]))
-                            temp_cur_event_id = inds[temp_cur_file][0]
-                            temp_up_to = inds[temp_cur_file][1]
-                t_file.close()
-                file_counter = event_list[0][0]
-                t_file = h5py.File(file_handlers[file_counter], 'r')
-                for i in range(len(temp_out)):
-                    if event_list[i][0] != file_counter:
-                        t_file.close()
-                        file_counter = event_list[i][0]
-                        t_file = h5py.File(file_handlers[file_counter], 'r')
-                    slice_ind = [slice(None)] * batch_out[j][i].ndim
-                    slice_ind[-1] = slice(k, k + 1, 1)
-                    pre_append = var[1](temp_out[i],
-                                        t_file['reco_vals'][:][event_list[i][1]])
-                    if var == 'time':
-                        pre_append[pre_append == np.inf] = -1
-                    if len(var_array) > 1:
-                        batch_out[j][i][slice_ind] = pre_append
-                    else:
-                        batch_out[j][i] = pre_append
-                temp_out = []
-                t_file.close()
-
-        if temp_cur_file == len(file_handlers):
-            cur_file = 0
-            cur_event_id = inds[0][0]
-            up_to = inds[0][1]
-        else:
-            if temp_cur_file != cur_file:
-                print(' \n CPU RAM Usage {:.2f} GB'.
-                      format(resource.getrusage(
-                             resource.RUSAGE_SELF).ru_maxrss / 1e6))
-                print(' GPU MEM : {:.2f} GB \n \n'.
-                      format(gpu_memory() / 1e3))
-            cur_file = temp_cur_file
-            cur_event_id = temp_cur_event_id
-            up_to = temp_up_to
-        t1 = time.time()
-        print('Time for one loop {}s'.format(t1-t0))
-        print(type(batch_input))
-        print(np.shape(batch_input))
-        print(type(batch_out))
-        print(np.shape(batch_out))
-        if use_data:
-            yield batch_input
-        else:
-            yield (batch_input, batch_out)
 
 
 def read_NN_weights(args_dict, model):

@@ -23,10 +23,8 @@ import block_units as bunit
 inputs = OrderedDict()
 
 
-inputs["Branch_IC_time"] = {"variables": ["IC_charge", "IC_first_charge", "IC_time_first",
-                                          "IC_pulse_0_5_pct_charge_quantile", "IC_num_pulses"],
-                            "transformations": [tr.identity, tr.identity, tr.IC_std_one,
-                                                tr.IC_std_one, tr.identity]}
+inputs["Branch_IC_time"] = {"variables": ["IC_charge", "IC_first_charge", "IC_time_first"],
+                     "transformations": [tr.identity, tr.identity, tr.IC_centralize]}
 
 inputs["High_Level_Recos"] = {"variables": ["casc_score", "muex" ,"muex_sigma", "spline_mpe_zenith",
                                             "spline_mpe_azimuth", "trunc_e", "cog_rho","rlogl", "sdir_e",
@@ -175,20 +173,22 @@ def model(input_shapes, output_shapes):
                      name = "Input-Branch2")
     z2 = dense_with_reco_vals(input_b2, input_shapes["High_Level_Recos"]["general"])
 
-    output_b1 = Dense(128,activation="relu")(z1)
+    output_b1 = Dense(1)(z1)
     tot_net = concatenate([output_b1, z2], axis=1)
-    tot_net = bunit.dense_block(256, tot_net)
     tot_net = bunit.dense_block(128, tot_net)
-    #tot_net = bunit.Dense_Residual(256, 128, tot_net)
-    #tot_net = BatchNormalization()(tot_net)
-    #tot_net = Dropout(rate=0.4)(tot_net)
-    #tot_net = bunit.Dense_Residual(128, 128, tot_net)
-    #tot_net = BatchNormalization()(tot_net)
-    #tot_net = Dropout(rate=0.4)(tot_net)
-    #tot_net = bunit.Dense_Residual(128, 128, tot_net)
-
+    tot_net = bunit.dense_block(128, tot_net)
+    tot_net = bunit.Dense_Residual(128, 56, tot_net)
+    tot_net = bunit.Dense_Residual(56, 56, tot_net)
+    tot_net = bunit.Dense_Residual(56, 56, tot_net)
+    tot_net = bunit.Dense_Residual(56, 56, tot_net)
+    tot_net = bunit.Dense_Residual(56, 56, tot_net)
+    tot_net = bunit.Dense_Residual(56, 56, tot_net)
+    tot_net = bunit.Dense_Residual(56, 56, tot_net)
+    tot_net = bunit.Dense_Residual(56, 56, tot_net)
+    tot_net = bunit.Dense_Residual(56, 56, tot_net)
+    tot_net = bunit.Dense_Residual(56, 56, tot_net)
+    tot_net = bunit.Dense_Residual(56, 56, tot_net)
     output_tot = Dense(output_shapes["Out1"]["general"][0],\
-                          activation="relu",\
                           name="Target1")(tot_net)    
     #output_b2 = Dense(output_shapes["Out2"]["general"][0],\
     #                      activation="relu",\

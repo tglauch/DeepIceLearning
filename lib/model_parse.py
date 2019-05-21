@@ -42,18 +42,20 @@ def prepare_io_shapes(inputs, outputs, exp_file):
             else:
                 print('{} does not exists in the input file'.format(var))
             res_shape = np.shape(np.squeeze(tr(test_arr))) if not \
-                    isinstance(tr(test_arr), np.float) else (1,)
-            print(br,var,res_shape)
+                    isinstance(tr(test_arr), np.float) else None
             inp_shapes[br][var] = res_shape
             inp_transformations[br][var] = tr
         if len(inputs[br]["variables"]) > 1:
-            inp_shapes[br]["general"] = \
-                    res_shape + (len(inputs[br]["variables"]),)
+            if res_shape != None:
+                inp_shapes[br]["general"] = \
+                        res_shape + (len(inputs[br]["variables"]),)
+            else: 
+                inp_shapes[br]["general"] = (len(inputs[br]["variables"]),)
         else:
             if len(res_shape) >1:
-                inp_shapes[br]["general"] = res_shape + (1,)
+                inp_shapes[br]["general"] = res_shape +  (1,)
             else:
-                inp_shapes[br]["general"] = res_shape
+                inp_shapes[br]["general"] = (1,)
 
     for br in outputs:
         out_shapes[br] = {}
@@ -61,15 +63,22 @@ def prepare_io_shapes(inputs, outputs, exp_file):
         for var, tr in zip(outputs[br]["variables"],
                            outputs[br]["transformations"]):
             test_arr = np.array(inp_file['reco_vals'][var][0])
-            res_shape = np.shape(np.squeeze(tr(test_arr, inp_file["reco_vals"][:][0])))
+            res_shape = np.shape(np.squeeze(tr(test_arr, inp_file["reco_vals"][:][0]))) if not \
+                    isinstance(tr(test_arr), np.float) else None
             if res_shape == ():
                  res_shape = (1,)
             print(br,var,res_shape)
             out_shapes[br][var] = res_shape
             out_transformations[br][var] = tr
+        print('this {}'.format(outputs[br]["variables"]))
         if len(outputs[br]["variables"]) > 1:
-           out_shapes[br]["general"] = \
-                res_shape + (len(outputs[br]["variables"]),)
+            if res_shape != None:
+                print res_shape
+                out_shapes[br]["general"] = \
+                    (len(outputs[br]["variables"]),) # res_shape +
+            else:
+                out_shapes[br]["general"] = \
+                    (len(outputs[br]["variables"]),)
         else:
             if len(res_shape) > 1:
                 out_shapes[br]["general"] = res_shape + (1,)
@@ -105,12 +114,16 @@ def parse_functional_model(cfg_file, exp_file, only_model=False):
         loss_dict['loss_weights'] = func_model_def.loss_weights
     if hasattr(func_model_def, 'loss_functions'):
         loss_dict['loss'] = func_model_def.loss_functions
+    if hasattr(func_model_def, 'mask'):
+        mask_func = func_model_def.mask
+    else:
+        mask_func = None
     in_shapes, in_trans, out_shapes, out_trans = \
         prepare_io_shapes(inputs, outputs, exp_file)
     print('----In  Shapes-----\n {}'.format(in_shapes))
     print('----Out Shapes----- \n {}'.format(out_shapes))
     print('--- Loss Settings ---- \n {}'.format(loss_dict))
     model = func_model_def.model(in_shapes, out_shapes)
-    return model, in_shapes, in_trans, out_shapes, out_trans, loss_dict
+    return model, in_shapes, in_trans, out_shapes, out_trans, loss_dict, mask_func
 
 

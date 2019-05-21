@@ -23,6 +23,7 @@ import h5py
 sys.path.append(os.path.join(os.path.abspath(".."),'lib'))
 print os.path.abspath("..")
 import model_parse as mp
+import importlib
 
 
 def parseArguments():
@@ -72,7 +73,7 @@ def parseArguments():
         help="Folder for saving the output",
         type=str, default='None')
     args = parser.parse_args()
-    return args
+    return args.__dict__
 
 
 # Read config and load keras stuff #############
@@ -80,11 +81,11 @@ def parseArguments():
 print('Running on Hostcomputer {}'.format(socket.gethostname()))
 args = parseArguments()
 parser = configparser.ConfigParser()
-if args.__dict__['continue'] != 'None' and args.main_config == 'None':
-    save_path = args.__dict__['continue']
+if args['continue'] != 'None' and args['main_config'] == 'None':
+    save_path = args['continue']
     config_file = os.path.join(save_path, 'config.cfg')
 else:
-    config_file = args.main_config
+    config_file = args['main_config']
 try:
     parser.read(config_file)
 except Exception:
@@ -132,6 +133,7 @@ import time
 import shelve
 from keras.utils import multi_gpu_model
 from keras.utils import plot_model
+from keras.callbacks import CSVLogger, EarlyStopping
 #import individual_loss
 import transformations
 from functions import *
@@ -144,19 +146,19 @@ if __name__ == "__main__":
 
     print("\n ---------")
     print("You are running the script with arguments: ")
-    for a in args.__dict__:
-        print('{} : {}'.format(a, args.__dict__[a]))
+    for a in args.keys():
+        print('{} : {}'.format(a, args[a]))
     print("--------- \n")
 
-    if args.__dict__['continue'] != 'None':
-        save_path = args.__dict__['continue']
+    if args['continue'] != 'None':
+        save_path = args['continue']
         run_info = np.load(os.path.join(save_path, 'run_info.npy'))[()]
 
         mc_location = parser.get('Basics', 'mc_path')
         input_files = run_info['Files']
         if input_files == "['all']":
             input_files = os.listdir(mc_location)
-        conf_model_file = args.__dict__['model']
+        conf_model_file = args['model']
         print "Continuing training. Loaded dict : ", run_info
         print "Input files: ", input_files
 
@@ -164,24 +166,24 @@ if __name__ == "__main__":
 
     else:
         mc_location = parser.get('Basics', 'mc_path')
-        conf_model_file = args.__dict__['model']
-        if args.__dict__['input'] == 'all':
+        conf_model_file = args['model']
+        if args['input'] == 'all':
             input_files = [f for f in os.listdir(mc_location)
                            if os.path.isfile(
                            os.path.join(mc_location, f)) and f[-3:] == '.h5']
             print('Use the following input files for training: {}'.
                   format(input_files))
         else:
-            input_files = (args.__dict__['input']).split(':')
+            input_files = (args['input']).split(':')
 
-        if args.__dict__['save_folder'] != 'None':
-            save_path = args.__dict__['save_folder']
+        if args['save_folder'] != 'None':
+            save_path = args['save_folder']
         elif 'save_path' in parser_dict['Basics'].keys():
             save_path = parser.get('Basics', 'save_path')
         elif 'train_folder' in parser_dict["Basics"].keys():
             today = str(datetime.datetime.now()).\
                 replace(" ", "-").split(".")[0].replace(":", "-")
-            project_name = args.__dict__['project']
+            project_name = args['project']
             save_path = os.path.join(
                 parser.get('Basics', 'train_folder'),
                 '{}/{}'.format(project_name, today))
@@ -204,7 +206,7 @@ if __name__ == "__main__":
 
     file_len = read_input_len_shapes(mc_location,
                                      input_files,
-                                     virtual_len=args.__dict__['virtual_len'])
+                                     virtual_len=args['virtual_len'])
     train_frac = float(
         train_val_test_ratio[0]) / np.sum(train_val_test_ratio)
     valid_frac = float(
@@ -215,52 +217,47 @@ if __name__ == "__main__":
                   for tot_len in file_len]
     test_inds = [(int(tot_len * (train_frac + valid_frac)), tot_len - 1)
                  for tot_len in file_len]
-    print('Index ranges used for training: {}'.format(train_inds))
-    print('Index ranges used for validation: {}'.format(valid_inds))
-    print('Index ranges used for testing: {}'.format(test_inds))
+    print('Index ranges used for training: {} \n'.format(train_inds))
+    print('Index ranges used for validation: {} \n'.format(valid_inds))
+    print('Index ranges used for testing: {} \n'.format(test_inds))
+
+    w_func_str = parser.get('Training_Parameters','weighting')
+    print('Use Weighting Function {}'.format(w_func_str))
+    if w_func_str != 'None':
+        mod = importlib.import_module('weighting')
+        w_func = getattr(mod, w_func_str)
+        w_func_gen = w_func(input_files, mc_location)
+    else:
+        w_func_gen = None 
 
     # create model (new implementation, functional API of Keras)
-    base_model, inp_shapes, inp_trans, out_shapes, out_trans, loss_dict = \
+    base_model, inp_shapes, inp_trans, out_shapes, out_trans, loss_dict, mask_func = \
         mp.parse_functional_model(
             conf_model_file,
             os.path.join(mc_location, input_files[0]))
 
     # Choosing the Optimizer
-    if parser.get('Training_Parameters', 'optimizer') == "Nadam":
-        print "Optimizer: Nadam"
-        optimizer_used = keras.optimizers.Nadam(
-            lr=float(parser.get('Training_Parameters', 'learning_rate')))
-    elif parser.get('Training_Parameters', 'optimizer') == "Adam":
-        optimizer_used = keras.optimizers.Adam(
-            lr=float(parser.get('Training_Parameters', 'learning_rate')))
-    elif parser.get('Training_Parameters', 'optimizer') == "SGD":
-        optimizer_used = keras.optimizers.SGD(
-            lr=float(parser.get('Training_Parameters', 'learning_rate')))
-    elif parser.get('Training_Parameters', 'optimizer') == "RMSProb":
-        optimizer_used = keras.optimizers.RMSprop(
-            lr=float(parser.get('Training_Parameters', 'learning_rate')))
-    else:
-        print "Optimizer unchoosen or unknown -> default: Adam"
-        optimizer_used = keras.optimizers.Adam(
-            lr=float(parser.get('Training_Parameters', 'learning_rate')))
-
+    optimizer_used = chose_optimizer(parser.get('Training_Parameters', 'optimizer'),
+                                    float(parser.get('Training_Parameters', 'learning_rate')))
 
     # Multi GPU stuff
-    ngpus = args.__dict__['ngpus']
+    ngpus = args['ngpus']
     if ngpus > 1:
-        model_serial = read_NN_weights(args.__dict__, base_model)
+        model_serial = read_NN_weights(args, base_model)
         model = multi_gpu_model(model_serial, gpus=ngpus)
+        equal_len = True
     else:
-        model = read_NN_weights(args.__dict__, base_model)
+        model = read_NN_weights(args, base_model)
         model_serial = model
+        equal_len = False
 
-    # Choosing the Loss function
+    # Compile the model with the given settings
     model.compile(optimizer=optimizer_used, **loss_dict)
     print(os.system("nvidia-smi"))
 
 
     # save run info
-    if args.__dict__['continue'] == 'None':
+    if args['continue'] == 'None':
         run_info = dict()
         run_info['Files'] = input_files
         run_info['mc_location'] = mc_location
@@ -273,32 +270,9 @@ if __name__ == "__main__":
       
         np.save(os.path.join(save_path, 'run_info.npy'), run_info)
 
-# Train the Model #########################################################
-
-    CSV_log = keras.callbacks.CSVLogger(
-        os.path.join(save_path,
-                     'loss_logger.csv'),
-        append=True)
-
-    early_stop = keras.callbacks.EarlyStopping(
-        monitor='val_loss',
-        min_delta=int(parser.get('Training_Parameters', 'delta')),
-        patience=int(parser.get('Training_Parameters', 'patience')),
-        verbose=int(parser.get('Training_Parameters', 'verbose')),
-        mode='auto')
-
-    best_model = ParallelModelCheckpoint(
-        model = model_serial,
-        filepath= os.path.join(save_path, "best_val_loss.npy"),
-        monitor='val_loss',
-        verbose=int(parser.get('Training_Parameters', 'verbose')),
-        save_best_only=True,
-        mode='auto',
-        period=1)
-
-    batch_size = int(
-        parser.get("GPU", "request_gpus")) * int(parser.get(
-            'Training_Parameters', 'single_gpu_batch_size'))
+# Train the Model 
+    batch_size = int(parser.get("GPU", "request_gpus")) * int(
+                     parser.get('Training_Parameters', 'single_gpu_batch_size'))
     file_handlers = [os.path.join(mc_location, file_name)
                      for file_name in input_files]
 
@@ -308,43 +282,45 @@ if __name__ == "__main__":
         os.makedirs(all_epoch_folder)
         os.makedirs(os.path.join(all_epochs_folder, "batch"))
     print('Created Folder {}'.format(all_epoch_folder))
-    every_model = ParallelModelCheckpoint(
-        model = model_serial,
-        filepath = os.path.join(save_path, "model_all_epochs/weights_{epoch:02d}.npy"),
-        monitor='val_loss',
-        verbose=int(parser.get('Training_Parameters', 'verbose')),
-        save_best_only=False,
-        mode='auto',
-        period=1)
 
     training_steps = int(np.sum([math.ceil((1.*(k[1]-k[0])/batch_size)) for k in train_inds]))
     validation_steps = int(np.sum([math.ceil((1.*(k[1]-k[0])/batch_size)) for k in valid_inds]))
+    
+    best_model = ParallelModelCheckpoint(
+        model = model_serial,
+        filepath= os.path.join(save_path, "best_val_loss.npy"),
+        monitor='val_loss',
+        verbose=int(parser.get('Training_Parameters', 'verbose')),
+        save_best_only=True,
+        mode='auto',
+        period=1)
+
     model.fit_generator(
         generator_v2(
-            batch_size, file_handlers, train_inds, inp_shapes,
-            inp_trans, out_shapes, out_trans),
+            batch_size, file_handlers, train_inds, inp_shapes, inp_trans,
+            out_shapes, out_trans, weighting_function=w_func_gen,
+            equal_len=equal_len, mask_func=mask_func),
         steps_per_epoch=training_steps,
         validation_data=generator_v2(
             batch_size, file_handlers, valid_inds, inp_shapes,
-            inp_trans, out_shapes, out_trans),
+            inp_trans, out_shapes, out_trans, weighting_function=w_func_gen,
+            equal_len=equal_len),
         validation_steps=validation_steps,
-        callbacks=[CSV_log, early_stop, best_model, MemoryCallback(),
-                   WeightsSaver(int(parser.get('Training_Parameters', 'save_every_x_batches')), save_path)],
+        callbacks=[CSVLogger(os.path.join(save_path,'loss_logger.csv'), append=True),
+                   EarlyStopping(min_delta=int(parser.get('Training_Parameters', 'delta')),
+                                 patience=int(parser.get('Training_Parameters', 'patience')),
+                                 verbose=int(parser.get('Training_Parameters', 'verbose')),
+                                 monitor='val_loss'),
+                    best_model,
+#                   every_model(model_serial,
+#                              os.path.join(save_path, "model_all_epochs/weights_{epoch:02d}.npy"),
+#                              int(parser.get('Training_Parameters', 'verbose'))),
+                   MemoryCallback()],
+                #   WeightsSaver(int(parser.get('Training_Parameters', 'save_every_x_batches')), save_path)],
         epochs=int(parser.get('Training_Parameters', 'epochs')),
         verbose=int(parser.get('Training_Parameters', 'verbose')),
         max_queue_size=int(parser.get('Training_Parameters', 'max_queue_size')),
         use_multiprocessing=False)
-
-
-    # Saving a visualization of the model 
-    plot_model(model, to_file=os.path.join(save_path, 'model.pdf'))
-    print('\n Model Visualisation saved')
-
-
-    # Saving the Final Model and Calculation/Saving of Result for Test Dataset ####
-
-    model.save(os.path.join(save_path, 'final_network.h5'))  # save trained network
-    print('\n Saved the Model \n')
 
     print('\n Finished .... Exit.....')
 

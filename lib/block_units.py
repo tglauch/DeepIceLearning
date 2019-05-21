@@ -186,44 +186,6 @@ def triple_conv_block_wBN(x0, features=12, kernels=(2, 2, 2), **kwargs):
     x1 = Convolution3D(features, kernels, padding='same', **kwargs)(x1)
     return x1
 
-
-def conv3d_bn(x,
-              filters,
-              kernel_size,
-              strides=1,
-              padding='same',
-              activation='relu',
-              use_bias=False,
-              name=None):
-    """Utility function to apply conv + BN.
-    # Arguments
-        x: input tensor.
-        filters: filters in `Conv2D`.
-        kernel_size: kernel size as in `Conv2D`.
-        padding: padding mode in `Conv2D`.
-        activation: activation in `Conv2D`.
-        strides: strides in `Conv2D`.
-        name: name of the ops; will become `name + '_ac'` for the activation
-            and `name + '_bn'` for the batch norm layer.
-    # Returns
-        Output tensor after applying `Conv2D` and `BatchNormalization`.
-    """
-    x = Conv3D(filters,
-               kernel_size,
-               strides=strides,
-               padding=padding,
-               use_bias=use_bias,
-               name=name)(x)
-    if not use_bias:
-        bn_axis = 1 if K.image_data_format() == 'channels_first' else -1
-        bn_name = None if name is None else name + '_bn'
-        x = BatchNormalization(axis=bn_axis, scale=False, name=bn_name)(x)
-    if activation is not None:
-        ac_name = None if name is None else name + '_ac'
-        x = Activation(activation, name=ac_name)(x)
-    return x
-
-
 def inception_resnet_block(x, scale, block_type, block_idx, activation='relu'):
     """Adds a Inception-ResNet block.
     This function builds 3 types of Inception-ResNet blocks mentioned
@@ -299,3 +261,35 @@ def inception_resnet_block(x, scale, block_type, block_idx, activation='relu'):
         x = Activation(activation, name=block_name + '_ac')(x)
     return x
 
+def conv3d_bn(x, filters, filter_size, padding='same',
+              strides=(1, 1, 1), name=None):
+    """Utility function to apply conv + BN.
+    # Arguments
+        x: input tensor.
+        filters: filters in `Conv2D`.
+        num_row: height of the convolution kernel.
+        num_col: width of the convolution kernel.
+        padding: padding mode in `Conv2D`.
+        strides: strides in `Conv2D`.
+        name: name of the ops; will become `name + '_conv'`
+            for the convolution and `name + '_bn'` for the
+            batch norm layer.
+    # Returns
+        Output tensor after applying `Conv2D` and `BatchNormalization`.
+    """
+    if name is not None:
+        bn_name = name + '_bn'
+        conv_name = name + '_conv'
+    else:
+        bn_name = None
+        conv_name = None
+    channel_axis = 1 if K.image_data_format() == 'channels_first' else -1
+    x = Conv3D(
+        filters, filter_size,
+        strides=strides,
+        padding=padding,
+        use_bias=False,
+        name=conv_name)(x)
+    x = BatchNormalization(axis=channel_axis, scale=False, name=bn_name)(x)
+    x = Activation('relu', name=name)(x)
+    return x

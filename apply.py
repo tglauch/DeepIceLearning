@@ -26,37 +26,44 @@ def parseArguments():
         "--outfile", type=str,
         required=False)
     parser.add_argument(
-        "--final",
-        dest='final', action='store_true')
-    parser.add_argument(
         "--main_config", type=str,
-        help="Config file", default="./configs/default.cfg")
-    parser.add_argument(
-        "--version", action="version",
-        version='%(prog)s - Version 1.0')
+        help="Config file")
     parser.add_argument(
         "--batch_size", dest='batch_size',
-        type=int, default=300)
+        type=int, default=50)
     parser.add_argument(
         "--ngpus",
         help="number of GPUs", default=1)
     parser.add_argument(
         "--model",
-        help="name of the model to apply", default="")
+        help="name of the model to apply")
     parser.add_argument(
         "--weights",
-        help="weights of the model to apply", default="best_val_loss.npy")
+        help="weights of the model to apply")
     args = parser.parse_args().__dict__
     return args
 
 
 args = parseArguments()
 parser = configparser.ConfigParser()
+DATA_DIR = args['folder']
+
+if args['model'] == None:
+        args['model'] = os.path.join(DATA_DIR, 'model.py')
+
+if args['main_config'] == None:
+    args['main_config'] = os.path.join(DATA_DIR, 'config.cfg')
+
+if args["weights"] == None:
+    args["weights"] = os.path.join(DATA_DIR, "best_val_loss.npy")
+args["load_weights"] = args["weights"]
+
 print args['main_config']
 try:
     parser.read(args['main_config'])
 except Exception:
     raise Exception('Config File is missing!!!!')
+
 backend = parser.get('Basics', 'keras_backend')
 os.environ["KERAS_BACKEND"] = backend
 cuda_path = parser.get('Basics', 'cuda_installation')
@@ -73,6 +80,7 @@ if cuda_path not in os.environ['LD_LIBRARY_PATH'].split(os.pathsep):
         print 'Failed re-exec:', exc
         sys.exit(1)
 
+print os.environ['LD_LIBRARY_PATH'].split(os.pathsep)
 #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
 #os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 if backend == 'tensorflow':
@@ -103,8 +111,8 @@ if __name__ == "__main__":
         print(str(a) + ": " + str(args[a]))
     print"############################################\n "
 
+    
 
-    DATA_DIR = args['folder']
     print('Make prediction for model in {}'.format(DATA_DIR))
     print DATA_DIR
 
@@ -120,7 +128,7 @@ if __name__ == "__main__":
             input_files = run_info['Files'].split(':')
     else:
         input_files = args['data']
-    conf_model_file = os.path.join(DATA_DIR, args['model'])
+    conf_model_file = args['model']
 
 
     base_model = mp.parse_functional_model( conf_model_file,
@@ -131,7 +139,7 @@ if __name__ == "__main__":
     out_trans = run_info['out_trans']
     base_model = base_model.model(inp_shapes, out_shapes)
     ngpus = args['ngpus']
-    args["load_weights"] = os.path.join(DATA_DIR, args["weights"])
+
     print'Use {} GPUS'.format(ngpus)
     if ngpus > 1:
         model_serial = read_NN_weights(args, base_model)
@@ -147,13 +155,6 @@ if __name__ == "__main__":
         use_data = False
         file_handlers = [os.path.join(mc_location, file_name)
                          for file_name in input_files]
-        t_c = 0
-        while t_c < len(test_inds):
-            if (test_inds[t_c][1]-test_inds[t_c][0])<=1:
-                del test_inds[t_c]
-                del file_handlers[t_c]
-            else:
-                t_c += 1
         num_events = np.sum([k[1] - k[0] for k in test_inds])
         print('Apply the NN to {} events'.format(num_events))
     else:
@@ -170,22 +171,15 @@ if __name__ == "__main__":
 
     prediction = model.predict_generator(
         generator_v2(args['batch_size'],
-                    file_handlers,
-                    test_inds,
-                    inp_shapes,
-                    inp_trans,
-                    out_shapes,
-                    out_trans,
-                    use_data=use_data),
+                    file_handlers, test_inds,
+                    inp_shapes, inp_trans,
+                    out_shapes, out_trans,
+                    use_data=use_data,
+                    equal_len=False),
         steps=steps_per_epoch,
         verbose=1,
-        max_queue_size=10,
-        use_multiprocessing=False)
-    reference_outputs = mp.parse_reference_output(conf_model_file)
-    ## add to first out-branch:
-    outbranch0 = out_shapes.keys()[0]
-    for ref_out in reference_outputs:
-        out_shapes[outbranch0][ref_out] = 1
+        max_queue_size=3,
+        use_multiprocessing=True)
     mc_truth = [[] for br in out_shapes.keys()
                 for var in out_shapes[br].keys()
                 if var != 'general']
