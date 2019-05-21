@@ -6,20 +6,6 @@ from icecube import dataclasses, dataio, simclasses
 import scipy.stats as st
 from icecube.weighting.weighting import from_simprod
 
-weight_info = {
-     '11029': {'nfiles': 3190,'nevents': 200000},
-     '11069': {'nfiles': 3920,'nevents': 5000},
-     '11070': {'nfiles': 997,'nevents': 400}, }
-
-def calc_gen_ow(frame, gcdfile):
-    soft = from_simprod(11029)
-    hard_lowE = from_simprod(11069)
-    hard_highE = from_simprod(11070)
-    generator = 3190 * soft + 3920 * hard_highE + 997 * hard_lowE
-    dataset = str(frame['I3EventHeader'].run_id)[0:5]
-    ow = generator(frame['MCPrimary1'].energy, frame['I3MCWeightDict']['PrimaryNeutrinoType'],
-                   np.cos(frame['MCPrimary1'].dir.zenith))/weight_info[dataset]['nevents']
-    return ow
 
 def get_t0(frame, puls_key='InIceDSTPulses'):
     pulses = frame[puls_key]
@@ -40,32 +26,6 @@ def median(arr, weights=None):
         weights = np.ones(len(arr))
     rv = st.rv_discrete(values=(arr, weights / weights.sum()))
     return rv.median()
-
-
-def get_most_E_muon_info(frame):
-    gcdfile = '/cvmfs/icecube.opensciencegrid.org/data/GCD/GeoCalibDetectorStatus_2013.56429_V0.i3.gz'
-    surface = icecube.MuonGun.ExtrudedPolygon.from_file(gcdfile, padding=0)
-
-    e0_list = []
-    edep_list = []
-    particle_list = []
-    for track in icecube.MuonGun.Track.harvest(frame['I3MCTree'], frame['MMCTrackList']):
-        # Find distance to entrance and exit from sampling volume
-        intersections = surface.intersection(track.pos, track.dir)
-        # Get the corresponding energies
-        e0, e1 = track.get_energy(intersections.first), track.get_energy(intersections.second)
-        e0_list.append(e0)
-        edep_list.append((e0-e1))
-        particle_list.append(track)
-        # Accumulate
-    edep_list = np.array(edep_list)
-    inds = np.argsort(edep_list)[::-1]
-    e0_list = np.array(e0_list)[inds]
-    particle_list = np.array(particle_list)[inds]
-    frame.Put("Reconstructed_Muon", particle_list[0])
-    frame.Put("mu_E_on_entry", dataclasses.I3Double(e0_list[0]))
-    frame.Put("mu_E_deposited", dataclasses.I3Double(edep_list[inds][0]))
-    return
 
 
 def read_variables(cfg_parser):
@@ -94,28 +54,44 @@ def read_variables(cfg_parser):
     return dtype, data_source
 
 
-def cuts(phy_frame):
-    """Performe a pre-selection of events according
-       to the cuts defined in the config file
-
-    Args:
-        phy_frame, and IceCube I3File
-    Returns:
-        True (IceTray standard)
-    """
-
-    if phy_frame['CorsikaWeightMap']['Multiplicity'] > 1.:
-        print('Multiplicity > 1')
-        return False
-    else:
-        return True
+def charge_after_time(charges, times, t=100):
+    mask = (times - np.min(times)) < t
+    return np.sum(charges[mask])
 
 
-def get_stream(phy_frame):
-    #time_stream_0 = time.time()
-    if not phy_frame['I3EventHeader'].sub_event_stream == 'NullSplit':
-        #print "Time Get Stream: {}".format(time.time() - time_stream_0) 
-        return False
-    else:
-        #print "Time Get Stream: {}".format(time.time() - time_stream_0)
-        return True
+def time_of_percentage(charges, times, percentage):
+    charges = charges.tolist()
+    cut = np.sum(charges) / (100. / percentage)
+    sum = 0
+    for i in charges:
+        sum = sum + i
+        if sum > cut:
+            tim = times[charges.index(i)]
+            break
+    return tim
+
+
+# calculate a quantile
+# based on the waveform
+def wf_quantiles(wfs, quantile, srcs=['ATWD', 'FADC']):
+    ret = dict()
+    src_loc = [wf.source.name for wf in wfs]
+    for src in srcs:
+        ret[src] = 0
+        if src not in src_loc:
+            continue
+        wf = wfs[src_loc.index(src)]
+        t = wf.time + np.linspace(0, len(wf.waveform) * wf.bin_width, len(wf.waveform))
+        charge_pdf = np.cumsum(wf.waveform) / np.cumsum(wf.waveform)[-1]
+        ret[src] = t[np.where(charge_pdf > quantile)[0][0]]
+    return ret
+
+#based on the pulses
+def pulses_quantiles(charges, times, quantile):
+    tot_charge = np.sum(charges)
+    cut = tot_charge*quantile
+    progress = 0
+    for i, charge in enumerate(charges):
+        progress += charge
+        if progress >= cut:
+            return times[i]
