@@ -30,7 +30,6 @@ import cPickle as pickle
 import random
 import lib.ic_grid as fu
 import time
-import logging
 import importlib
 
 def replace_with_var(x):
@@ -93,24 +92,15 @@ if __name__ == "__main__":
     try:
         dataset_configparser.read(args['dataset_config'])
         print "Config is found {}".format(dataset_configparser)
-    except Exception:
-        raise Exception('Config File is missing!!!!')
+    except Exception as ex:
+        raise Exception('Config File is missing or unreadable!!!!')
+        print ex
 
     i3tray_file = dataset_configparser.get('Basics', 'tray_script')
     sys.path.append(os.path.dirname(i3tray_file))
     sys.path.append(os.getcwd()+"/"+os.path.dirname(i3tray_file))
     mname = os.path.splitext(os.path.basename(i3tray_file))[0]
     process_i3 = importlib.import_module(mname)
-    # configer the logger
-    #logger = logging.getLogger('failed_frames')
-    #logger_path = str(dataset_configparser.get('Basics', 'logger_path'))
-    #if not os.path.exists(logger_path):
-    #    os.makedirs(logger_path)
-    #hdlr = logging.FileHandler(os.path.join(logger_path, 'failed_frames.log'))
-    #formatter = logging.Formatter('%(message)s')
-    #hdlr.setFormatter(formatter)
-    #logger.addHandler(hdlr)
-    #logger.setLevel(logging.DEBUG)
 
     # File paths
     geometry_file = str(dataset_configparser.get('Basics', 'geometry_file'))

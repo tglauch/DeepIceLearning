@@ -58,26 +58,30 @@ def calc_depositedE(frame):
                 losses += energyScalingFactor*p.energy
         else:
             losses += p.energy
-    print(losses)
+    print('deposited energy {}'.format(losses))
     frame.Put("depE", dataclasses.I3Double(losses)) 
     return 
 
-def calc_hitDOMs(physics_frame, gcdfile, which=""):
+def calc_hitDOMs(frame):
     IC_hitDOMs = 0
     DC_hitDOMs = 0
     DC = [79, 80, 81, 82, 83, 84, 85, 86]
-    pulses = physics_frame["InIceDSTPulses"]
+    pulses = frame["InIceDSTPulses"]
     # apply the pulsemask --> make it an actual mapping of omkeys to pulses
-    pulses = pulses.apply(physics_frame)
+    try:
+        pulses = pulses.apply(frame)
+    except Exception as ex:
+        print('skip')
+        print ex
+        return False
     for key, pulses in pulses:
         if key[0] in DC:
             DC_hitDOMs +=1
         else:
             IC_hitDOMs +=1
-    if which == "IC":
-        return IC_hitDOMs
-    if which == "DC":
-        return DC_hitDOMs
+    frame.Put("IC_hit_doms", dataclasses.I3Double(IC_hitDOMs))
+    frame.Put("DC_hit_doms", dataclasses.I3Double(DC_hitDOMs))
+    return
 
 def starting(p_frame, gcdfile):
     I3Tree = p_frame['I3MCTree']
@@ -93,13 +97,11 @@ def starting(p_frame, gcdfile):
 
 def coincidenceLabel_poly(physics_frame, gcdfile):
     poly = physics_frame['PolyplopiaCount']
-    #print "Poly {}".format(poly)
     if poly == icetray.I3Int(0):
         coincidence = 0
-    #elif poly == icetray.I3Int(0):
-    #    coincidence = 0
     else:
         coincidence = 1
+    frame.Put("multiplicity", icetray.I3Int(coincidence))    
     return coincidence
 
 def coincidenceLabel_primary(physics_frame, gcdfile):
@@ -148,6 +150,15 @@ def has_signature(p, gcdfile):
         else:
             return -1
 
+def get_primary_nu(p_frame):
+    I3Tree = p_frame['I3MCTree']
+    # find first neutrino as seed for find_particle
+    for p in I3Tree.get_primaries():
+        if p.pdg_encoding in nu_pdg:
+            break
+    p_frame.Put("primary_nu", p)
+    return
+
 
 def get_the_right_particle(p_frame, gcdfile):
     I3Tree = p_frame['I3MCTree']
@@ -167,108 +178,135 @@ def find_particle(p, I3Tree, gcdfile):
 # determines after the level, where one is found
     t_list = []
     children = I3Tree.children(p)
-    #print "Len Children {}".format(len(children))
     if len(children) > 3:
         return []
-    IC_hit = np.any([(has_signature(tp, gcdfile) != -1) for tp in children])
+    IC_hit = np.any([((has_signature(tp, gcdfile) != -1) & np.isfinite(tp.length)) for tp in children])
     if IC_hit:
         if p.pdg_encoding not in nu_pdg:
             return [I3Tree.parent(p)]
         else:
             return [p]
-    elif (len(children) > 0) or (p.type_string == 'Hadrons'):
+    elif len(children) < 3:
         for child in children:
             add_to_list = find_particle(child, I3Tree, gcdfile)
-            t_list = np.concatenate([t_list, add_to_list])
+            t_list.extend(add_to_list)
         return t_list
     else:
         return []
 
 
+def find_all_neutrinos(p_frame, gcdfile):
+    I3Tree = p_frame['I3MCTree']
+    # find first neutrino as seed for find_particle
+    for p in I3Tree.get_primaries():
+        if p.pdg_encoding in nu_pdg:
+            break
+    all_nu = [i for i in crawl_neutrinos(p, I3Tree, plist=[]) if len(i) > 0]
+    if p_frame['I3MCWeightDict']['InteractionType'] == 2:
+        return all_nu[-2][0]
+    else:
+        return all_nu[-1][0]
+
+
+def crawl_neutrinos(p, I3Tree, level=0, plist = []):
+    if len(plist) < level+1:
+        plist.append([])
+    if p.is_neutrino:
+        plist[level].append(p) 
+    children = I3Tree.children(p)
+    if len(children) < 3:
+        for child in children:
+            crawl_neutrinos(child, I3Tree, level=level+1, plist=plist)
+    return plist
+
+ 
 # Generation of the Classification Label
-
-
 def classify(p_frame):
     gcdfile = gcdfile_path
     I3Tree = p_frame['I3MCTree']
-    neutrino = get_the_right_particle(p_frame, gcdfile)
-    if isinstance(neutrino, int):
-        p_frame.Put("classification", dataclasses.I3Double(-1)) # Not Energy Loss in Detector
-        return
+    neutrino = find_all_neutrinos(p_frame, gcdfile)
     children = I3Tree.children(neutrino)
     p_types = [np.abs(child.pdg_encoding) for child in children]
     p_strings = [child.type_string for child in children]
     p_frame.Put("visible_nu", neutrino)
-
+    IC_hit = np.any([((has_signature(tp, gcdfile) != -1) & np.isfinite(tp.length)) for tp in children])
     if p_frame['I3MCWeightDict']['InteractionType'] == 3 and (len(p_types) == 1 and p_strings[0] == 'Hadrons'):
         pclass = 7  # Glashow Cascade
-    elif np.any([p_type in nu_pdg for p_type in p_types]) and not (p_frame['I3MCWeightDict']['InteractionType'] == 3):
-        pclass = 0  # is NC event
     else:
-        if (11 in p_types):
-            pclass = 1  # Cascade
+        if (11 in p_types) or (p_frame['I3MCWeightDict']['InteractionType'] == 2):
+            if IC_hit:
+                pclass = 1  # Cascade
+            else:
+                pclass = 0 # Uncontainced Cascade
         elif (13 in p_types):
             mu_ind = p_types.index(13)
             p_frame.Put("visible_track", children[mu_ind])
-            if 'Hadrons' not in p_strings:
+            if not IC_hit:
+                pclass = 11 # Passing Track
+            elif 'Hadrons' not in p_strings:
                 if has_signature(children[mu_ind], gcdfile) == 0:
                     pclass = 8  # Glashow Track
-            if has_signature(children[mu_ind], gcdfile) == 0:
+            elif has_signature(children[mu_ind], gcdfile) == 0:
                 pclass = 3  # Starting Track
-            if has_signature(children[mu_ind], gcdfile) == 1:
+            elif has_signature(children[mu_ind], gcdfile) == 1:
                 pclass = 2  # Through Going Track
-            if has_signature(children[mu_ind], gcdfile) == 2:
+            elif has_signature(children[mu_ind], gcdfile) == 2:
                 pclass = 4  # Stopping Track
         elif (15 in p_types):
             tau_ind = p_types.index(15)
             p_frame.Put("visible_track", children[tau_ind])
-            # consider to use the interactiontype here...
-            if 'Hadrons' not in p_strings:
-                pclass =  9  # Glashow Tau
-            had_ind = p_strings.index('Hadrons')
-            try:
-                tau_child = I3Tree.children(children[tau_ind])[-1]
-            except:
-                tau_child = None
-            if tau_child:
-                if np.abs(tau_child.pdg_encoding) == 13:
-                    if has_signature(tau_child, gcdfile) == 0:
-                        pclass = 3  # Starting Track
-                    if has_signature(tau_child, gcdfile) == 1:
+            if not IC_hit:
+                pclass = 12 # uncontained tau something...
+            else:
+                # consider to use the interactiontype here...
+                if 'Hadrons' not in p_strings:
+                    pclass =  9  # Glashow Tau
+                had_ind = p_strings.index('Hadrons')
+                try:
+                    tau_child = I3Tree.children(children[tau_ind])[-1]
+                except:
+                    tau_child = None
+                if tau_child:
+                    if np.abs(tau_child.pdg_encoding) == 13:
+                        if has_signature(tau_child, gcdfile) == 0:
+                            pclass = 3  # Starting Track
+                        if has_signature(tau_child, gcdfile) == 1:
+                            pclass = 2  # Through Going Track
+                        if has_signature(tau_child, gcdfile) == 2:
+                            pclass = 4  # Stopping Track
+                    else:
+                        if has_signature(children[tau_ind], gcdfile) == 0 and has_signature(tau_child, gcdfile) == 0:
+                            pclass = 5  # Double Bang
+                        if has_signature(children[tau_ind], gcdfile) == 0 and has_signature(tau_child, gcdfile) == -1:
+                            pclass = 3  # Starting Track
+                        if has_signature(children[tau_ind], gcdfile) == -1 and has_signature(tau_child, gcdfile) == 0:
+                            pclass = 6  # Stopping Tau
+                else: # Tau Decay Length to large, so no childs are simulated
+                    if has_signature(children[tau_ind], gcdfile) == 0:
+                        pclass = 3 # Starting Track
+                    if has_signature(children[tau_ind], gcdfile) == 1:
                         pclass = 2  # Through Going Track
-                    if has_signature(tau_child, gcdfile) == 2:
+                    if has_signature(children[tau_ind], gcdfile) == 2:
                         pclass = 4  # Stopping Track
-                else:
-                    if has_signature(children[tau_ind], gcdfile) == 0 and has_signature(tau_child, gcdfile) == 0:
-                        pclass = 5  # Double Bang
-                    if has_signature(children[tau_ind], gcdfile) == 0 and has_signature(tau_child, gcdfile) == -1:
-                        pclass = 3  # Starting Track
-                    if has_signature(children[tau_ind], gcdfile) == -1 and has_signature(tau_child, gcdfile) == 0:
-                        pclass = 6  # Stopping Tau
-            else: # Tau Decay Length to large, so no childs are simulated
-                if has_signature(children[tau_ind], gcdfile) == 0:
-                    pclass = 3 # Starting Track
-                if has_signature(children[tau_ind], gcdfile) == 1:
-                    pclass = 2  # Through Going Track
-                if has_signature(children[tau_ind], gcdfile) == 2:
-                    pclass = 4  # Stopping Track
         else:
-            print('Bad Error!')
-    print pclass
-    p_frame.Put("classification", dataclasses.I3Double(pclass))
+            pclass = 100 # unclassified
+    print('Classification: {}'.format(pclass))
+    p_frame.Put("classification", icetray.I3Int(pclass))
     return
 
-def get_inelasticity(p_frame, gcdfile):
+def get_inelasticity(p_frame):
     I3Tree = p_frame['I3MCTree']
     interaction_type = p_frame['I3MCWeightDict']['InteractionType']
     if interaction_type!= 1:
-        return 0
+        inela = 0.
     else:
-        neutrino = get_the_right_particle(p_frame, gcdfile)
+        neutrino = p_frame['visible_nu']
         children = I3Tree.children(neutrino)
         for child in children:
             if child.type_string == "Hadrons":
-                return 1.0*child.energy/neutrino.energy 
+                inela = 1.0*child.energy/neutrino.energy  
+    p_frame.Put("inelasticity", dataclasses.I3Double(inela))
+    return
 
 def millipede_rel_highest_loss(frame, gcdfile):
     e_losses = [i.energy for i in frame['SplineMPE_MillipedeHighEnergyMIE'] if i.energy > 0.]
@@ -322,9 +360,6 @@ def get_most_E_muon_info(frame):
     return
 
 def set_signature(frame):
-    if "visible_nu" not in frame.keys():
-        frame.Put("signature", dataclasses.I3Double(-1))
-        return
     if "visible_track" in frame.keys():
         p = frame["visible_track"]
         intersections = surface.intersection(p.pos, p.dir)
@@ -337,7 +372,7 @@ def set_signature(frame):
         if intersections.first <= 0 and intersections.second > 0:
             val = 0  # starting event
         else:
-            val =  -1  # no hits
+            val =  -1  # vertex outside detector
     elif p.is_track:
         if intersections.first <= 0 and intersections.second > 0:
             val =  0  # starting event
@@ -349,22 +384,37 @@ def set_signature(frame):
             else:
                 val = 2  # stopping event
         else:
-            val = -1
-    frame.Put("signature", dataclasses.I3Double(val))
+            val = -1 # vertex behind detector
+    print("signature: {}".format(val))
+    frame.Put("signature", icetray.I3Int(val))
     return
 
-
-def muon_track_length(frame, key="Reconstructed_Muon"):
-    p = frame[key]
-    intersections = surface.intersection(p.pos, p.dir)
-    if frame['signature'].value == 0:
-        val = intersections.second # Starting Track
-    elif frame['signature'].value == 1:
-        val = intersections.second-intersections.first # Through Going Track 
-    elif frame['signature'].value == 2:
-        val = p.length-intersections.first # Stopping Track
+def track_length_in_detector(frame, key="visible_track"):
+    if not key in frame.keys():
+        val = 0.
     else:
-        print('mmh {}'.format(frame['signature'].value))
-        val = -1
+        p = frame[key]
+        intersections = surface.intersection(p.pos, p.dir)
+        if frame['signature'].value == 0:
+            val = intersections.second # Starting Track
+        elif frame['signature'].value == 1:
+            val = intersections.second-intersections.first # Through Going Track 
+        elif frame['signature'].value == 2:
+            val = p.length-intersections.first # Stopping Track
+        else:
+            val = 0.
+    print("track length {}".format(val))
     frame.Put("track_length", dataclasses.I3Double(val))
     return
+
+def first_interaction_point(frame):
+    particle= dataclasses.I3Particle()
+    if (frame['signature'].value == 1) or (frame['signature'].value == 2):
+        vis_lep = frame['visible_track']
+        intersections = surface.intersection(vis_lep.pos, vis_lep.dir)
+        particle.pos = vis_lep.pos + intersections.first * vis_lep.dir
+    else:
+        vis_nu = frame["visible_nu"]
+        particle.pos= vis_nu.pos + vis_nu.dir * vis_nu.length
+    print particle.pos
+    frame.Put("first_interaction_pos", particle)

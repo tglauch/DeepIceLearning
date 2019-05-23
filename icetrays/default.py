@@ -24,14 +24,14 @@ def cuts(phy_frame):
     #    if ['CorsikaWeightMap']['Multiplicity'] > 1.:
     #        print('Multiplicity > 1')
     #        return False
-    if phy_frame["mu_E_on_entry"].value == 0.:
-        print("mu_E_on_entry is 0")
-        return False
+#    if phy_frame["mu_E_on_entry"].value == 0.:
+#        print("mu_E_on_entry is 0")
+#        return False
    # elif phy_frame["track_length"].value < 100:
    #     print("track length smaller than 100m")
    #     return False
-    else:
-        return True
+#    else:
+    return True
 
 
 def get_stream(phy_frame):
@@ -108,17 +108,21 @@ def run(i3_file, num_events, settings, geo_file, pulsemap_key):
                                  i3_file])
     tray.AddModule(get_stream, "get_stream",
                     Streams=[icetray.I3Frame.Physics])
+    tray.AddModule(reco_q.get_primary_nu, "primary_nu",
+                    Streams=[icetray.I3Frame.Physics])
     tray.AddModule(reco_q.classify, "classify",
                     Streams=[icetray.I3Frame.Physics])
     tray.AddModule(reco_q.set_signature, "signature",
                     Streams=[icetray.I3Frame.Physics])
-#    tray.AddModule(reco_q.first_interaction_point, "v_point",
-#                    Streams=[icetray.I3Frame.Physics])
+    tray.AddModule(reco_q.first_interaction_point, "v_point",
+                    Streams=[icetray.I3Frame.Physics])
     tray.AddModule(reco_q.calc_depositedE, 'depo_energy',
                    Streams=[icetray.I3Frame.Physics])
-    tray.AddModule(reco_q.get_most_E_muon_info, 'get_most_E_muon_info',
+    tray.AddModule(reco_q.track_length_in_detector, 'track_length',
                    Streams=[icetray.I3Frame.Physics])
-    tray.AddModule(reco_q.muon_track_length, 'mu_track_length',
+    tray.AddModule(reco_q.calc_hitDOMs, 'hitDOMs',
+                   Streams=[icetray.I3Frame.Physics])
+    tray.AddModule(reco_q.get_inelasticity, 'get_inelasticity',
                    Streams=[icetray.I3Frame.Physics])
     tray.AddModule(cuts, 'cuts',
                    Streams=[icetray.I3Frame.Physics])
