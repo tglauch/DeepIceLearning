@@ -35,7 +35,7 @@ def cuts(phy_frame):
 
 
 def get_stream(phy_frame):
-    if not phy_frame['I3EventHeader'].sub_event_stream == 'InIceSplit':
+    if phy_frame['I3EventHeader'].sub_event_stream == 'InIceSplit':
         return True
     else:
         return False
@@ -81,6 +81,7 @@ def run(i3_file, num_events, settings, geo_file, pulsemap_key):
                 try:
                     reco_arr.append(eval('phy_frame{}'.format(el[1])))
                 except Exception as inst:
+                    print inst
                     reco_arr.append(np.nan)
             elif el[0] == 'function':
                 try:
@@ -123,6 +124,8 @@ def run(i3_file, num_events, settings, geo_file, pulsemap_key):
     tray.AddModule(reco_q.calc_hitDOMs, 'hitDOMs',
                    Streams=[icetray.I3Frame.Physics])
     tray.AddModule(reco_q.get_inelasticity, 'get_inelasticity',
+                   Streams=[icetray.I3Frame.Physics])
+    tray.AddModule(reco_q.coincidenceLabel_poly, 'coincidence',
                    Streams=[icetray.I3Frame.Physics])
     tray.AddModule(cuts, 'cuts',
                    Streams=[icetray.I3Frame.Physics])

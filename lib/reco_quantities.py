@@ -95,14 +95,15 @@ def starting(p_frame, gcdfile):
     return starting
 
 
-def coincidenceLabel_poly(physics_frame, gcdfile):
-    poly = physics_frame['PolyplopiaCount']
+def coincidenceLabel_poly(frame):
+    poly = frame['PolyplopiaCount']
+    print('Poly? {}'.format(poly.value))
     if poly == icetray.I3Int(0):
         coincidence = 0
     else:
         coincidence = 1
     frame.Put("multiplicity", icetray.I3Int(coincidence))    
-    return coincidence
+    return
 
 def coincidenceLabel_primary(physics_frame, gcdfile):
     primary_list = physics_frame["I3MCTree"].get_primaries()
@@ -202,19 +203,16 @@ def find_all_neutrinos(p_frame, gcdfile):
         if p.pdg_encoding in nu_pdg:
             break
     all_nu = [i for i in crawl_neutrinos(p, I3Tree, plist=[]) if len(i) > 0]
-    if p_frame['I3MCWeightDict']['InteractionType'] == 2:
-        return all_nu[-2][0]
-    else:
-        return all_nu[-1][0]
+    return all_nu[-1][0]
 
 
 def crawl_neutrinos(p, I3Tree, level=0, plist = []):
     if len(plist) < level+1:
         plist.append([])
-    if p.is_neutrino:
+    if (p.is_neutrino) & np.isfinite(p.length):
         plist[level].append(p) 
     children = I3Tree.children(p)
-    if len(children) < 3:
+    if len(children) < 10:
         for child in children:
             crawl_neutrinos(child, I3Tree, level=level+1, plist=plist)
     return plist
@@ -222,6 +220,7 @@ def crawl_neutrinos(p, I3Tree, level=0, plist = []):
  
 # Generation of the Classification Label
 def classify(p_frame):
+    pclass = 101 # only for security
     gcdfile = gcdfile_path
     I3Tree = p_frame['I3MCTree']
     neutrino = find_all_neutrinos(p_frame, gcdfile)
@@ -243,7 +242,7 @@ def classify(p_frame):
             p_frame.Put("visible_track", children[mu_ind])
             if not IC_hit:
                 pclass = 11 # Passing Track
-            elif 'Hadrons' not in p_strings:
+            elif p_frame['I3MCWeightDict']['InteractionType'] == 3:
                 if has_signature(children[mu_ind], gcdfile) == 0:
                     pclass = 8  # Glashow Track
             elif has_signature(children[mu_ind], gcdfile) == 0:
@@ -259,35 +258,38 @@ def classify(p_frame):
                 pclass = 12 # uncontained tau something...
             else:
                 # consider to use the interactiontype here...
-                if 'Hadrons' not in p_strings:
+                if p_frame['I3MCWeightDict']['InteractionType'] == 3:
                     pclass =  9  # Glashow Tau
-                had_ind = p_strings.index('Hadrons')
-                try:
-                    tau_child = I3Tree.children(children[tau_ind])[-1]
-                except:
-                    tau_child = None
-                if tau_child:
-                    if np.abs(tau_child.pdg_encoding) == 13:
-                        if has_signature(tau_child, gcdfile) == 0:
-                            pclass = 3  # Starting Track
-                        if has_signature(tau_child, gcdfile) == 1:
+                else:
+                    had_ind = p_strings.index('Hadrons')
+                    try:
+                        tau_child = I3Tree.children(children[tau_ind])[-1]
+                    except:
+                        tau_child = None
+                    if tau_child:
+                        if np.abs(tau_child.pdg_encoding) == 13:
+                            if has_signature(tau_child, gcdfile) == 0:
+                                pclass = 3  # Starting Track
+                            if has_signature(tau_child, gcdfile) == 1:
+                                pclass = 2  # Through Going Track
+                            if has_signature(tau_child, gcdfile) == 2:
+                                pclass = 4  # Stopping Track
+                        else:
+                            if has_signature(children[tau_ind], gcdfile) == 0 and has_signature(tau_child, gcdfile) == 0:
+                                pclass = 5  # Double Bang
+                            if has_signature(children[tau_ind], gcdfile) == 0 and has_signature(tau_child, gcdfile) == -1:
+                                pclass = 3  # Starting Track
+                            if has_signature(children[tau_ind], gcdfile) == 2 and has_signature(tau_child, gcdfile) == 0:
+                                pclass = 6  # Stopping Tau
+                            if has_signature(children[tau_ind], gcdfile) == 1:
+                                pclass = 2  # Through Going Track
+                    else: # Tau Decay Length to large, so no childs are simulated
+                        if has_signature(children[tau_ind], gcdfile) == 0:
+                            pclass = 3 # Starting Track
+                        if has_signature(children[tau_ind], gcdfile) == 1:
                             pclass = 2  # Through Going Track
-                        if has_signature(tau_child, gcdfile) == 2:
+                        if has_signature(children[tau_ind], gcdfile) == 2:
                             pclass = 4  # Stopping Track
-                    else:
-                        if has_signature(children[tau_ind], gcdfile) == 0 and has_signature(tau_child, gcdfile) == 0:
-                            pclass = 5  # Double Bang
-                        if has_signature(children[tau_ind], gcdfile) == 0 and has_signature(tau_child, gcdfile) == -1:
-                            pclass = 3  # Starting Track
-                        if has_signature(children[tau_ind], gcdfile) == -1 and has_signature(tau_child, gcdfile) == 0:
-                            pclass = 6  # Stopping Tau
-                else: # Tau Decay Length to large, so no childs are simulated
-                    if has_signature(children[tau_ind], gcdfile) == 0:
-                        pclass = 3 # Starting Track
-                    if has_signature(children[tau_ind], gcdfile) == 1:
-                        pclass = 2  # Through Going Track
-                    if has_signature(children[tau_ind], gcdfile) == 2:
-                        pclass = 4  # Stopping Track
         else:
             pclass = 100 # unclassified
     print('Classification: {}'.format(pclass))
@@ -395,12 +397,14 @@ def track_length_in_detector(frame, key="visible_track"):
     else:
         p = frame[key]
         intersections = surface.intersection(p.pos, p.dir)
-        if frame['signature'].value == 0:
+        if frame['classification'].value == 3:
             val = intersections.second # Starting Track
-        elif frame['signature'].value == 1:
+        elif frame['classification'].value == 2:
             val = intersections.second-intersections.first # Through Going Track 
-        elif frame['signature'].value == 2:
+        elif frame['classification'].value == 4:
             val = p.length-intersections.first # Stopping Track
+        elif frame['classification'].value == 5:
+            val = p.length
         else:
             val = 0.
     print("track length {}".format(val))

@@ -257,16 +257,18 @@ if __name__ == "__main__":
                 for f in filelist:
                     print('Attempt to read {}'.format(f))
                     print("Number of Events {}".format(args['max_num_events']))
-                    t_dict = process_i3.run(str(f), args['max_num_events'], settings, geometry_file, pulsemap_key)                    
+                    t_dict = process_i3.run(str(f), args['max_num_events'], settings, geometry_file, pulsemap_key)
+                    for key in t_dict.keys():
+                        events[key].extend(t_dict[key])                    
             else:
                 while counterSim < len(filelist):
                     print('Attempt to read {}'.format(filelist[counterSim][statusInFilelist]))
                     print "Number of Events {}".format(args['max_num_events'])
                     t_dict = process_i3.run(str(filelist[counterSim][statusInFilelist]),
                                                args['max_num_events'], settings, geometry_file, pulsemap_key)
+                    for key in t_dict.keys():
+                        events[key].extend(t_dict[key])
                     counterSim = counterSim + 1
-            for key in t_dict.keys():
-                events[key].extend(t_dict[key])
             print('--- Run {} --- Countersim is {} --'.format(statusInFilelist,
                                                               counterSim))
             statusInFilelist += 1

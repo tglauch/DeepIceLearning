@@ -10,61 +10,49 @@ def parseArguments():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--outfolder",
-        help="main config file, user-specific",
-        type=str, required=False)
+        help="The outfolder...",
+        type=str, required=True)
     parser.add_argument(
-        "--filelist",
+        "--datadir",
         help="Path to a filelist to be processed",
-        type=str, required=False)
-    parser.add_argument(
-        "--filename",
-        help="Name of the outfile",
-        type=str, required=False)
+        type=str, required=True)
     parser.add_argument(
         "--num_files",
-        help="frac of the data that should be procesed",
-        type=int, required=False)
+        help="Number of files to be processed at the same time",
+        type=int, default=1)
     args = parser.parse_args()
     return args
 args = parseArguments().__dict__
 
+ncpus = 1
+memory = 2
+condor_folder =  '/data/user/tglauch/condor/hdf_change/'
+log_folder = '/scratch/tglauch/hdf_change/'
 
-request_gpus = 1
-request_memory = 1
-exclude = ""
-condor_out_folder = os.path.join(args["outfolder"],"condor")
-train_location = args["outfolder"]
-#train_location = "/scratch9/mkron/data/hdf"
-thisfolder = "/scratch9/mkron/software/DeepIceLearning"
+with open('submit.info', 'r') as f:
+    submit_info = f.read()
+file_list = [i for i in os.listdir(args['datadir']) if i[-3:]=='.h5']
+split_list = [file_list[i:i+args['num_files']] for i in np.arange(0, len(file_list), args['num_files'])]
 
-print os.listdir(args["filelist"])
-file_list = [i for i in os.listdir(args['filelist']) if i[-3:]=='.h5']
-n_jobs = len(file_list)/args["num_files"]
+if not os.path.exists(condor_folder):
+    os.makedirs(condor_folder)
+if not os.path.exists(log_folder):
+    os.makedirs(log_folder)
+if not os.path.exists(args['outfolder']):
+    os.makedirs(args['outfolder'])
 
-for k in xrange(n_jobs):
-	file_listy = file_list[k*args["num_files"]:(k+1)*args["num_files"]]
-	arguments = ""
-	arguments += ' --outfolder {} '.format(args["outfolder"])
-	arguments += ' --filelist {} '.format(' '.join(file_listy))
-        arguments += ' --filename {}_{}.h5'.format(args["filename"], k)
-        arguments += ' --datadir {}'.format(args["filelist"]) 
-
-	submit_info = make_slurm("hdf_change.py",\
-        	                     request_gpus,\
-                	             float(request_memory) * 1e3,\
-                        	     condor_out_folder,\
-	                             train_location,\
-        	                     arguments,\
-                	             thisfolder,\
-                        	     exclude,\
-                  	             partition="kta",
-				     ex_type='python',
-			             log_name='{}_{}'.format(args['filename'],k))
-
-
-	submitfile_full = os.path.join(condor_out_folder, 'submit_{}_{}.sub'.format(args["filename"], k))
-	with open(submitfile_full, "wc") as file:
-    		file.write(submit_info)
-
-	os.system("sbatch {}".format(submitfile_full))
-	time.sleep(1)
+sargs = ' --filelist {} --outfile {} --datadir {} '
+for i,k in enumerate(split_list):
+    ofile = os.path.join(args['outfolder'], 'File_{}.h5'.format(i))
+    fargs = sargs.format(' '.join(k), ofile, args['datadir'])
+    print(fargs)
+    fsubmit_info = submit_info.format(ncpus=ncpus, mem=memory,
+                                      args=fargs, fcondor=condor_folder,
+                                      flog=log_folder,
+                                      fname='File_{}'.format(i))
+    submit_file = os.path.join(condor_folder, 'submit.sub')
+    with open(submit_file, "wc") as ofile:
+        ofile.write(fsubmit_info)
+        print '\n\n\n'
+    os.system("condor_submit {}".format(submit_file))
+    time.sleep(0.2)

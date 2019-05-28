@@ -14,7 +14,7 @@ import time
 def parseArguments():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--outfolder",
+        "--outfile",
         help="main config file, user-specific",
         type=str)
     parser.add_argument(
@@ -22,38 +22,31 @@ def parseArguments():
         help="Path to a filelist to be processed",
         type=str, nargs="+")
     parser.add_argument(
-        "--filename",
-        help="Name of the outfile",
-        type=str)
-    parser.add_argument(
         "--datadir",
         help=" data directory",
         type=str)
-
     args = parser.parse_args()
     return args
 args = parseArguments().__dict__
 
 
-SAVE_DIR = args['outfolder']
-outfile_name = args["filename"]
+picker = {0:6, 1:3, 2:4, 3:4, 4: 12}
+max_rand = np.max(picker.keys())
 DATA_DIR = args["datadir"]
 input_shape = [10, 10, 60]
 FILTERS = tables.Filters(complib='zlib', complevel=9)
-picker_dict = {0:20, 1:75, 2:52, 3:30, 4:50, 5:100, 6:100, 7:100, 8:100, 9:100}
-db_picker = {0:1, 1:100} # 0 = kuerzer als 5, 10 meter
 
-
-file_list = args["filelist"]
-print file_list
-print type(file_list)
-
-outfile = os.path.join(SAVE_DIR, outfile_name)
-hf1 = h5.File(os.path.join(DATA_DIR, file_list[0]))
+if args['filelist'] is not None:
+    file_list = args["filelist"]
+    print file_list
+    print type(file_list)
+elif DATA_DIR is not None:
+    file_list = [i for i in os.listdir(DATA_DIR) if '.h5' in i]
+hf1 = h5.File(os.path.join(DATA_DIR, file_list[0]), 'r')
 keys = hf1.keys()
 dtype=hf1["reco_vals"].dtype
 
-with tables.open_file(outfile, mode="w", title="Events for training the NN",
+with tables.open_file(args['outfile'], mode="w", title="Events for training the NN",
                       filters=FILTERS) as h5file:
     input_features = []
     for key in keys[:-1]:
@@ -68,32 +61,26 @@ with tables.open_file(outfile, mode="w", title="Events for training the NN",
     
     a= time.time()
     for fili in file_list:
-        one_h5file = h5.File(os.path.join(DATA_DIR, fili))
+        print('Open {}'.format(fili))
+        one_h5file = h5.File(os.path.join(DATA_DIR, fili), 'r')
         for k in xrange(len(one_h5file["reco_vals"])):
-            class_n = one_h5file["reco_vals"][k]["ClassificationLabel"]
-            if class_n in [5, 6]:
-                tau_decay_length = one_h5file["reco_vals"][k]["TauDecayLength"]
-                if tau_decay_length >= 5:
-                    cut = db_picker[1]
-                else:
-                    cut = db_picker[0]
-            elif class_n in [0, 1]:
-                primary_energy = one_h5file["reco_vals"][k]["energyFirstParticle"]
-                max = 7.69
-                min = 3.69
-                m = (99/(max-min))
-                b = 60 - (m * min)
-                cut = m * np.log10(primary_energy) + b # percentage that is taken
-            else:
-                cut = picker_dict[class_n]
-            rand = np.random.choice(range(1, 101))
-            if rand <= cut:
-                for i, key in enumerate(keys[:-1]):
-                    input_features[i].append(np.expand_dims(one_h5file[key][k], axis=0))
+            print k
+            classi = one_h5file["reco_vals"][k]['classification']
+            if classi not in picker.keys():
+                print('continue')
+                continue
+            if classi in [3, 4] and one_h5file["reco_vals"][k]['track_length'] < 100:
+                continue
+            rand = np.random.choice(np.arange(0,max_rand))
+            if classi < rand:
+                continue
+            for i, key in enumerate(keys[:-1]):
+                input_features[i].append(np.expand_dims(one_h5file[key][k], axis=0))
                 reco_vals.append(np.atleast_1d(one_h5file["reco_vals"][k]))
-    for inp_feature in input_features:
-            inp_feature.flush()
-    reco_vals.flush()
+        for inp_feature in input_features:
+                inp_feature.flush()
+        reco_vals.flush()
+    print('Time for one File {}'.format(time.time()-a))
+    one_h5file.close()
 h5file.close()
 
-print time.time()-a
