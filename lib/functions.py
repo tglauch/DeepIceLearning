@@ -202,7 +202,8 @@ def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
     """
 
     print('Run with inds {}'.format(inds))
-
+    file_handlers = np.array(file_handlers)
+    inds = np.array(inds)
     in_branches = [(branch, inp_shape_dict[branch]['general'])
                    for branch in inp_shape_dict]
     out_branches = [(branch, out_shape_dict[branch]['general'])
@@ -213,10 +214,10 @@ def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
     out_variables = [[(i, out_transformations[branch[0]][i])
                       for i in out_transformations[branch[0]]]
                      for branch in out_branches]
-    print inp_transformations
-    print out_transformations
-    print inp_shape_dict
-    print out_shape_dict
+#    print inp_transformations
+#    print out_transformations
+#    print inp_shape_dict
+#    print out_shape_dict
     cur_file = 0
     ind_lo = inds[0][0]
     ind_hi = inds[0][0] + batch_size
@@ -259,10 +260,14 @@ def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
         for k, b in enumerate(out_branches):
             if use_data:
                 continue
-            batch_output = np.zeros((arr_size,)+out_branches[k][1])
+            shape = (arr_size,)+out_branches[k][1]
+            batch_output = np.zeros(shape)
             for j, f in enumerate(out_variables[k]):
                 pre_data = np.squeeze(reco_vals[f[0]])
-                batch_output[:,j]=f[1](pre_data)
+                if len(out_variables[k]) == 1:
+                    batch_output[:]=np.reshape(f[1](pre_data), shape)
+                else:
+                    batch_output[:,j] = f[1](pre_data)
             out_data.append(batch_output)
 
         #Prepare Next Loop
@@ -272,6 +277,9 @@ def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
             cur_file += 1
             if cur_file == len(file_handlers):
                 cur_file=0
+                new_inds = np.random.permutation(len(file_handlers))
+                file_handlers = file_handlers[new_inds]
+                inds = inds[new_inds] 
             t1 = time.time()
             print('\n Open File: {} \n'.format(file_handlers[cur_file]))
             print('\n Average Time per Batch: {}s \n'.format((t1-t0)/num_batches))

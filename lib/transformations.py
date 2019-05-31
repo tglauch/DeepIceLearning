@@ -254,6 +254,24 @@ def oneHotEncode_4_evtypes(x, r_vals=None):
                5: doublebang, 6: doublebang, 7: cascade, 8: track, 9: cascade}
     return mapping[int(x)]
 
+def oneHotEncode_new(x, r_vals=None):
+    """
+    This function one hot encodes the input for the event types 
+    cascade, tracks, doubel-bang, starting tracks
+    """
+    ns_cascade = [1., 0., 0., 0., 0.]
+    s_cascade = [0., 1., 0., 0., 0.]
+    tg_track = [0., 0., 1., 0., 0.]
+    sta_track = [0., 0., 0., 1., 0.]
+    sto_track = [0., 0., 0., 0., 1.]
+    # map x to possible classes
+    mapping = {0: ns_cascade, 1: s_cascade, 2: tg_track, 3: sta_track, 4: sto_track}
+    ret = np.zeros((len(np.atleast_1d(x)), 5))
+    for i in mapping.keys():
+        ret[x == i] = mapping[i]
+    return ret
+
+
 def oneHotEncode_4_evtypes_tau_decay_length(x, r_vals):
     """
     This function one hot encodes the input for the event types 

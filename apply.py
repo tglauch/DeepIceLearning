@@ -20,6 +20,9 @@ def parseArguments():
         "--folder",
         help="The absolute path to the project file", type=str)
     parser.add_argument(
+        "--test_data",
+        help="Folder with test data files", type=str)
+    parser.add_argument(
         "--data", type=str,
         required=False,  nargs="+")
     parser.add_argument(
@@ -119,19 +122,24 @@ if __name__ == "__main__":
     # with numpy dict
     run_info = np.load(os.path.join(DATA_DIR, 'run_info.npy'))[()]
     if args['data'] is None:
-        test_inds = run_info["Test_Inds"]
-        if run_info['Files'] == ['all']:
-            input_files = os.listdir(mc_location)
-        elif isinstance(run_info["Files"], list):
-            input_files = run_info['Files']
+        if args['test_data'] is not None:
+            input_files= [os.path.join(args['test_data'], i) for i in os.listdir(args['test_data']) if i[-3:]=='.h5']
+            file_len = read_input_len_shapes('', input_files)
+            test_inds = [(0, tot_len)for tot_len in file_len]
         else:
-            input_files = run_info['Files'].split(':')
+            test_inds = run_info["Test_Inds"]
+            if run_info['Files'] == ['all']:
+                input_files = os.listdir(mc_location)
+            elif isinstance(run_info["Files"], list):
+                input_files = run_info['Files']
+            else:
+                input_files = run_info['Files'].split(':')
     else:
         input_files = args['data']
     conf_model_file = args['model']
 
 
-    base_model = mp.parse_functional_model( conf_model_file,
+    base_model = mp.parse_functional_model(conf_model_file,
             os.path.join(mc_location, input_files[0]), only_model=True)
     inp_shapes = run_info['inp_shapes']
     out_shapes = run_info['out_shapes']
@@ -162,6 +170,7 @@ if __name__ == "__main__":
         file_handlers = input_files
         file_len = read_input_len_shapes('', input_files)
         test_inds = [(0, tot_len)for tot_len in file_len]
+
     steps_per_epoch = int(np.sum([math.ceil((1.*(k[1]-k[0])/args['batch_size']))
                                    for k in test_inds]))
 
@@ -178,8 +187,8 @@ if __name__ == "__main__":
                     equal_len=False),
         steps=steps_per_epoch,
         verbose=1,
-        max_queue_size=3,
-        use_multiprocessing=True)
+        max_queue_size=5,
+        use_multiprocessing=False)
     mc_truth = [[] for br in out_shapes.keys()
                 for var in out_shapes[br].keys()
                 if var != 'general']
@@ -200,17 +209,6 @@ if __name__ == "__main__":
             reco_vals = temp_truth
         else:
             reco_vals = np.concatenate([reco_vals, temp_truth])
-        #IC_hit_DOMs_list = []
-        #DC_hit_DOMs_list = []
-        #for k in xrange(up - down):
-            #IC_charge = file_handler["IC_charge"][down + k]
-            #DC_charge = file_handler["DC_charge"][down + k]
-            #IC_hitDOMs = np.count_nonzero(IC_charge)
-            #IC_hit_DOMs_list.append(IC_hitDOMs)
-            #DC_hitDOMs = np.count_nonzero(DC_charge)
-            #DC_hit_DOMs_list.append(DC_hitDOMs)
-        #IC_hit_vals.extend(IC_hit_DOMs_list)
-        #DC_hit_vals.extend(DC_hit_DOMs_list)
 
     if args['data'] is None:
         dtype = np.dtype([(var + '_truth', np.float64)
@@ -219,22 +217,15 @@ if __name__ == "__main__":
                           if var != 'general'])
         mc_truth = np.array(zip(*np.array(mc_truth)), dtype=dtype)
 
-    #write-out the mc_truth and the prediction separately to a joint pickle
-    #file...we can also look for a nicer solution with dtypes again. but the
-    #output-shape of prediction should be variable
-    MANUAL_writeout_pred_and_exit = True
     save_name = args["weights"][:-4] + "_pred.pickle"
     print save_name
     if args['outfile'] is None:
         o_file = os.path.join(DATA_DIR, save_name)
     else:
         o_file = args['outfile']
-    if MANUAL_writeout_pred_and_exit:
-        pickle.dump({"mc_truth": mc_truth,
-                     "prediction": prediction,
-                     "reco_vals": reco_vals},
-                     #"IC_HitDOMs": IC_hit_vals,
-                     #"DC_HitDOMs": DC_hit_vals},
-                     open(o_file, "wc"))
-        print(' \n Finished .... Exiting.....')
-        exit(0)
+    pickle.dump({"mc_truth": mc_truth,
+                 "prediction": prediction,
+                 "reco_vals": reco_vals},
+                 open(o_file, "wc"))
+    print(' \n Finished .... Exiting.....')
+    exit(0)
