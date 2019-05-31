@@ -17,28 +17,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 small differences when processing data for the diffuse dataset
 '''
 
-from icecube import dataio, icetray, WaveCalibrator
-from icecube import dataclasses, paraboloid, simclasses, recclasses, spline_reco
-from icecube.trigger_sim.modules.time_shifter import I3TimeShifter
-from I3Tray import *
+from icecube import dataio, dataclasses
 from scipy.stats import moment, skew, kurtosis
 import numpy as np
-import math
 import tables
 import argparse
 import os, sys
 from configparser import ConfigParser
-from lib.reco_quantities import *
-from lib.functions_create_dataset import read_variables,cuts, get_stream, get_most_E_muon_info, median, get_t0
+from lib.functions_create_dataset import *
 #import lib.transformations
 import cPickle as pickle
 import random
 import lib.ic_grid as fu
 import time
-import logging
-from icecube.phys_services.which_split import which_split
-import time
-
+import importlib
 
 def replace_with_var(x):
     """Replace the config parser input names with var names
@@ -92,221 +84,67 @@ def parseArguments():
     return args
 
 
-args = parseArguments().__dict__
-
-dataset_configparser = ConfigParser()
-try:
-    dataset_configparser.read(args['dataset_config'])
-    print "Config is found {}".format(dataset_configparser)
-except Exception:
-    raise Exception('Config File is missing!!!!')
-
-# configer the logger
-logger = logging.getLogger('failed_frames')
-logger_path = str(dataset_configparser.get('Basics', 'logger_path'))
-if not os.path.exists(logger_path):
-    os.makedirs(logger_path)
-hdlr = logging.FileHandler(os.path.join(logger_path, 'failed_frames.log'))
-formatter = logging.Formatter('%(message)s')
-hdlr.setFormatter(formatter)
-logger.addHandler(hdlr)
-logger.setLevel(logging.DEBUG)
-
-# File paths
-geometry_file = str(dataset_configparser.get('Basics', 'geometry_file'))
-outfolder = str(dataset_configparser.get('Basics', 'out_folder'))
-pulsemap_key = str(dataset_configparser.get('Basics', 'PulseSeriesMap'))
-dtype, settings = read_variables(dataset_configparser)
-waveform_key = str(dataset_configparser.get('Basics', 'Waveforms'))
-if not dataset_configparser['Input_Waveforms1']['ignore']:
-    settings.append(('variable', '["CalibratedWaveforms"]'))
-settings.append(('variable', '{}'.format(pulsemap_key)))
-print settings
-# Parse Input Features
-x = dataset_configparser['Input_Charges']
-y = dataset_configparser['Input_Times']
-z = dataset_configparser['Input_Waveforms1']
-pulses_input = dataset_configparser['Input_Pulses']
-scale_class = dict()
-print dataset_configparser.keys()
-if 'Scale_Class' in dataset_configparser.keys():
-    for key in dataset_configparser['Scale_Class'].keys():
-        scale_class[int(key)] = int(dataset_configparser['Scale_Class'][key])
-print scale_class
-if len(scale_class.keys()) > 0:
-    max_scale = np.max([scale_class[key] for key in scale_class])
-else:
-    max_scale = 1
-
-inputs = []
-for key in x.keys():
-    inputs.append((key, x[key]))
-for key in y.keys():
-    inputs.append((key, y[key]))
-if not z['ignore']:
-    quantiles = np.linspace(0, 1. - z['step_size'], (1. / z['step_size']))
-    for q in quantiles:
-        q = np.round(q, 2)
-        inputs.append(('{}_{}_pct_charge_quantile'.format(z['type'], q.strip().replace('.', '_')),
-                       'wf_quantiles(waveform, {})[\'{}\']'.format(q, z['type'])))
-print "Pulses Ignore: {}".format(pulses_input['ignore'])
-if pulses_input['ignore'] == "False":
-    quantiles_pulses = np.linspace(0, 1 - float(pulses_input['step_size_pulses']),
-                                  (1 / float(pulses_input['step_size_pulses'])))
-    for q in quantiles_pulses:
-        q = np.round(q, 3)
-        inputs.append(('{}_{}_pct_charge_quantile'.format('pulse', str(q).strip().replace('.', '_')),
-                       'pulses_quantiles(charges, times, {})'.format(q))) # pulses that are passed as argument needs to be defined
-
-
-
-# This is the dictionary used to store the input data
-events = dict()
-events['reco_vals'] = []
-events['pulses'] = []
-events['waveforms'] = []
-events['pulses_timeseries'] = []
-events['t0'] = []
-
-
-def save_to_array(phy_frame):
-    """Save the waveforms pulses and reco vals to lists.
-
-    Args:
-        phy_frame, and I3 Physics Frame
-    Returns:
-        True (IceTray standard)
-    """
-    reco_arr = []
-    if not z['ignore']:
-        wf = None
-    pulses = None
-    if phy_frame is None:
-        print('Physics Frame is None')
-        return False
-    for el in settings:
-        if not z['ignore']:
-            print z['ignore']
-            if el[1] == '["CalibratedWaveforms"]':
-                try:
-                    wf = phy_frame["CalibratedWaveforms"]
-                except Exception as inst:
-                    print('uuupus {}'.format(el[1]))
-                    print inst
-                    return False
-        elif el[1] == pulsemap_key:
-            try:
-                pulses = phy_frame[pulsemap_key].apply(phy_frame)
-            except Exception as inst:
-                print('Failed to add pulses {}'.format(el[1]))
-                print inst
-                print('Skip')
-                return False
-        elif el[0] == 'variable':
-            try:
-                reco_arr.append(eval('phy_frame{}'.format(el[1])))
-            except Exception as inst:
-                print('Failed to append Reco Vals {}'.format(el[1]))
-                print inst
-                print('Skip')
-                return False
-        elif el[0] == 'function':
-            try:
-                reco_arr.append(
-                    eval(el[1].replace('_icframe_', 'phy_frame, geometry_file')))
-            except Exception as inst:
-                print('Failed to evaluate function {}'.format(el[1]))
-                print(inst)
-                print('Skip')
-                return False
-
-        # Removed part to append waveforms as it is depreciated
-    if pulses is not None:
-        tstr = 'Append Values for run_id {}, event_id {}'
-        eheader = phy_frame['I3EventHeader']
-        print(tstr.format(eheader.run_id, eheader.event_id))
-        events['t0'].append(get_t0(phy_frame))
-        events['pulses'].append(pulses)
-        events['reco_vals'].append(reco_arr)
-    else:
-        print('No pulses in Frame...Skip')
-        return False
-    return
-
-
-def event_picker(phy_frame):
-    try:
-        e_type = classify(phy_frame, geometry_file)
-    except Exception as inst:
-        print('The following event could not be classified')
-        print(phy_frame['I3EventHeader'])
-        print('First particle {}'.format(phy_frame['I3MCTree'][0].pdg_encoding))
-	print(inst)
-        return False
-    rand = np.random.choice(range(1, max_scale+1))
-    if e_type not in scale_class.keys():
-        scaling = max_scale
-    else:
-        scaling = scale_class[e_type]
-    if scaling >= rand:
-        return True
-    else:
-        return False
-
-
-def produce_data_dict(i3_file, num_events):
-    """IceTray script that wraps around an i3file and fills the events dict
-       that is initialized outside the function
-
-    Args:
-        i3_file, and IceCube I3File
-    Returns:
-        True (IceTray standard)
-    """
-
-    tray = I3Tray()
-    tray.AddModule("I3Reader", "source",
-                   FilenameList=[geometry_file,
-                                 i3_file])
-
-    if False:  # only needed if waveforms are used
-        tray.AddModule(get_stream, "get_stream",
-                       Streams=[icetray.I3Frame.Physics])
-
-
-        tray.AddModule(event_picker, "event_picker",
-                       Streams=[icetray.I3Frame.Physics])
-        tray.AddModule("Delete",
-                       "old_keys_cleanup",
-                       keys=['CalibratedWaveformRange'])
-        tray.AddModule("I3WaveCalibrator", "sedan",
-                       Launches=waveform_key,
-                       Waveforms="CalibratedWaveforms",
-                       Errata="BorkedOMs",
-                       ATWDSaturationMargin=123,
-                       FADCSaturationMargin=0,)
-    tray.AddModule(cuts, 'cuts',
-                   Streams=[icetray.I3Frame.Physics])
-    tray.AddModule(get_most_E_muon_info, 'get_most_E_muon_info',
-                   Streams=[icetray.I3Frame.Physics])
-    tray.AddModule(save_to_array, 'save',
-                   Streams=[icetray.I3Frame.Physics])
-    if num_events == -1:
-        tray.Execute()
-    else:
-        tray.Execute(num_events)
-    tray.Finish()
-    return
-
-
-def average(x, y):
-    if len(y) == 0 or np.sum(y) == 0:
-        return 0
-    else:
-        return np.average(x, weights=y)
-
-
 if __name__ == "__main__":
+
+    args = parseArguments().__dict__
+
+    dataset_configparser = ConfigParser()
+    try:
+        dataset_configparser.read(args['dataset_config'])
+        print "Config is found {}".format(dataset_configparser)
+    except Exception as ex:
+        raise Exception('Config File is missing or unreadable!!!!')
+        print ex
+
+    i3tray_file = dataset_configparser.get('Basics', 'tray_script')
+    sys.path.append(os.path.dirname(i3tray_file))
+    sys.path.append(os.getcwd()+"/"+os.path.dirname(i3tray_file))
+    mname = os.path.splitext(os.path.basename(i3tray_file))[0]
+    process_i3 = importlib.import_module(mname)
+
+    # File paths
+    geometry_file = str(dataset_configparser.get('Basics', 'geometry_file'))
+    outfolder = str(dataset_configparser.get('Basics', 'out_folder'))
+    pulsemap_key = str(dataset_configparser.get('Basics', 'PulseSeriesMap'))
+    dtype, settings = read_variables(dataset_configparser)
+    waveform_key = str(dataset_configparser.get('Basics', 'Waveforms'))
+    if not dataset_configparser['Input_Waveforms1']['ignore']:
+        settings.append(('variable', '["CalibratedWaveforms"]'))
+    settings.append(('variable', '{}'.format(pulsemap_key)))
+    print('Settings: {}'.format(settings))
+    # Parse Input Features
+    x = dataset_configparser['Input_Charges']
+    y = dataset_configparser['Input_Times']
+    z = dataset_configparser['Input_Waveforms1']
+    pulses_input = dataset_configparser['Input_Pulses']
+
+    inputs = []
+    for key in x.keys():
+        inputs.append((key, x[key]))
+    for key in y.keys():
+        inputs.append((key, y[key]))
+    if not z['ignore']:
+        quantiles = np.linspace(0, 1. - z['step_size'], (1. / z['step_size']))
+        for q in quantiles:
+            q = np.round(q, 2)
+            inputs.append(('{}_{}_pct_charge_quantile'.format(z['type'], q.strip().replace('.', '_')),
+                           'wf_quantiles(waveform, {})[\'{}\']'.format(q, z['type'])))
+    print "Pulses Ignore: {}".format(pulses_input['ignore'])
+    if pulses_input['ignore'] == "False":
+        print pulses_input['quantiles']
+        quantiles_pulses = np.array([float(i) for i in pulses_input['quantiles'].split(',')])
+        for q in quantiles_pulses:
+            q = np.round(q, 3)
+            inputs.append(('{}_{}_pct_charge_quantile'.format('pulse', str(q).strip().replace('.', '_')),
+                           'pulses_quantiles(charges, times, {})'.format(q)))
+
+    # This is the dictionary used to store the input data
+    events = dict()
+    events['reco_vals'] = []
+    events['pulses'] = []
+    events['waveforms'] = []
+    events['pulses_timeseries'] = []
+    events['t0'] = []
 
     # Raw print arguments
     print("\n---------------------")
@@ -348,7 +186,7 @@ if __name__ == "__main__":
         filelist = [args['files']]
         if filelist[0][0].split('/')[-1][-3:] == "zst":
             outfile = os.path.join(outfolder,filelist[0][0].split('/')[-1].replace('.i3.zst', '.h5'))
-        if filelist[0][0].split('/')[-1][-3:] == "b2z":
+        if filelist[0][0].split('/')[-1][-3:] == "bz2":
             outfile = os.path.join(outfolder,filelist[0][0].split('/')[-1].replace('.i3.bz2', '.h5'))
         else:
             print "Take compreshion format of I3-File into account"
@@ -405,6 +243,10 @@ if __name__ == "__main__":
             nloops = 1
         else:
             nloops = np.max([len(f) for f in filelist])
+
+
+        # Generate Output
+        print(filelist)
         while statusInFilelist < nloops:
             events['reco_vals'] = []
             if not z['ignore']:
@@ -414,14 +256,18 @@ if __name__ == "__main__":
             if not args['memory_saving']:
                 for f in filelist:
                     print('Attempt to read {}'.format(f))
-                    print "Number of Events {}".format(args['max_num_events'])
-                    produce_data_dict(str(f),args['max_num_events'])                    
+                    print("Number of Events {}".format(args['max_num_events']))
+                    t_dict = process_i3.run(str(f), args['max_num_events'], settings, geometry_file, pulsemap_key)
+                    for key in t_dict.keys():
+                        events[key].extend(t_dict[key])                    
             else:
                 while counterSim < len(filelist):
                     print('Attempt to read {}'.format(filelist[counterSim][statusInFilelist]))
                     print "Number of Events {}".format(args['max_num_events'])
-                    produce_data_dict(str(filelist[counterSim][statusInFilelist]),
-                                      args['max_num_events'])
+                    t_dict = process_i3.run(str(filelist[counterSim][statusInFilelist]),
+                                               args['max_num_events'], settings, geometry_file, pulsemap_key)
+                    for key in t_dict.keys():
+                        events[key].extend(t_dict[key])
                     counterSim = counterSim + 1
             print('--- Run {} --- Countersim is {} --'.format(statusInFilelist,
                                                               counterSim))
@@ -484,7 +330,7 @@ if __name__ == "__main__":
         print("\n -----------------------------")
         print('###### Run Summary ###########')
         print('Processed: {} Frames \n Skipped {}'.format(TotalEventCounter,
-                                                          skipped_framese)
+                                                          skipped_frames))
         print("-----------------------------\n")
         print("Finishing...")
         h5file.root._v_attrs.len = TotalEventCounter

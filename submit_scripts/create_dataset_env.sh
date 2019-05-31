@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo $HOSTNAME
-eval `/data/user/tglauch/DeepIceLearning/python_env/bin/activate`
+. /data/user/tglauch/DeepIceLearning/python_env/bin/activate
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 SDIR="$(dirname "$DIR")"
 

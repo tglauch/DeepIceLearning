@@ -8,6 +8,15 @@ import time
 import numpy as np
 from configparser import ConfigParser
 import cPickle as pickle
+import math
+
+
+def get_inds(k , ratio):
+    n_chunks = round(k/ratio)
+    inds_pre = np.arange(0, (n_chunks+1) * math.floor(ratio), math.floor(ratio))
+    for j, val in enumerate(np.arange(0, k - inds_pre[-1])[::-1]):
+        inds_pre[-(j+1)] += val
+    return inds_pre
 
 
 def parseArguments():
@@ -30,24 +39,28 @@ def parseArguments():
         help="amount of RAM in GB",
         type=int, default=4)
     parser.add_argument(
+        "--compression_format",
+        help="which compression format to use",
+        type=str, default='i3.bz2')
+    parser.add_argument(
         "--rescue",
         help="Run rescue script?!",
         type=str, default='')
     args = parser.parse_args()
-    return args
+    return args.__dict__
 
 
 if __name__ == '__main__':
     print "\n ############################################"
     print "You are running the script with arguments: "
     args = parseArguments()
-    for a in args.__dict__:
-        print str(a) + ": " + str(args.__dict__[a])
+    for a in args:
+        print str(a) + ": " + str(args[a])
     print"############################################\n "
-    Resc = args.__dict__["rescue"]
+    Resc = args["rescue"]
     if Resc == '':
         dataset_parser = ConfigParser()
-        dataset_parser.read(args.dataset_config)
+        dataset_parser.read(args['dataset_config'])
         today = str(datetime.datetime.now()).\
             replace(" ", "-").split(".")[0].replace(":", "-")
 
@@ -62,7 +75,7 @@ if __name__ == '__main__':
             'submit_scripts/create_dataset_env.sh')
         print('Submit Script:\n {}'.format(script))
 
-        dag_name = args.__dict__["name"]
+        dag_name = args["name"]
         dagFile = os.path.join(
             WORKDIR, "job_{}.dag".format(dag_name))
         submitFile = os.path.join(WORKDIR, "job_{}.sub".format(dag_name))
@@ -76,13 +89,14 @@ if __name__ == '__main__':
             print("Created New Folder in: {}".format(log_path))
 
         print("Write Dagman Files to: {}".format(submitFile))
-        RAM_str = "{} GB".format(args.__dict__["request_RAM"])
+        RAM_str = "{} GB".format(args["request_RAM"])
         arguments = " --filelist $(PATHs) --dataset_config $(DATASET) "
         submitFileContent = {"universe": "vanilla",
                              "notification": "Error",
                              "log": "$(LOGFILE).log",
-                             "output": "$(LOGFILE).out",
-                             "error": "$(LOGFILE).err",
+                             "output": "$(STREAM).out",
+                             "error": "$(STREAM).err",
+                             "initialdir" : "/home/tglauch/",
         #		             "Requirements" : "HAS_CVMFS_icecube_opensciencegrid_org",
         #                    "Requirements" : '(Machine != "n-15.icecube.wisc.edu")',
                              "request_memory": RAM_str,
@@ -96,15 +110,18 @@ if __name__ == '__main__':
                     dataset_parser['Basics'].keys() if 'mc_path' in key]
         filelist = dataset_parser.get("Basics", "file_list")
         file_bunches = []
+        print(basepath)
         if folderlist == 'allinmcpath':
             folderlists = []
             for p in basepath:
                 tlist = []
                 for root, dirs, files in os.walk(p):
+                    print root
                     a =  [s_file for s_file in files
-                         if s_file[-6:] == 'i3.zst']
+                         if s_file[-len(args['compression_format']):] == args['compression_format']]
                     if len(a) > 0:
                         tlist.append(root)
+                print len(tlist)
                 folderlists.append(tlist)
         else:
             folderlists = [[folder.strip() for folder in folderlist.split(',')]]
@@ -120,7 +137,7 @@ if __name__ == '__main__':
             for subpath in bfolder:
                 files = [f for f in os.listdir(subpath) if not os.path.isdir(f)]
                 i3_files_all = [s_file for s_file in files
-                                if s_file[-6:] == 'i3.zst']
+                                if s_file[-len(args['compression_format']):] == args['compression_format']]
                 print len(i3_files_all)
                 if not filelist == 'allinfolder':
                     i3_files = [f for f in filelist if f in i3_files_all]
@@ -128,7 +145,8 @@ if __name__ == '__main__':
                     i3_files = i3_files_all
                 b = [os.path.join(subpath, s_file) for s_file in i3_files]
                 run_filelist[j].extend(b)
-        filesjob = 1.*args.files_per_job*np.array([len(k) for k in run_filelist])/np.min([len(k) for k in run_filelist])
+        filesjob = 1.*args['files_per_job']*np.array([len(k) for k in run_filelist])/np.min([len(k) for k in run_filelist])
+        inds = [get_inds(len(k), filesjob[i]) for i,k in enumerate(run_filelist)]
         for j, rfilelist in enumerate(run_filelist):
             outfolder = os.path.join(dataset_parser.get('Basics', 'out_folder'),
                                      "filelists/dataset", str(j))
@@ -136,8 +154,9 @@ if __name__ == '__main__':
                 os.makedirs(outfolder)
                 print('Created Folder {}'.format(outfolder))
             nfiles = int(round(filesjob[j]))
-            save_list = [rfilelist[i:i + nfiles] for i
-                         in np.arange(0, len(rfilelist), nfiles)]
+            print inds[j][10]
+            save_list = [rfilelist[int(inds[j][i]):int(inds[j][i+1])] for i
+                         in range(len(inds[j])-1)]
             print('Save filelists for mc  {}'.format(basepath[j]))
             num_files.append(len(save_list))
             for c, sublist in enumerate(save_list):
@@ -150,6 +169,7 @@ if __name__ == '__main__':
         for i in range(np.min(num_files)):
             fname = 'File_{}'.format(i)
             logfile = os.path.join(log_path,fname)
+            stream = os.path.join('/data/user/tglauch/condor', fname)
             PATH = ''
             for k in range(len(basepath)):
                 PATH = PATH +\
@@ -159,7 +179,8 @@ if __name__ == '__main__':
                                  '{}.pickle'.format(fname)) + " "
             dagArgs = pydag.dagman.Macros(LOGFILE=logfile,
                                           PATHs=PATH,
-                                          DATASET=args.dataset_config)
+                                          STREAM = stream,
+                                          DATASET=args['dataset_config'])
             node = pydag.dagman.DAGManNode(i, submitFile)
             node.keywords["VARS"] = dagArgs
             nodes.append(node)

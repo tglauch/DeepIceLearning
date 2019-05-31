@@ -192,8 +192,6 @@ if __name__ == "__main__":
     mc_truth = [[] for br in out_shapes.keys()
                 for var in out_shapes[br].keys()
                 if var != 'general']
-    IC_hit_vals = []
-    DC_hit_vals = []
     reco_vals = None
     for i, file_handler_p in enumerate(file_handlers):
         down = test_inds[i][0]
