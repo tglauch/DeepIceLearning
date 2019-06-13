@@ -23,7 +23,7 @@ def parseArguments():
         help="folder where all the config are saved")
     parser.add_argument(
         "--batch_size",
-        type=int, default='32',
+        type=int, default='64',
         help="the batch size")
     parser.add_argument(
         "--model", type=str,
@@ -38,6 +38,10 @@ def parseArguments():
         "--memory",
         help="specify the RAM requirements",
         type=int, default=-1)
+    parser.add_argument(
+        "--test_data",
+        help="test data",
+        type=str)
     args = parser.parse_args()
     return args
 
@@ -80,6 +84,8 @@ if workload_manager not in ['slurm','condor','bsub']:
 arguments = ' --main_config {}  --folder {} --batch_size {} --model {} --weights {}'.format(\
                         args['main_config'], args['folder'], args['batch_size'], args['model'],args['weights'] )
 
+if args['test_data'] is not None:
+    arguments += ' --test_data {}'.format(args['test_data'])
 save_path = args['folder']
 condor_out_folder = os.path.join(save_path, 'condor')
 if workload_manager == 'slurm':

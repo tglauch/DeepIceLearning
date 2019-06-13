@@ -215,7 +215,7 @@ if __name__ == "__main__":
     valid_inds = [(int(tot_len * train_frac),
                   int(tot_len * (train_frac + valid_frac)))
                   for tot_len in file_len]
-    test_inds = [(int(tot_len * (train_frac + valid_frac)), tot_len - 1)
+    test_inds = [(int(tot_len * (train_frac + valid_frac)), tot_len)
                  for tot_len in file_len]
     print('Index ranges used for training: {} \n'.format(train_inds))
     print('Index ranges used for validation: {} \n'.format(valid_inds))
@@ -283,7 +283,8 @@ if __name__ == "__main__":
         os.makedirs(os.path.join(all_epochs_folder, "batch"))
     print('Created Folder {}'.format(all_epoch_folder))
 
-    training_steps = int(np.sum([math.ceil((1.*(k[1]-k[0])/batch_size)) for k in train_inds]))
+    divider = int(parser.get('Training_Parameters', 'epoch_divider'))
+    training_steps = int(np.sum([math.ceil((1.*(k[1]-k[0])/batch_size)) for k in train_inds])/divider)
     validation_steps = int(np.sum([math.ceil((1.*(k[1]-k[0])/batch_size)) for k in valid_inds]))
     
     best_model = ParallelModelCheckpoint(
