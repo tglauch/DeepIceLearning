@@ -35,7 +35,7 @@ def cuts(phy_frame):
 
 
 def get_stream(phy_frame):
-    if phy_frame['I3EventHeader'].sub_event_stream == 'InIceSplit':
+    if (phy_frame['I3EventHeader'].sub_event_stream == 'InIceSplit') & (phy_frame['I3EventHeader'].sub_event_id==0):
         return True
     else:
         return False

@@ -172,22 +172,19 @@ if __name__ == "__main__":
 
     # default version, when using the submit script
     if args['filelist'] is not None:
-        if len(args['filelist']) > 1:
-            filelist = []
-            for i in xrange(len(args['filelist'])):
-                a = pickle.load(open(args['filelist'][i], 'r'))
-                filelist.append(a)
-            outfile = args['filelist'][0].replace('.pickle', '.h5')
-
-        elif args['filelist'] is not None:
-            filelist = pickle.load(open(args['filelist'][0], 'r'))
-            outfile = args['filelist'][0].replace('.pickle', '.h5')
+        filelist = []
+        for i in xrange(len(args['filelist'])):
+            a = pickle.load(open(args['filelist'][i], 'r'))
+            filelist.append(a)
+        outfile = args['filelist'][0].replace('.pickle', '.h5')
     elif args['files'] is not None:
         filelist = [args['files']]
         if filelist[0][0].split('/')[-1][-3:] == "zst":
             outfile = os.path.join(outfolder,filelist[0][0].split('/')[-1].replace('.i3.zst', '.h5'))
-        if filelist[0][0].split('/')[-1][-3:] == "bz2":
+        elif filelist[0][0].split('/')[-1][-3:] == "bz2":
             outfile = os.path.join(outfolder,filelist[0][0].split('/')[-1].replace('.i3.bz2', '.h5'))
+        elif filelist[0][0].split('/')[-1][-3:] == ".i3":
+            outfile = os.path.join(outfolder,filelist[0][0].split('/')[-1].replace('.i3', '.h5'))
         else:
             print "Take compreshion format of I3-File into account"
 
@@ -229,7 +226,6 @@ if __name__ == "__main__":
 
         np.save('grid.npy', grid)
         TotalEventCounter = 0
-        skipped_frames = 0
         statusInFilelist = 0
         starttime = time.time()
 
@@ -256,7 +252,6 @@ if __name__ == "__main__":
             if not args['memory_saving']:
                 for f in filelist:
                     print('Attempt to read {}'.format(f))
-                    print("Number of Events {}".format(args['max_num_events']))
                     t_dict = process_i3.run(str(f), args['max_num_events'], settings, geometry_file, pulsemap_key)
                     for key in t_dict.keys():
                         events[key].extend(t_dict[key])                    
@@ -329,8 +324,7 @@ if __name__ == "__main__":
 
         print("\n -----------------------------")
         print('###### Run Summary ###########')
-        print('Processed: {} Frames \n Skipped {}'.format(TotalEventCounter,
-                                                          skipped_frames))
+        print('Processed: {} Frames'.format(TotalEventCounter))
         print("-----------------------------\n")
         print("Finishing...")
         h5file.root._v_attrs.len = TotalEventCounter
