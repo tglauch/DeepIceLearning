@@ -169,7 +169,7 @@ if __name__ == "__main__":
         use_data = True
         file_handlers = input_files
         file_len = read_input_len_shapes('', input_files)
-        test_inds = [(0, tot_len)for tot_len in file_len]
+        test_inds = [(0, tot_len) for tot_len in file_len]
 
     steps_per_epoch = int(np.sum([math.ceil((1.*(k[1]-k[0])/args['batch_size']))
                                    for k in test_inds]))
@@ -177,7 +177,6 @@ if __name__ == "__main__":
     if steps_per_epoch == 0:
         print "steps per epoch is 0, therefore manually set to 1"
         steps_per_epoch = 1
-
     prediction = model.predict_generator(
         generator_v2(args['batch_size'],
                     file_handlers, test_inds,
@@ -221,9 +220,15 @@ if __name__ == "__main__":
         o_file = os.path.join(DATA_DIR, save_name)
     else:
         o_file = args['outfile']
-    pickle.dump({"mc_truth": mc_truth,
-                 "prediction": prediction,
-                 "reco_vals": reco_vals},
-                 open(o_file, "wc"))
+    if args['data'] is None:
+        pickle.dump({"mc_truth": mc_truth,
+                     "prediction": prediction,
+                     "reco_vals": reco_vals},
+                     open(o_file, "wc"))
+    else:
+        print('The prediction is {}'.format(prediction))
+        pickle.dump({"prediction": prediction,
+                     "reco_vals": reco_vals},
+                     open(o_file, "wc"))
     print(' \n Finished .... Exiting.....')
     exit(0)

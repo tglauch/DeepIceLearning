@@ -72,7 +72,7 @@ else:
 requirements = parser.get('GPU', 'requirements')
 thisfolder = parser.get("Basics", "thisfolder")
 if 'exclude_node' in parser_dict['GPU'].keys():
-    exclude = parser.get('GPU', 'exclude_node')
+    exclude = parser.get('GPU', 'exclude_apply')
 else:
     exclude = ' '
 

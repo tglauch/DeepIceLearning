@@ -224,7 +224,7 @@ def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
     in_data = h5py.File(file_handlers[0], 'r')
     f_reco_vals = in_data['reco_vals']
     t0 = time.time()
-    num_batches = 0
+    num_batches = 1
  
     while True:
         inp_data = []
@@ -255,20 +255,19 @@ def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
                     pre_data = np.squeeze(reco_vals[f[0]])
                     batch_input[:,j]=f[1](pre_data)
             inp_data.append(batch_input)
-            
+        
         # Generate Output Data
-        for k, b in enumerate(out_branches):
-            if use_data:
-                continue
-            shape = (arr_size,)+out_branches[k][1]
-            batch_output = np.zeros(shape)
-            for j, f in enumerate(out_variables[k]):
-                pre_data = np.squeeze(reco_vals[f[0]])
-                if len(out_variables[k]) == 1:
-                    batch_output[:]=np.reshape(f[1](pre_data), shape)
-                else:
-                    batch_output[:,j] = f[1](pre_data)
-            out_data.append(batch_output)
+        if not use_data:
+            for k, b in enumerate(out_branches):
+                shape = (arr_size,)+out_branches[k][1]
+                batch_output = np.zeros(shape)
+                for j, f in enumerate(out_variables[k]):
+                    pre_data = np.squeeze(reco_vals[f[0]])
+                    if len(out_variables[k]) == 1:
+                        batch_output[:]=np.reshape(f[1](pre_data), shape)
+                    else:
+                        batch_output[:,j] = f[1](pre_data)
+                out_data.append(batch_output)
 
         #Prepare Next Loop
         ind_lo += batch_size
@@ -284,7 +283,7 @@ def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
             print('\n Open File: {} \n'.format(file_handlers[cur_file]))
             print('\n Average Time per Batch: {}s \n'.format((t1-t0)/num_batches))
             t0 = time.time()
-            num_batches = 0
+            num_batches = 1
             in_data.close()
             in_data = h5py.File(file_handlers[cur_file], 'r')
             f_reco_vals = in_data['reco_vals']

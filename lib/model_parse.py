@@ -114,6 +114,8 @@ def parse_functional_model(cfg_file, exp_file, only_model=False):
         loss_dict['loss_weights'] = func_model_def.loss_weights
     if hasattr(func_model_def, 'loss_functions'):
         loss_dict['loss'] = func_model_def.loss_functions
+    if hasattr(func_model_def, 'metrics'):
+        loss_dict['metrics'] = func_model_def.metrics
     if hasattr(func_model_def, 'mask'):
         mask_func = func_model_def.mask
     else:

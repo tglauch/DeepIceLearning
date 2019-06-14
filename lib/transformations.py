@@ -254,10 +254,25 @@ def oneHotEncode_4_evtypes(x, r_vals=None):
                5: doublebang, 6: doublebang, 7: cascade, 8: track, 9: cascade}
     return mapping[int(x)]
 
-def oneHotEncode_new(x, r_vals=None):
+def oneHotEncode_signature(x, r_vals=None):
     """
     This function one hot encodes the input for the event types 
     cascade, tracks, doubel-bang, starting tracks
+    """
+    starting = [1., 0.]
+    non_starting = [0., 1.]
+    # map x to possible classes
+    mapping = {-1: non_starting, 0: starting, 1: non_starting, 2: non_starting}
+    ret = np.zeros((len(np.atleast_1d(x)), 2))
+    for i in mapping.keys():
+        ret[x == i] = mapping[i]
+    return ret
+
+def oneHotEncode_new(x, r_vals=None):
+    """
+    This function one hot encodes the input for the event types 
+    non-starting cascade, starting  cascade, through-going track, 
+    starting track, stopping track
     """
     ns_cascade = [1., 0., 0., 0., 0.]
     s_cascade = [0., 1., 0., 0., 0.]
