@@ -7,7 +7,7 @@ The main functionalities are provided by essentially three scripts and their cor
 
 # 1. create_dataset.py
 
-This file converts a set of i3files into training data. Training data files consist of 3d input tensors in the format 11x10x60 for IceCube and 3x5x60 for Deep core. The values to be saved to the tensor are defined in a config file (see `/configs/create_dataset_default.cfg`), classical examples are time at which x% of the charge are collected, the overall number of hits, total collected charge...Also a set of `reco_vals` can be defined which are quantities that are later used as training output of the network or can be used for analyzing the network.
+This file converts a set of i3files into training data. Training data files consist of 3d input tensors in the format 10x10x60 for IceCube and 3x5x60 for Deep core. The values to be stored in the tensor are defined in a config file (see `/configs/create_dataset_default.cfg`), classical examples are time at which x% of the charge are collected, the overall number of hits, total collected charge, charge after x ns, .. Also a set of `reco_vals` can be defined, i.e. quantities that are later used as target in the training of the network or for analyzing the network's performance.
 
 In order create a MC dataset run something like
 
@@ -15,7 +15,7 @@ In order create a MC dataset run something like
 
 or add the `--data` option if you are using real data
 
-The corresponding submit file can be used similarly 
+The corresponding submit file for HTCondor can be used similarly 
 
 `python create_dataset_dagman.py --dataset_config config_file_for_the_dataset --files_per_job num_i3files_per_job`
 
