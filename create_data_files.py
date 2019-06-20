@@ -249,18 +249,32 @@ if __name__ == "__main__":
                 events['waveforms'] = []
             events['pulses'] = []
             counterSim = 0
+            t0 = time.time()
             if not args['memory_saving']:
                 for f in filelist:
                     print('Attempt to read {}'.format(f))
-                    t_dict = process_i3.run(str(f), args['max_num_events'], settings, geometry_file, pulsemap_key)
+                    f_bpath = os.path.split(f)[0]
+                    geo_files = [os.path.join(f_bpath, i) for i in os.listdir(f_bpath) if 'Geo' in i]
+                    if len(geo_files) > 0:
+                        use_geo = str(geo_files[0])
+                    else:
+                        use_geo = str(geometry_file)
+                    print('Use Geo: {}'.format(use_geo))
+                    t_dict = process_i3.run(str(f), args['max_num_events'], settings, use_geo, pulsemap_key)
                     for key in t_dict.keys():
                         events[key].extend(t_dict[key])                    
             else:
                 while counterSim < len(filelist):
                     print('Attempt to read {}'.format(filelist[counterSim][statusInFilelist]))
                     print "Number of Events {}".format(args['max_num_events'])
-                    t_dict = process_i3.run(str(filelist[counterSim][statusInFilelist]),
-                                               args['max_num_events'], settings, geometry_file, pulsemap_key)
+                    f = str(filelist[counterSim][statusInFilelist])
+                    f_bpath = os.path.split(f)[0]
+                    geo_files = [os.path.join(f_bpath, i) for i in os.listdir(f_bpath) if 'Geo' in i]
+                    if len(geo_files) > 0:
+                        use_geo = str(geo_files[0])
+                    else:
+                        use_geo = str(geometry_file)
+                    t_dict = process_i3.run(str(f), args['max_num_events'], settings, use_geo, pulsemap_key)
                     for key in t_dict.keys():
                         events[key].extend(t_dict[key])
                     counterSim = counterSim + 1
@@ -269,9 +283,15 @@ if __name__ == "__main__":
             statusInFilelist += 1
             # shuffeling of the files
             num_events = len(events['reco_vals'])
-            print('The I3 File has {} events'.format(num_events))
+            t1 = time.time()
+            dt = t1 - t0
+            print('The I3 File(s) have {} events'.format(num_events))
+            print('Processing took {:.1f} s'.format( dt))
+            print('which equals {:.1f} ms per event'.format(1000.*dt/num_events))
             shuff = np.random.choice(num_events, num_events, replace=False)
-            for i in shuff:
+            for j, i in enumerate(shuff):
+                if j%(int(num_events/10.)) == 0:
+                    print('{:.1f} \%'.format(100.*j/num_events))
                 TotalEventCounter += 1
                 reco_arr = events['reco_vals'][i]
                 if not len(reco_arr) == len(dtype):
@@ -300,11 +320,12 @@ if __name__ == "__main__":
                     f_slice = np.zeros((1, input_shape[0],
                                         input_shape[1],
                                         input_shape[2], 1))
-                    for dom in DOM_list:
+                    for dom in final_dict:
+                        if not dom in grid.keys():
+                            continue
                         gpos = grid[dom]
-                        if dom in final_dict:
-                            f_slice[0][gpos[0]][gpos[1]][gpos[2]][0] = \
-                                final_dict[dom][inp_c]
+                        f_slice[0][gpos[0]][gpos[1]][gpos[2]][0] = \
+                            final_dict[dom][inp_c]
                     input_features[inp_c].append(f_slice)
 
 #                    f_slice = np.zeros((1, input_shape_DC[0],
@@ -322,9 +343,13 @@ if __name__ == "__main__":
                 inp_feature.flush()
             reco_vals.flush()
 
+        t2 = time.time()
+        dt = t2 - t1
         print("\n -----------------------------")
         print('###### Run Summary ###########')
         print('Processed: {} Frames'.format(TotalEventCounter))
+        print('Writing to HDF took {:.1f} s'.format(dt))
+        print('which equals {:.1f} s per event'.format(1.*dt/num_events))
         print("-----------------------------\n")
         print("Finishing...")
         h5file.root._v_attrs.len = TotalEventCounter
