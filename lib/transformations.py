@@ -280,7 +280,8 @@ def oneHotEncode_new(x, r_vals=None):
     sta_track = [0., 0., 0., 1., 0.]
     sto_track = [0., 0., 0., 0., 1.]
     # map x to possible classes
-    mapping = {0: ns_cascade, 1: s_cascade, 2: tg_track, 3: sta_track, 4: sto_track}
+    mapping = {0: ns_cascade, 1: s_cascade, 2: tg_track, 3: sta_track, 4: sto_track,
+               11: ns_cascade, 22: tg_track, 23: sto_track}
     ret = np.zeros((len(np.atleast_1d(x)), 5))
     for i in mapping.keys():
         ret[x == i] = mapping[i]

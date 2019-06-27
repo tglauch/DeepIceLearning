@@ -305,7 +305,7 @@ if __name__ == "__main__":
         validation_data=generator_v2(
             batch_size, file_handlers, valid_inds, inp_shapes,
             inp_trans, out_shapes, out_trans, weighting_function=w_func_gen,
-            equal_len=equal_len),
+            equal_len=equal_len, valid=True),
         validation_steps=validation_steps,
         callbacks=[CSVLogger(os.path.join(save_path,'loss_logger.csv'), append=True),
                    EarlyStopping(min_delta=int(parser.get('Training_Parameters', 'delta')),
