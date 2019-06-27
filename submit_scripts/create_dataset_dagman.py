@@ -41,7 +41,7 @@ def parseArguments():
     parser.add_argument(
         "--compression_format",
         help="which compression format to use",
-        type=str, default='i3.bz2')
+        type=str, default='i3.bz2', nargs='+')
     parser.add_argument(
         "--rescue",
         help="Run rescue script?!",
@@ -118,7 +118,7 @@ if __name__ == '__main__':
                 for root, dirs, files in os.walk(p):
                     print root
                     a =  [s_file for s_file in files
-                         if s_file[-len(args['compression_format']):] == args['compression_format']]
+                         if s_file[-6:] in args['compression_format']]
                     if len(a) > 0:
                         tlist.append(root)
                 print len(tlist)
@@ -137,7 +137,7 @@ if __name__ == '__main__':
             for subpath in bfolder:
                 files = [f for f in os.listdir(subpath) if not os.path.isdir(f)]
                 i3_files_all = [s_file for s_file in files
-                                if s_file[-len(args['compression_format']):] == args['compression_format']]
+                                if s_file[-6:] in args['compression_format']]
                 print len(i3_files_all)
                 if not filelist == 'allinfolder':
                     i3_files = [f for f in filelist if f in i3_files_all]
