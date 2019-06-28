@@ -173,9 +173,6 @@ def pick_events(ev):
     else:
         return False
     
-    
-
-
 
 print('max_rand {}'.format(max_rand))
 DATA_DIR = args["datadir"]
@@ -213,7 +210,9 @@ with tables.open_file(args['outfile'], mode="w", title="Events for training the 
         one_h5file = h5.File(os.path.join(DATA_DIR, fili), 'r')
         num_events = len(one_h5file["reco_vals"])
         for k in np.random.choice(num_events, num_events, replace=False):
+            print k
             if pick_events(one_h5file["reco_vals"][k]) == False:
+                print('continue')
                 continue             
             for i, key in enumerate(keys[:-1]):
                 input_features[i].append(np.expand_dims(one_h5file[key][k], axis=0))

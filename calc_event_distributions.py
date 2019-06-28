@@ -1,6 +1,10 @@
+import sys
+sys.path.append('/home/tglauch/scripts/')
 import numpy as np
 import os
 from fancy_plot import *
+import argparse
+import h5py
 
 def parseArguments():
     parser = argparse.ArgumentParser()
@@ -8,6 +12,10 @@ def parseArguments():
         "--bpath",
         help="main config file, user-specific",
         type=str)
+    parser.add_argument(
+        "--num_files",
+        help="number of files",
+        type=int)
     args = parser.parse_args()
     return args
 args = parseArguments().__dict__
@@ -23,14 +31,24 @@ def calc_probabilities1(flist, etype_dict, add_str = '',
         hist_dict[typ] = []
         for f in flist:
             print f
-            idata = h5py.File(f, 'r')
+            try:
+                ifile = h5py.File(f, 'r')
+            except Exception:
+                print('Can not open File {}'.format(f))
+                continue
+            if 'reco_vals' not in ifile.keys():
+                print('No reco vals in file..continue...')
+                continue
             classi = ifile['reco_vals']['classification']
+            if len(classi) == 0:
+                print('Files is empty..continue...')
+                continue
             mask = np.array([True if classi[i] in etype_dict[typ] else False for i in range(len(classi))])
-            H = np.histogram2d(np.log10(ifile['reco_vals']['ic_hitdoms'])[mask],
+            H = np.histogram2d(np.log10(ifile['reco_vals']['ic_hitdoms'][mask]),
                                np.cos(ifile['reco_vals']['mc_prim_zen'][mask]),
                                bins=[logE_bins, cos_zen_bins])
             hist_dict[typ].append(H[0])
-            idata.close()
+            ifile.close()
         H_temp= np.sum(hist_dict[typ], axis=0)
         print('Minimum Value: {}'.format(np.min(H_temp)))
         print('Number of Zeros: {}'.format(len(np.where(H_temp.flatten()==0)[0])))
@@ -61,11 +79,14 @@ def calc_probabilities1(flist, etype_dict, add_str = '',
     
     return
             
-   
-os.makedirs(os.path.join(bpath, 'plots'))
-os.makedirs('./pick_probs/') 
-iflist = [os.path.join(bpath,i) for i in os.listdir(bpath) if '.h5' in i]
-print('Using {}'.files(len(ifilist)))
+if not os.path.exists(os.path.join(bpath, 'plots')):
+    os.makedirs(os.path.join(bpath, 'plots'))
+if not os.path.exists('./pick_probs/'):
+    os.makedirs('./pick_probs/') 
+flist = np.array([os.path.join(bpath,i) for i in os.listdir(bpath) if '.h5' in i])
+if args['num_files'] is not None:
+    flist = flist[: args['num_files']]
+print('Using {} Files'.format(len(flist)))
 etype_dict = {'starting': [3],
               'through' : [2,22],
               'cascade' : [1],
