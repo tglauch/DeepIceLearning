@@ -398,10 +398,10 @@ def get_most_E_muon_info(frame, gcdfile=None, surface=None):
     particle_list = np.array(particle_list)[inds]
     if len(particle_list) == 0:
         print('no clear muon')
-        return False
-    frame.Put("Reconstructed_Muon", particle_list[0])
-    frame.Put("mu_E_on_entry", dataclasses.I3Double(e0_list[0]))
-    frame.Put("mu_E_deposited", dataclasses.I3Double(edep_list[inds][0]))
+    else:
+        frame.Put("Reconstructed_Muon", particle_list[0])
+        frame.Put("mu_E_on_entry", dataclasses.I3Double(e0_list[0]))
+        frame.Put("mu_E_deposited", dataclasses.I3Double(edep_list[inds][0]))
     return
 
 def set_signature(frame, gcdfile=None, surface=None):

@@ -8,7 +8,7 @@ import tables
 import numpy as np
 import argparse
 import time
-
+from scipy.interpolate import RectBivariateSpline
 
 # arguments given in the terminal
 def parseArguments():
@@ -28,22 +28,155 @@ def parseArguments():
     args = parser.parse_args()
     return args
 
-def sta_prob(ev):
-    dep_e = np.log10(ev['e_dep'])
-    return np.min([(dep_e)**3/27., 1])
-
-def scs_prob(ev):
-    dep_e = np.log10(ev['e_dep'])
-    return np.min([(dep_e)**2/9., 1])
 
 args = parseArguments().__dict__
 print args
 
-picker = {0:6, 1:6, 2:5, 3:12, 4: 12}
-reweight = {0:None, 1:scs_prob, 2:None, 3:sta_prob, 4:None}
-retag = {11: 0}
+key = 'ic_hitdoms'
 
-max_rand = np.max([picker[i] for i in picker.keys()])
+through_high_E_spline = np.load('./pick_probs/through_n_hit_doms.npy')[()]
+through_high_E_spline = RectBivariateSpline(setNewEdges(through_high_E_spline['logE_bins']),
+                                            setNewEdges(through_high_E_spline['cos_zen_bins']),
+                                            through_high_E_spline['H'],
+                                            kx=1, ky=1, s=0)
+
+
+def pick_through(ev):
+    if np.log10(ev['ic_hitdoms']) < 1.6:
+        return True
+    val = through_high_E_spline(np.log10(ev[key]), np.cos(ev['mc_prim_zen']))
+    ran_num = np.random.uniform(0,1,1)
+    if ran_num > val:
+        return False
+    else:
+        ran_num = np.random.uniform(0,max_rand,1)
+        if ran_num > picker['through']:
+            return False
+        else:
+            return True
+    
+start_high_E_spline = np.load('./pick_probs/starting_n_hit_doms.npy')[()]
+start_high_E_spline = RectBivariateSpline(setNewEdges(start_high_E_spline['logE_bins']),
+                                            setNewEdges(start_high_E_spline['cos_zen_bins']),
+                                            start_high_E_spline['H'],
+                                            kx=1, ky=1, s=0)
+
+start_low_E_spline = np.load('./pick_probs/starting_n_hit_domsfew_hits.npy')[()]
+start_low_E_spline = RectBivariateSpline(setNewEdges(start_low_E_spline['logE_bins']),
+                                            setNewEdges(start_low_E_spline['cos_zen_bins']),
+                                            start_low_E_spline['H'],
+                                            kx=1, ky=1, s=0)
+def pick_start(ev):
+    if np.log10(ev['ic_hitdoms']) < 1.6:
+        val = start_low_E_spline(np.log10(ev[key]), np.cos(ev['mc_prim_zen']))
+    else:
+        val = start_high_E_spline(np.log10(ev[key]), np.cos(ev['mc_prim_zen']))
+    ran_num = np.random.uniform(0,1,1)
+    if ran_num > val:
+        return False
+    else:
+        ran_num = np.random.uniform(0,max_rand,1)
+        if ran_num > picker['starting']:
+            return False
+        else:
+            return True
+    
+cascade_high_E_spline = np.load('./pick_probs/cascade_n_hit_doms.npy')[()]
+cascade_high_E_spline = RectBivariateSpline(setNewEdges(cascade_high_E_spline['logE_bins']),
+                                            setNewEdges(cascade_high_E_spline['cos_zen_bins']),
+                                            cascade_high_E_spline['H'],
+                                            kx=1, ky=1, s=0)
+
+cascade_low_E_spline = np.load('./pick_probs/cascade_n_hit_domsfew_hits.npy')[()]
+cascade_low_E_spline = RectBivariateSpline(setNewEdges(cascade_low_E_spline['logE_bins']),
+                                            setNewEdges(cascade_low_E_spline['cos_zen_bins']),
+                                            cascade_low_E_spline['H'],
+                                            kx=1, ky=1, s=0)
+def pick_cascade(ev):
+    if np.log10(ev['ic_hitdoms']) < 1.6:
+        val = cascade_low_E_spline(np.log10(ev[key]), np.cos(ev['mc_prim_zen']))
+    else:
+        val = cascade_high_E_spline(np.log10(ev[key]), np.cos(ev['mc_prim_zen']))
+    ran_num = np.random.uniform(0,1,1)
+    if ran_num > val:
+        return False
+    else:
+        ran_num = np.random.uniform(0,max_rand,1)
+        if ran_num > picker['cascade']:
+            return False
+        else:
+            return True
+        
+        
+passing_high_E_spline = np.load('./pick_probs/passing_n_hit_doms.npy')[()]
+passing_high_E_spline = RectBivariateSpline(setNewEdges(passing_high_E_spline['logE_bins']),
+                                            setNewEdges(passing_high_E_spline['cos_zen_bins']),
+                                            passing_high_E_spline['H'],
+                                            kx=1, ky=1, s=0)
+
+passing_low_E_spline = np.load('./pick_probs/passing_n_hit_domsfew_hits.npy')[()]
+passing_low_E_spline = RectBivariateSpline(setNewEdges(passing_low_E_spline['logE_bins']),
+                                            setNewEdges(passing_low_E_spline['cos_zen_bins']),
+                                            passing_low_E_spline['H'],
+                                            kx=1, ky=1, s=0)
+
+def pick_passing(ev):
+    if np.log10(ev['ic_hitdoms']) < 1.6:
+        val = passing_low_E_spline(np.log10(ev[key]), np.cos(ev['mc_prim_zen']))
+    else:
+        val = passing_high_E_spline(np.log10(ev[key]), np.cos(ev['mc_prim_zen']))
+    ran_num = np.random.uniform(0,1,1)
+    if ran_num > val:
+        return False
+    else:
+        ran_num = np.random.uniform(0,max_rand,1)
+        if ran_num > picker['passing']:
+            return False
+        else:
+            return True
+        
+stopping_low_E_spline = np.load('./pick_probs/stopping_n_hit_domsfew_hits.npy')[()]
+stopping_low_E_spline = RectBivariateSpline(setNewEdges(stopping_low_E_spline['logE_bins']),
+                                            setNewEdges(stopping_low_E_spline['cos_zen_bins']),
+                                            stopping_low_E_spline['H'],
+                                            kx=1, ky=1, s=0)
+
+def pick_stopping(ev):
+    if np.log10(ev['ic_hitdoms']) > 1.6:
+        return True
+    else:
+        val = stopping_low_E_spline(np.log10(ev[key]), np.cos(ev['mc_prim_zen']))
+    ran_num = np.random.uniform(0,1,1)
+    if ran_num > val:
+        return False
+    else:
+        ran_num = np.random.uniform(0,max_rand,1)
+        if ran_num > picker['passing']:
+            return False
+        else:
+            return True
+
+
+def pick_events(ev):
+    if ev['classification'] not in [0,1,2,3,4,11,22,23]:
+        return False
+    if ev['classification'] in [1]:
+        return pick_cascade(ev)
+    elif ev['classification'] in [2,22]:
+        return pick_through(ev)
+    elif ev['classification'] in [3]:
+        return pick_start(ev)
+    elif ev['classification'] in [4,23]:
+        return pick_stopping(ev)
+    elif ev['classification'] in [0,11]:
+        return pick_passing(ev)
+    else:
+        return False
+    
+    
+
+
+
 print('max_rand {}'.format(max_rand))
 DATA_DIR = args["datadir"]
 input_shape = [10, 10, 60]
@@ -78,23 +211,10 @@ with tables.open_file(args['outfile'], mode="w", title="Events for training the 
     for fili in file_list:
         print('Open {}'.format(fili))
         one_h5file = h5.File(os.path.join(DATA_DIR, fili), 'r')
-        for k in xrange(len(one_h5file["reco_vals"])):
-            print k
-            classi = one_h5file["reco_vals"][k]['classification']
-            if classi in retag.keys():
-                classi = retag[classi]
-            if classi not in picker.keys():
-                print('continue')
-                continue
-            if classi in [3, 4] and one_h5file["reco_vals"][k]['track_length'] < 100:
-                continue
-            if reweight[classi] is not None:
-                prob_val = reweight[classi](one_h5file["reco_vals"][k])
-                if prob_val < float(np.random.uniform(0,1,1)):
-                    continue
-            rand = np.random.choice(np.arange(0,max_rand))
-            if picker[classi] < rand:
-                continue
+        num_events = len(one_h5file["reco_vals"])
+        for k in np.random.choice(num_events, num_events, replace=False):
+            if pick_events(one_h5file["reco_vals"][k]) == False:
+                continue             
             for i, key in enumerate(keys[:-1]):
                 input_features[i].append(np.expand_dims(one_h5file[key][k], axis=0))
             reco_vals.append(np.atleast_1d(one_h5file["reco_vals"][k]))

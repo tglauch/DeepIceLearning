@@ -46,6 +46,10 @@ def parseArguments():
         "--rescue",
         help="Run rescue script?!",
         type=str, default='')
+    parser.add_argument(
+        "--files_per_dataset",
+        help="number of files per dataset",
+        type=int)
     args = parser.parse_args()
     return args.__dict__
 
@@ -121,7 +125,6 @@ if __name__ == '__main__':
                          if s_file[-6:] in args['compression_format']]
                     if len(a) > 0:
                         tlist.append(root)
-                print len(tlist)
                 folderlists.append(tlist)
         else:
             folderlists = [[folder.strip() for folder in folderlist.split(',')]]
@@ -138,15 +141,19 @@ if __name__ == '__main__':
                 files = [f for f in os.listdir(subpath) if not os.path.isdir(f)]
                 i3_files_all = [s_file for s_file in files
                                 if s_file[-6:] in args['compression_format']]
-                print len(i3_files_all)
                 if not filelist == 'allinfolder':
                     i3_files = [f for f in filelist if f in i3_files_all]
                 else:
                     i3_files = i3_files_all
                 b = [os.path.join(subpath, s_file) for s_file in i3_files]
+                print('Number of I3Files found {}'.format(len(b)))
                 run_filelist[j].extend(b)
-        filesjob = 1.*args['files_per_job']*np.array([len(k) for k in run_filelist])/np.min([len(k) for k in run_filelist])
-        inds = [get_inds(len(k), filesjob[i]) for i,k in enumerate(run_filelist)]
+        if args['files_per_dataset'] is not None:
+            filesjob = [args["files_per_job"] for j in range(len(run_filelist))]
+            inds = [np.arange(0, int(args['files_per_dataset']), int(args["files_per_job"])) for j in range(len(run_filelist))]
+        else:
+            filesjob = 1.*args['files_per_job']*np.array([len(k) for k in run_filelist])/np.min([len(k) for k in run_filelist])
+            inds = [get_inds(len(k), filesjob[i]) for i,k in enumerate(run_filelist)]
         for j, rfilelist in enumerate(run_filelist):
             outfolder = os.path.join(dataset_parser.get('Basics', 'out_folder'),
                                      "filelists/dataset", str(j))
