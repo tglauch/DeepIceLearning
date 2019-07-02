@@ -104,7 +104,6 @@ if __name__ == "__main__":
 
     # Process Command Line Arguments ######################################
 
-    file_location = parser.get('Basics', 'thisfolder')
     mc_location = parser.get("Basics", "mc_path")
 
     print"\n ############################################"

@@ -142,8 +142,6 @@ if __name__ == "__main__":
 
     # Process Command Line Arguments 
 
-    file_location = parser.get('Basics', 'thisfolder')
-
     print("\n ---------")
     print("You are running the script with arguments: ")
     for a in args.keys():
