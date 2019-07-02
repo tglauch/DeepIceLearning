@@ -102,7 +102,7 @@ etype_dict = {'starting': [3],
               'passing': [0,11],
               'stopping': [4,23]
 }
-bins_hits = np.linspace(1.1,1.6,10)
-bins_cos_zen = np.linspace(-1, 1, 10)
+bins_hits = np.linspace(1.1,1.6,16)
+bins_cos_zen = np.linspace(-1, 1, 16)
 calc_probabilities1(flist, etype_dict, logE_bins=bins_hits, cos_zen_bins=bins_cos_zen, 
                     add_str='few_hits')

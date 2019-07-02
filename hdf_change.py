@@ -10,6 +10,14 @@ import argparse
 import time
 from scipy.interpolate import RectBivariateSpline
 
+def setNewEdges(edges):
+    newEdges = []
+    for i in range(0,len(edges)-1):
+        newVal = (edges[i]+edges[i+1])*1.0/2
+        newEdges.append(newVal)
+    return np.array(newEdges)
+
+
 # arguments given in the terminal
 def parseArguments():
     parser = argparse.ArgumentParser()
@@ -34,7 +42,7 @@ print args
 
 key = 'ic_hitdoms'
 
-through_high_E_spline = np.load('./pick_probs/through_n_hit_doms.npy')[()]
+through_high_E_spline = np.load('/data/user/tglauch/DeepIceLearning/pick_probs/through_n_hit_doms.npy')[()]
 through_high_E_spline = RectBivariateSpline(setNewEdges(through_high_E_spline['logE_bins']),
                                             setNewEdges(through_high_E_spline['cos_zen_bins']),
                                             through_high_E_spline['H'],
@@ -55,13 +63,13 @@ def pick_through(ev):
         else:
             return True
     
-start_high_E_spline = np.load('./pick_probs/starting_n_hit_doms.npy')[()]
+start_high_E_spline = np.load('/data/user/tglauch/DeepIceLearning/pick_probs/starting_n_hit_doms.npy')[()]
 start_high_E_spline = RectBivariateSpline(setNewEdges(start_high_E_spline['logE_bins']),
                                             setNewEdges(start_high_E_spline['cos_zen_bins']),
                                             start_high_E_spline['H'],
                                             kx=1, ky=1, s=0)
 
-start_low_E_spline = np.load('./pick_probs/starting_n_hit_domsfew_hits.npy')[()]
+start_low_E_spline = np.load('/data/user/tglauch/DeepIceLearning/pick_probs/starting_n_hit_domsfew_hits.npy')[()]
 start_low_E_spline = RectBivariateSpline(setNewEdges(start_low_E_spline['logE_bins']),
                                             setNewEdges(start_low_E_spline['cos_zen_bins']),
                                             start_low_E_spline['H'],
@@ -81,13 +89,13 @@ def pick_start(ev):
         else:
             return True
     
-cascade_high_E_spline = np.load('./pick_probs/cascade_n_hit_doms.npy')[()]
+cascade_high_E_spline = np.load('/data/user/tglauch/DeepIceLearning/pick_probs/cascade_n_hit_doms.npy')[()]
 cascade_high_E_spline = RectBivariateSpline(setNewEdges(cascade_high_E_spline['logE_bins']),
                                             setNewEdges(cascade_high_E_spline['cos_zen_bins']),
                                             cascade_high_E_spline['H'],
                                             kx=1, ky=1, s=0)
 
-cascade_low_E_spline = np.load('./pick_probs/cascade_n_hit_domsfew_hits.npy')[()]
+cascade_low_E_spline = np.load('/data/user/tglauch/DeepIceLearning/pick_probs/cascade_n_hit_domsfew_hits.npy')[()]
 cascade_low_E_spline = RectBivariateSpline(setNewEdges(cascade_low_E_spline['logE_bins']),
                                             setNewEdges(cascade_low_E_spline['cos_zen_bins']),
                                             cascade_low_E_spline['H'],
@@ -108,13 +116,13 @@ def pick_cascade(ev):
             return True
         
         
-passing_high_E_spline = np.load('./pick_probs/passing_n_hit_doms.npy')[()]
+passing_high_E_spline = np.load('/data/user/tglauch/DeepIceLearning/pick_probs/passing_n_hit_doms.npy')[()]
 passing_high_E_spline = RectBivariateSpline(setNewEdges(passing_high_E_spline['logE_bins']),
                                             setNewEdges(passing_high_E_spline['cos_zen_bins']),
                                             passing_high_E_spline['H'],
                                             kx=1, ky=1, s=0)
 
-passing_low_E_spline = np.load('./pick_probs/passing_n_hit_domsfew_hits.npy')[()]
+passing_low_E_spline = np.load('/data/user/tglauch/DeepIceLearning/pick_probs/passing_n_hit_domsfew_hits.npy')[()]
 passing_low_E_spline = RectBivariateSpline(setNewEdges(passing_low_E_spline['logE_bins']),
                                             setNewEdges(passing_low_E_spline['cos_zen_bins']),
                                             passing_low_E_spline['H'],
@@ -135,7 +143,7 @@ def pick_passing(ev):
         else:
             return True
         
-stopping_low_E_spline = np.load('./pick_probs/stopping_n_hit_domsfew_hits.npy')[()]
+stopping_low_E_spline = np.load('/data/user/tglauch/DeepIceLearning/pick_probs/stopping_n_hit_domsfew_hits.npy')[()]
 stopping_low_E_spline = RectBivariateSpline(setNewEdges(stopping_low_E_spline['logE_bins']),
                                             setNewEdges(stopping_low_E_spline['cos_zen_bins']),
                                             stopping_low_E_spline['H'],
@@ -172,8 +180,10 @@ def pick_events(ev):
         return pick_passing(ev)
     else:
         return False
-    
 
+
+picker = {'through': 9, 'cascade':9, 'passing':9, 'starting':9, 'stopping':10}
+max_rand = np.max([picker[i] for i in picker.keys()])
 print('max_rand {}'.format(max_rand))
 DATA_DIR = args["datadir"]
 input_shape = [10, 10, 60]
@@ -193,11 +203,11 @@ dtype=hf1["reco_vals"].dtype
 with tables.open_file(args['outfile'], mode="w", title="Events for training the NN",
                       filters=FILTERS) as h5file:
     input_features = []
-    for key in keys[:-1]:
+    for okey in keys[:-1]:
         feature = h5file.create_earray(
-                h5file.root, key, tables.Float64Atom(),
+                h5file.root, okey, tables.Float64Atom(),
                 (0, input_shape[0], input_shape[1], input_shape[2], 1),
-                title=key)
+                title=okey)
         feature.flush()
         input_features.append(feature)
     reco_vals = tables.Table(h5file.root, 'reco_vals', description=dtype)
@@ -214,8 +224,8 @@ with tables.open_file(args['outfile'], mode="w", title="Events for training the 
             if pick_events(one_h5file["reco_vals"][k]) == False:
                 print('continue')
                 continue             
-            for i, key in enumerate(keys[:-1]):
-                input_features[i].append(np.expand_dims(one_h5file[key][k], axis=0))
+            for i, okey in enumerate(keys[:-1]):
+                input_features[i].append(np.expand_dims(one_h5file[okey][k], axis=0))
             reco_vals.append(np.atleast_1d(one_h5file["reco_vals"][k]))
         for inp_feature in input_features:
                 inp_feature.flush()

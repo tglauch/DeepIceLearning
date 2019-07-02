@@ -290,7 +290,8 @@ if __name__ == "__main__":
             print('which equals {:.1f} ms per event'.format(1000.*dt/num_events))
             shuff = np.random.choice(num_events, num_events, replace=False)
             for j, i in enumerate(shuff):
-                if j%(int(num_events/10.)) == 0:
+    
+                if j%(np.max([1, int(1.*num_events/10.)])) == 0:
                     print('{:.1f} \%'.format(100.*j/num_events))
                 TotalEventCounter += 1
                 reco_arr = events['reco_vals'][i]
