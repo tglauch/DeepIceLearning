@@ -274,7 +274,7 @@ def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
         ind_hi += batch_size
         if (ind_lo >= inds[cur_file][1]) | (equal_len & (ind_hi > inds[cur_file][1])):
             cur_file += 1
-            if (cur_file == len(file_handlers)) & (valid == False):
+            if (cur_file == len(file_handlers)):
                 cur_file=0
                 new_inds = np.random.permutation(len(file_handlers))
                 print('Shuffle filelist...')

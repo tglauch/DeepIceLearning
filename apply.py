@@ -135,10 +135,10 @@ if __name__ == "__main__":
                 input_files = run_info['Files'].split(':')
     else:
         input_files = np.concatenate([[os.path.join(i, j) for j in os.listdir(i)]
-                                       if os.path.isdir(i) else i for i in args['exp_data']])
+                                       if os.path.isdir(i) else [i] for i in args['exp_data']])
     conf_model_file = args['model']
-
-
+    print('Input Files:')
+    print(input_files)
     base_model = mp.parse_functional_model(conf_model_file,
             os.path.join(mc_location, input_files[0]), only_model=True)
     inp_shapes = run_info['inp_shapes']
@@ -169,6 +169,7 @@ if __name__ == "__main__":
         use_data = True
         file_handlers = input_files
         file_len = read_input_len_shapes('', input_files)
+        print file_len
         test_inds = [(0, tot_len) for tot_len in file_len]
 
     steps_per_epoch = int(np.sum([math.ceil((1.*(k[1]-k[0])/args['batch_size']))
