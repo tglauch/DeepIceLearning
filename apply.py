@@ -23,8 +23,7 @@ def parseArguments():
         "--test_data",
         help="Folder with test data files", type=str)
     parser.add_argument(
-        "--data", type=str,
-        required=False,  nargs="+")
+        "--exp_data", type=str,  nargs="+")
     parser.add_argument(
         "--outfile", type=str,
         required=False)
@@ -105,7 +104,6 @@ if __name__ == "__main__":
 
     # Process Command Line Arguments ######################################
 
-    file_location = parser.get('Basics', 'thisfolder')
     mc_location = parser.get("Basics", "mc_path")
 
     print"\n ############################################"
@@ -121,7 +119,7 @@ if __name__ == "__main__":
 
     # with numpy dict
     run_info = np.load(os.path.join(DATA_DIR, 'run_info.npy'))[()]
-    if args['data'] is None:
+    if args['exp_data'] is None:
         if args['test_data'] is not None:
             input_files= [os.path.join(args['test_data'], i) for i in os.listdir(args['test_data']) if i[-3:]=='.h5']
             file_len = read_input_len_shapes('', input_files)
@@ -135,10 +133,11 @@ if __name__ == "__main__":
             else:
                 input_files = run_info['Files'].split(':')
     else:
-        input_files = args['data']
+        input_files = np.concatenate([[os.path.join(i, j) for j in os.listdir(i)]
+                                       if os.path.isdir(i) else [i] for i in args['exp_data']])
     conf_model_file = args['model']
-
-
+    print('Input Files:')
+    print(input_files)
     base_model = mp.parse_functional_model(conf_model_file,
             os.path.join(mc_location, input_files[0]), only_model=True)
     inp_shapes = run_info['inp_shapes']
@@ -159,7 +158,7 @@ if __name__ == "__main__":
     os.system("nvidia-smi")
 
     # Saving the Final Model and Calculation/Saving of Result for Test Dataset ####
-    if args['data'] is None:
+    if args['exp_data'] is None:
         use_data = False
         file_handlers = [os.path.join(mc_location, file_name)
                          for file_name in input_files]
@@ -169,6 +168,7 @@ if __name__ == "__main__":
         use_data = True
         file_handlers = input_files
         file_len = read_input_len_shapes('', input_files)
+        print file_len
         test_inds = [(0, tot_len) for tot_len in file_len]
 
     steps_per_epoch = int(np.sum([math.ceil((1.*(k[1]-k[0])/args['batch_size']))
@@ -197,7 +197,7 @@ if __name__ == "__main__":
         up = test_inds[i][1]
         file_handler = h5py.File(file_handler_p, 'r')
         temp_truth = file_handler['reco_vals'][down:up]
-        if args['data'] is None:
+        if args['exp_data'] is None:
             for j, var in enumerate([var for br in out_shapes.keys()
                                     for var in out_shapes[br].keys()
                                     if var != 'general']):
@@ -207,7 +207,7 @@ if __name__ == "__main__":
         else:
             reco_vals = np.concatenate([reco_vals, temp_truth])
 
-    if args['data'] is None:
+    if args['exp_data'] is None:
         dtype = np.dtype([(var + '_truth', np.float64)
                           for br in out_shapes.keys()
                           for var in out_shapes[br].keys()
@@ -220,7 +220,7 @@ if __name__ == "__main__":
         o_file = os.path.join(DATA_DIR, save_name)
     else:
         o_file = args['outfile']
-    if args['data'] is None:
+    if args['exp_data'] is None:
         pickle.dump({"mc_truth": mc_truth,
                      "prediction": prediction,
                      "reco_vals": reco_vals},

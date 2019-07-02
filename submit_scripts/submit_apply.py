@@ -42,6 +42,12 @@ def parseArguments():
         "--test_data",
         help="test data",
         type=str)
+    parser.add_argument(
+        "--exp_data",
+        help="path to experimental data",
+        type=str)    
+    parser.add_argument(
+        "--outfile", type=str)
     args = parser.parse_args()
     return args
 
@@ -84,8 +90,14 @@ if workload_manager not in ['slurm','condor','bsub']:
 arguments = ' --main_config {}  --folder {} --batch_size {} --model {} --weights {}'.format(\
                         args['main_config'], args['folder'], args['batch_size'], args['model'],args['weights'] )
 
-if args['test_data'] is not None:
+if args['exp_data']:
+    arguments += ' --exp_data {}'.format(args['exp_data'])
+elif args['test_data'] is not None:
     arguments += ' --test_data {}'.format(args['test_data'])
+else:
+    raise ValueError('No data provided')
+if args['outfile'] is not None:
+    arguments += ' --outfile {}'.format(args['outfile'])
 save_path = args['folder']
 condor_out_folder = os.path.join(save_path, 'condor')
 if workload_manager == 'slurm':

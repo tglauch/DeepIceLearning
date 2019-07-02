@@ -178,7 +178,7 @@ def read_input_len_shapes(file_location, input_files, virtual_len=-1):
 def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
                  inp_transformations, out_shape_dict, out_transformations,
                  weighting_function=None, use_data=False, equal_len=False,
-                 mask_func=None):
+                 mask_func=None, valid=False):
 
     """ This function generates the training batches for the neural network.
     It load all input and output data and applies the transformations
@@ -274,9 +274,10 @@ def generator_v2(batch_size, file_handlers, inds, inp_shape_dict,
         ind_hi += batch_size
         if (ind_lo >= inds[cur_file][1]) | (equal_len & (ind_hi > inds[cur_file][1])):
             cur_file += 1
-            if cur_file == len(file_handlers):
+            if (cur_file == len(file_handlers)):
                 cur_file=0
                 new_inds = np.random.permutation(len(file_handlers))
+                print('Shuffle filelist...')
                 file_handlers = file_handlers[new_inds]
                 inds = inds[new_inds] 
             t1 = time.time()
