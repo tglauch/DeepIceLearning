@@ -254,7 +254,7 @@ if __name__ == "__main__":
                 for f in filelist:
                     print('Attempt to read {}'.format(f))
                     f_bpath = os.path.split(f)[0]
-                    geo_files = [os.path.join(f_bpath, i) for i in os.listdir(f_bpath) if 'Geo' in i]
+                    geo_files = [os.path.join(f_bpath, i) for i in os.listdir(f_bpath) if i[-6:] ==  '.i3.gz']
                     if len(geo_files) > 0:
                         use_geo = str(geo_files[0])
                     else:
@@ -269,7 +269,7 @@ if __name__ == "__main__":
                     print "Number of Events {}".format(args['max_num_events'])
                     f = str(filelist[counterSim][statusInFilelist])
                     f_bpath = os.path.split(f)[0]
-                    geo_files = [os.path.join(f_bpath, i) for i in os.listdir(f_bpath) if 'Geo' in i]
+                    geo_files = [os.path.join(f_bpath, i) for i in os.listdir(f_bpath) if i[-6:] ==  '.i3.gz']
                     if len(geo_files) > 0:
                         use_geo = str(geo_files[0])
                     else:
@@ -288,7 +288,17 @@ if __name__ == "__main__":
             print('The I3 File(s) have {} events'.format(num_events))
             print('Processing took {:.1f} s'.format( dt))
             print('which equals {:.1f} ms per event'.format(1000.*dt/num_events))
-            shuff = np.random.choice(num_events, num_events, replace=False)
+            if 'shuffle' in dataset_configparser['Basics'].keys():
+                if str(dataset_configparser.get('Basics', 'shuffle')) == 'True':
+                    shuff = np.random.choice(num_events, num_events, replace=False)
+                    print('Shuffle is ON')
+                else:
+                    shuff = range(num_events)
+                    print('Shuffle is OFF')
+            else:
+                shuff = np.random.choice(num_events, num_events, replace=False)
+                print('Shuffle is ON')
+
             for j, i in enumerate(shuff):
     
                 if j%(np.max([1, int(1.*num_events/10.)])) == 0:

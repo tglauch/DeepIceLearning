@@ -37,7 +37,7 @@ def parseArguments():
     parser.add_argument(
         "--request_RAM",
         help="amount of RAM in GB",
-        type=int, default=4)
+        type=int, default=2)
     parser.add_argument(
         "--compression_format",
         help="which compression format to use",
@@ -95,7 +95,7 @@ if __name__ == '__main__':
         print("Write Dagman Files to: {}".format(submitFile))
         RAM_str = "{} GB".format(args["request_RAM"])
         arguments = " --filelist $(PATHs) --dataset_config $(DATASET) "
-        submitFileContent = {"universe": "vanilla",
+        submitFileContent = {#"universe": "vanilla",
                              "notification": "Error",
                              "log": "$(LOGFILE).log",
                              "output": "$(STREAM).out",
@@ -161,7 +161,6 @@ if __name__ == '__main__':
                 os.makedirs(outfolder)
                 print('Created Folder {}'.format(outfolder))
             nfiles = int(round(filesjob[j]))
-            print inds[j][10]
             save_list = [rfilelist[int(inds[j][i]):int(inds[j][i+1])] for i
                          in range(len(inds[j])-1)]
             print('Save filelists for mc  {}'.format(basepath[j]))
@@ -173,10 +172,11 @@ if __name__ == '__main__':
         nodes = []
         print('The number of files for the datasets is {} '.format(num_files))
         print('Resulting in {} jobs'.format(np.min(num_files)))
+        os.makedirs(os.path.join(outfolder, 'logs'))
         for i in range(np.min(num_files)):
             fname = 'File_{}'.format(i)
             logfile = os.path.join(log_path,fname)
-            stream = os.path.join('/data/user/tglauch/condor', fname)
+            stream = os.path.join(dataset_parser.get('Basics', 'out_folder'), 'logs', fname)
             PATH = ''
             for k in range(len(basepath)):
                 PATH = PATH +\
