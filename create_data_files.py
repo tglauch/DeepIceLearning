@@ -254,7 +254,7 @@ if __name__ == "__main__":
                 for f in filelist:
                     print('Attempt to read {}'.format(f))
                     f_bpath = os.path.split(f)[0]
-                    geo_files = [os.path.join(f_bpath, i) for i in os.listdir(f_bpath) if i[-6:] ==  '.i3.gz']
+                    geo_files = sorted([os.path.join(f_bpath, i) for i in os.listdir(f_bpath) if i[-6:] ==  '.i3.gz'])
                     if len(geo_files) > 0:
                         use_geo = str(geo_files[0])
                     else:

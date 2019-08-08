@@ -2,10 +2,9 @@ from icecube import dataio, icetray
 from icecube import dataclasses, paraboloid, simclasses, recclasses, spline_reco
 from I3Tray import *
 import sys
-sys.path.append("/Users/theoglauch/Documents/PhD/DeepIceLearning/")
-sys.path.append(os.path.join('/Users/theoglauch/Documents/PhD/DeepIceLearning','lib'))
-import lib.i3mods
-import lib.reco_quantities as reco_q
+sys.path.append("/data/user/tglauch/DeepIceLearning/")
+sys.path.append(os.path.join('/data/user/tglauch/DeepIceLearning/','lib'))
+import reco_quantities as reco_q
 import numpy as np
 from icecube.weighting import weighting, get_weighted_primary
 import argparse
@@ -22,17 +21,6 @@ def cuts(phy_frame):
         True (IceTray standard)
     """
 
-    #if 'CorsikaWeightMap' in phy_frame.keys():
-    #    if ['CorsikaWeightMap']['Multiplicity'] > 1.:
-    #        print('Multiplicity > 1')
-    #        return False
-#    if phy_frame["mu_E_on_entry"].value == 0.:
-#        print("mu_E_on_entry is 0")
-#        return False
-   # elif phy_frame["track_length"].value < 100:
-   #     print("track length smaller than 100m")
-   #     return False
-#    else:
     return True
 
 

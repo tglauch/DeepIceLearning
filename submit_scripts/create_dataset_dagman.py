@@ -18,6 +18,16 @@ def get_inds(k , ratio):
         inds_pre[-(j+1)] += val
     return inds_pre
 
+def keep_valid(list1, remove_keys):
+    nlist = []
+    for l in list1:
+        valids = [i in l for i in remove_keys]
+        if np.any(valids):
+            nlist.append(l)
+        else:
+            continue
+    return nlist
+
 
 def parseArguments():
     # Create argument parser
@@ -42,6 +52,10 @@ def parseArguments():
         "--compression_format",
         help="which compression format to use",
         type=str, default='i3.bz2', nargs='+')
+    parser.add_argument(
+        "--must_contain",
+        help="strings that must be in filename",
+        type=str, nargs='+')
     parser.add_argument(
         "--rescue",
         help="Run rescue script?!",
@@ -122,7 +136,11 @@ if __name__ == '__main__':
                 for root, dirs, files in os.walk(p):
                     print root
                     a =  [s_file for s_file in files
-                         if s_file[-6:] in args['compression_format']]
+                         if (s_file[-6:] in args['compression_format']) &
+                            (not '_SLOP.' in s_file) & (not '_IT.' in s_file)&
+                            (not 'GCD.' in s_file) & (not 'EHE.' in s_file)]
+                    if args["must_contain"] is not None:
+                        a = keep_valid(a, args["must_contain"])
                     if len(a) > 0:
                         tlist.append(root)
                 folderlists.append(tlist)
@@ -140,7 +158,11 @@ if __name__ == '__main__':
             for subpath in bfolder:
                 files = [f for f in os.listdir(subpath) if not os.path.isdir(f)]
                 i3_files_all = [s_file for s_file in files
-                                if s_file[-6:] in args['compression_format']]
+                                if (s_file[-6:] in args['compression_format']) &
+                                (not '_SLOP.' in s_file) & (not '_IT.' in s_file) &
+                                (not 'GCD.' in s_file) & (not 'EHE.' in s_file)]
+                if args["must_contain"] is not None:
+                    i3_files_all = keep_valid(i3_files_all, args["must_contain"])
                 if not filelist == 'allinfolder':
                     i3_files = [f for f in filelist if f in i3_files_all]
                 else:
@@ -172,7 +194,7 @@ if __name__ == '__main__':
         nodes = []
         print('The number of files for the datasets is {} '.format(num_files))
         print('Resulting in {} jobs'.format(np.min(num_files)))
-        os.makedirs(os.path.join(outfolder, 'logs'))
+        os.makedirs(os.path.join(dataset_parser.get('Basics', 'out_folder'), 'logs'))
         for i in range(np.min(num_files)):
             fname = 'File_{}'.format(i)
             logfile = os.path.join(log_path,fname)
