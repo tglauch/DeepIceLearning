@@ -10,8 +10,8 @@ import tensorflow.keras.backend
 import sys
 from collections import OrderedDict
 import os
-sys.path.append(os.path.abspath(".."))
-sys.path.append(os.path.join(os.path.abspath(".."),'lib'))
+sys.path.insert(0, '/data/user/tglauch/DeepIceLearning/I3Module/lib')
+print sys.path
 import transformations as tr
 import numpy as np
 import block_units as bunit

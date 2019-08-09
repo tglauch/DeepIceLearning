@@ -1,6 +1,6 @@
 import sys
-sys.path.append('./lib/')
-sys.path.append('./cfg/')
+sys.path.append('/data/user/tglauch/DeepIceLearning/I3Module/lib/')
+sys.path.append('/data/user/tglauch/DeepIceLearning/I3Module/cfg/')
 import os
 import tensorflow as tf
 from model_parse import parse_functional_model
@@ -25,17 +25,17 @@ class DeepLearningClassifier(icetray.I3ConditionalModule):
         print('Init Deep Learning Classifier..this may take a while')
 
     def Configure(self):
-        self._runinfo = np.load('./cfg/run_info.npy', allow_pickle=True)[()]
-        self._grid = np.load('./cfg/grid.npy', allow_pickle=True)[()]
+        self._runinfo = np.load('/data/user/tglauch/DeepIceLearning/I3Module/cfg/run_info.npy', allow_pickle=True)[()]
+        self._grid = np.load('/data/user/tglauch/DeepIceLearning/I3Module/cfg/grid.npy', allow_pickle=True)[()]
         self._inp_shapes = self._runinfo['inp_shapes']
         self._out_shapes = self._runinfo['out_shapes']
         self._inp_trans = self._runinfo['inp_trans']
         self._out_trans = self._runinfo['out_trans']
         import cfg.model as func_model_def
         self._model = func_model_def.model(self._inp_shapes, self._out_shapes)
-        self._model.load_weights('./cfg/weights.npy')
+        self._model.load_weights('/data/user/tglauch/DeepIceLearning/I3Module/cfg/weights.npy')
         dataset_configparser = ConfigParser()
-        dataset_configparser.read('./cfg/config.cfg')
+        dataset_configparser.read('/data/user/tglauch/DeepIceLearning/I3Module/cfg/config.cfg')
         inp_defs = dict()
         for key in dataset_configparser['Input_Times']:
             inp_defs[key] = dataset_configparser['Input_Times'][key]

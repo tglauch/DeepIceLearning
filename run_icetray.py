@@ -16,10 +16,6 @@ def parseArguments():
         help="file list for processing",
         type=str, nargs='+')
     parser.add_argument(
-        "--gcd",
-        help="gcd file for the processing",
-        type=str)
-    parser.add_argument(
         "--outfile",
         help="name of the outfile",
         type=str, default='classification.npy')
@@ -39,16 +35,29 @@ if __name__ == "__main__":
         print ex
     pulsemap_key = str(dataset_configparser.get('Basics', 'PulseSeriesMap'))
     dtype, settings = read_variables(dataset_configparser)
+    dt_new = list(dtype.names)
+    dt_new.extend(['skimming', 'cascade', 'through_going', 'starting', 'stopping'])
+    dtype = np.dtype(zip(dt_new, ['<f8'] * len(dt_new)))
+    settings.extend([('variable', u"[\"Deep_Learning_Classification\"][\'Skimming\']", [-np.inf, np.inf]),
+                    ('variable', u"[\"Deep_Learning_Classification\"][\'Cascade\']", [-np.inf, np.inf]),
+                    ('variable', u"[\"Deep_Learning_Classification\"][\'Through_Going_Track\']", [-np.inf, np.inf]),
+                    ('variable', u"[\"Deep_Learning_Classification\"][\'Starting_Track\']", [-np.inf, np.inf]),
+                    ('variable', u"[\"Deep_Learning_Classification\"][\'Stopping_Track\']", [-np.inf, np.inf])])
     i3tray_file = str(dataset_configparser.get('Basics', 'tray_script'))
     sys.path.append(os.path.dirname(i3tray_file))
     sys.path.append(os.getcwd()+"/"+os.path.dirname(i3tray_file))
     mname = os.path.splitext(os.path.basename(i3tray_file))[0]
     process_i3 = importlib.import_module(mname)
-    print dtype
-    print settings
-    if args.gcd is None:
-        args.gcd = str(dataset_configparser.get('Basics', 'geometry_file'))
+    
     res_dicts = []
     for f in args.files:
-        res_dicts.append(process_i3.run(str(f), -1 , settings, args.gcd, pulsemap_key, do_classification=True)) 
-    
+        f_bpath = os.path.split(f)[0]
+        geo_files = sorted([os.path.join(f_bpath, i) for i in os.listdir(f_bpath) if i[-6:] ==  '.i3.gz'])
+        if len(geo_files) > 0:
+            use_geo = str(geo_files[0])
+        else:
+            use_geo = str(dataset_configparser.get('Basics', 'geometry_file'))
+        res_dicts.append(process_i3.run(str(f), 20 , settings, use_geo, pulsemap_key, do_classification=True)['reco_vals'])
+
+    result =np.array([tuple(i) for i in np.concatenate(res_dicts)], dtype=dtype)
+    np.save(args.outfile, result)
