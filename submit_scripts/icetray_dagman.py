@@ -29,7 +29,7 @@ def parseArguments():
     parser.add_argument(
         "--request_RAM",
         help="amount of RAM in GB",
-        type=int, default=1)
+        type=int, default=3)
     parser.add_argument(
         "--compression_format",
         help="which compression format to use",
@@ -96,7 +96,7 @@ if __name__ == '__main__':
                              "output": "$(STREAM).out",
                              "error": "$(STREAM).err",
                              "initialdir" : "/home/tglauch/",
-        #		             "Requirements" : "HAS_CVMFS_icecube_opensciencegrid_org",
+        		             #"Requirements" : "HAS_CVMFS_icecube_opensciencegrid_org",
         #                    "Requirements" : '(Machine != "n-15.icecube.wisc.edu")',
                              "request_memory": RAM_str,
                              "arguments": arguments}
@@ -125,6 +125,7 @@ if __name__ == '__main__':
             logfile = os.path.join(log_path,fname)
             stream = os.path.join(dataset_parser.get('Basics', 'out_folder'), 'logs', fname)
             PATH = ' '.join(run_filelist[i])
+            print PATH
             outfile = os.path.join(dataset_parser.get('Basics', 'out_folder'), fname +'.npy')
             dagArgs = pydag.dagman.Macros(LOGFILE=logfile,
                                           PATHs=PATH,

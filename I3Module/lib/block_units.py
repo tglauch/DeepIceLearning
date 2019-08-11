@@ -1,6 +1,6 @@
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import *
-import tensorflow.keras.backend
+from keras.models import Model
+from keras.layers import *
+from keras.layers.core import Activation, Layer
 
 
 def conv_block(feat_maps_out, prev, kernel_size=(3, 3, 5)):
@@ -243,18 +243,18 @@ def inception_resnet_block(x, scale, block_type, block_idx, activation='relu'):
                          'but got: ' + str(block_type))
 
     block_name = block_type + '_' + str(block_idx)
-    channel_axis = 1 if tensorflow.keras.backend.image_data_format() == 'channels_first' else -1
+    channel_axis = 1 if K.image_data_format() == 'channels_first' else -1
     mixed = Concatenate(axis=channel_axis,
                         name=block_name + '_mixed')(branches)
     up = conv3d_bn(mixed,
-                   tensorflow.keras.backend.int_shape(x)[channel_axis],
+                   K.int_shape(x)[channel_axis],
                    1,
                    activation=None,
                    use_bias=True,
                    name=block_name + '_conv')
 
     x = Lambda(lambda inputs, scale: inputs[0] + inputs[1] * scale,
-               output_shape=tensorflow.keras.backend.int_shape(x)[1:],
+               output_shape=K.int_shape(x)[1:],
                arguments={'scale': scale},
                name=block_name)([x, up])
     if activation is not None:
@@ -283,7 +283,7 @@ def conv3d_bn(x, filters, filter_size, padding='same',
     else:
         bn_name = None
         conv_name = None
-    channel_axis = 1 if tensorflow.keras.backend.image_data_format() == 'channels_first' else -1
+    channel_axis = 1 if K.image_data_format() == 'channels_first' else -1
     x = Conv3D(
         filters, filter_size,
         strides=strides,

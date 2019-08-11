@@ -25,7 +25,8 @@ def parseArguments():
 if __name__ == "__main__":
 
     args = parseArguments()
-
+    print('Outfile {}'.format(args.outfile))
+    print('In Files {}'.format(args.files))
     dataset_configparser = ConfigParser()
     try:
         dataset_configparser.read(args.dataset_config)
@@ -50,14 +51,15 @@ if __name__ == "__main__":
     process_i3 = importlib.import_module(mname)
     
     res_dicts = []
-    for f in args.files:
-        f_bpath = os.path.split(f)[0]
-        geo_files = sorted([os.path.join(f_bpath, i) for i in os.listdir(f_bpath) if i[-6:] ==  '.i3.gz'])
-        if len(geo_files) > 0:
-            use_geo = str(geo_files[0])
-        else:
-            use_geo = str(dataset_configparser.get('Basics', 'geometry_file'))
-        res_dicts.append(process_i3.run(str(f), 20 , settings, use_geo, pulsemap_key, do_classification=True)['reco_vals'])
+    f = args.files[0]
+    f_bpath = os.path.split(f)[0]
+    geo_files = sorted([os.path.join(f_bpath, i) for i in os.listdir(f_bpath) if i[-6:] ==  '.i3.gz'])
+    if len(geo_files) > 0:
+        use_geo = str(geo_files[0])
+    else:
+        use_geo = str(dataset_configparser.get('Basics', 'geometry_file'))
+    res_dicts.append(process_i3.run(args.files, -1 , settings, use_geo, pulsemap_key, do_classification=True)['reco_vals'])
 
     result =np.array([tuple(i) for i in np.concatenate(res_dicts)], dtype=dtype)
+    print result
     np.save(args.outfile, result)
