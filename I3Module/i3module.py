@@ -1,10 +1,10 @@
 import sys
-sys.path.append('/data/user/tglauch/DeepIceLearning/I3Module/lib/')
-sys.path.append('/data/user/tglauch/DeepIceLearning/I3Module/cfg/')
 import os
+dirname = os.path.dirname(__file__)
+sys.path.append(os.path.join(dirname, 'lib/'))
 import tensorflow as tf
-from model_parse import parse_functional_model
-from functions_create_dataset import *
+from lib.model_parse import parse_functional_model
+from lib.functions_create_dataset import *
 import numpy as np
 from icecube import icetray
 from I3Tray import I3Tray
@@ -25,17 +25,20 @@ class DeepLearningClassifier(icetray.I3ConditionalModule):
         print('Init Deep Learning Classifier..this may take a while')
 
     def Configure(self):
-        self._runinfo = np.load('/data/user/tglauch/DeepIceLearning/I3Module/cfg/run_info.npy', allow_pickle=True)[()]
-        self._grid = np.load('/data/user/tglauch/DeepIceLearning/I3Module/cfg/grid.npy', allow_pickle=True)[()]
+        self._runinfo = np.load(os.path.join(dirname,'cfg/run_info.npy'), allow_pickle=True)[()]
+        self._grid = np.load(os.path.join(dirname, 'cfg/grid.npy'), allow_pickle=True)[()]
         self._inp_shapes = self._runinfo['inp_shapes']
         self._out_shapes = self._runinfo['out_shapes']
         self._inp_trans = self._runinfo['inp_trans']
         self._out_trans = self._runinfo['out_trans']
+        self._pulsemap = self.GetParameter("pulsemap") 
+        self._save_as =  self.GetParameter("save_as")
+        print("Im configured with {} and {}".format(self._pulsemap,self._save_as))
         import cfg.model as func_model_def
         self._model = func_model_def.model(self._inp_shapes, self._out_shapes)
-        self._model.load_weights('/data/user/tglauch/DeepIceLearning/I3Module/cfg/weights.npy')
+        self._model.load_weights(os.path.join(dirname, 'cfg/weights.npy'))
         dataset_configparser = ConfigParser()
-        dataset_configparser.read('/data/user/tglauch/DeepIceLearning/I3Module/cfg/config.cfg')
+        dataset_configparser.read(os.path.join(dirname,'cfg/config.cfg'))
         inp_defs = dict()
         for key in dataset_configparser['Input_Times']:
             inp_defs[key] = dataset_configparser['Input_Times'][key]
@@ -60,10 +63,10 @@ class DeepLearningClassifier(icetray.I3ConditionalModule):
     def Physics(self, frame):
         timer_t0 = time.time()
         #This runs on P-frames
-        key = self.GetParameter("pulsemap")
+        pulse_key = self._pulsemap
         f_slice = []
-        t0 = get_t0(frame)
-        pulses = frame[key].apply(frame)
+        t0 = get_t0(frame, puls_key=pulse_key)
+        pulses = frame[pulse_key].apply(frame)
         for key in self._inp_shapes.keys():
             f_slice.append(np.zeros(self._inp_shapes[key]['general']))
         for omkey in pulses.keys():
@@ -87,7 +90,7 @@ class DeepLearningClassifier(icetray.I3ConditionalModule):
         output['Through_Going_Track'] = float(prediction[0][2])
         output['Starting_Track'] = float(prediction[0][3])
         output['Stopping_Track'] = float(prediction[0][4])
-        frame.Put(self.GetParameter("save_as"), output)
+        frame.Put(self._save_as, output)
         #print('Total Time {:.2f} s, Processing Time {:.2f}s, Prediction Time {:.2f}s'.format(time.time() - timer_t0, processing_time, prediction_time))
         self.PushFrame(frame)
 
@@ -104,12 +107,61 @@ def print_info(phy_frame):
     print(phy_frame["Deep_Learning_Classification"])
     return
 
+import matplotlib
+matplotlib.use('pdf')
+import matplotlib.pyplot as plt
+import numpy as np
+
+def figsize(scale, ratio=(np.sqrt(5.0)-1.0)/2.0):
+    fig_width_pt = 455.8843                         # Get this from LaTeX using \the\textwidth
+    inches_per_pt = 1.0/72.27                       # Convert pt to inch
+    fig_width = fig_width_pt*inches_per_pt*scale    # width in inches
+    fig_height = fig_width*ratio            # height in inches
+    fig_size = [fig_width,fig_height]
+    return fig_size
+
+
+def plot_prediction(prediction, figax=(None,None)):
+    data = np.arange(len(prediction))
+    bins = np.arange(0, data.max() + 1.5) - 0.5
+    fig = plt.figure(figsize=figsize(0.9, (np.sqrt(5.0)-1.0)/2.0))
+    plt.clf()
+    ax = fig.add_subplot(111)
+    ax.barh(data, width=prediction, height=0.2,
+    tick_label=['Non-Starting Cascade', 'Starting Cascade', 'Through-Going Track',
+                'Starting Track', 'Stopping Track'], alpha=0.9)
+    ax.set_xlabel('Prediction Score')
+    return fig, ax
+
+def make_plot(frame, key="Deep_Learning_Classification"):
+    ofolder = os.path.join(dirname, 'plots')
+    if not os.path.exists(ofolder):
+        os.makedirs(ofolder)
+
+    prediction = [frame[key]['Skimming'],
+                  frame[key]['Cascade'],
+                  frame[key]['Through_Going_Track'],
+                  frame[key]['Starting_Track'],
+                  frame[key]['Stopping_Track']]
+    prediction = np.array(prediction)
+    fig, ax = plot_prediction(prediction)
+    fig.savefig(os.path.join(ofolder, '{}_{}.pdf'.format(frame['I3EventHeader'].run_id, frame['I3EventHeader'].event_id)))
+    return
+
+
 def parseArguments():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--files",
         help="files to be processed",
-        type=str, nargs="+", required=False)
+        type=str, nargs="+", required=True)
+    parser.add_argument(
+        "--plot",
+        action="store_true",
+        default=False)
+    parser.add_argument(
+        "--pulsemap",
+        type=str, default="InIceDSTPulses")    
     args = parser.parse_args()
     return args
 
@@ -122,12 +174,15 @@ if __name__ == "__main__":
             files.extend([os.path.join(j,i) for i in os.listdir(j) if '.i3' in i])
         else:
             files.append(j)
-    print files
+    files = sorted(files)
     tray = I3Tray()
     tray.AddModule('I3Reader','reader',
                    FilenameList = files)
-    tray.AddModule(DeepLearningClassifier, "DeepLearningClassifier")
+    tray.AddModule(DeepLearningClassifier, "DeepLearningClassifier", pulsemap=args.pulsemap)
     tray.AddModule(print_info, 'printer',
                    Streams=[icetray.I3Frame.Physics])
+    if args.plot:
+        tray.AddModule(make_plot, 'plotter',
+                       Streams=[icetray.I3Frame.Physics])
     tray.Execute()
     tray.Finish()

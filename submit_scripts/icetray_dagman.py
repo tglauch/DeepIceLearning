@@ -39,6 +39,10 @@ def parseArguments():
         help="strings that must be in filename",
         type=str, nargs='+')
     parser.add_argument(
+        "--ignore",
+        help="ignore files with these names",
+        type=str, nargs='+')
+    parser.add_argument(
         "--rescue",
         help="Run rescue script?!",
         type=str, default='')
@@ -46,6 +50,10 @@ def parseArguments():
         "--files_per_dataset",
         help="number of files per dataset",
         type=int)
+    parser.add_argument(
+        "--gcd",
+        help="path to gcd file",
+        type=str)
     args = parser.parse_args()
     return args.__dict__
 
@@ -90,7 +98,11 @@ if __name__ == '__main__':
 
         print("Write Dagman Files to: {}".format(submitFile))
         RAM_str = "{} GB".format(args["request_RAM"])
-        arguments = " --files $(PATHs) --dataset_config $(DATASET) --outfile $(OFILE) "
+        if args['gcd'] is not None:
+            arguments = " --files $(PATHs) --dataset_config $(DATASET) --outfile $(OFILE) --gcd {}".format(args['gcd'])
+        else:
+            arguments = " --files $(PATHs) --dataset_config $(DATASET) --outfile $(OFILE) "
+        print(arguments)
         submitFileContent = {"notification": "Error",
                              "log": "$(LOGFILE).log",
                              "output": "$(STREAM).out",

@@ -3,7 +3,7 @@
 echo $HOSTNAME
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 SDIR="$(dirname "$DIR")"
-eval `/cvmfs/icecube.opensciencegrid.org/py2-v3.1.0/setup.sh`
+eval `/cvmfs/icecube.opensciencegrid.org/py2-v3.1.1/setup.sh`
 #echo $PYTHONPATH
 #source /data/user/tglauch/envs/tf_env2/bin/activate
 export PYTHONPATH=/data/user/tglauch/envs/tf_env2/lib/python2.7/site-packages:$PYTHONPATH

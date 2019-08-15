@@ -19,6 +19,10 @@ def parseArguments():
         "--outfile",
         help="name of the outfile",
         type=str, default='classification.npy')
+    parser.add_argument(
+        "--gcd",
+        help="gcd file to use",
+        type=str)
     args = parser.parse_args()
     return args
 
@@ -53,11 +57,14 @@ if __name__ == "__main__":
     res_dicts = []
     f = args.files[0]
     f_bpath = os.path.split(f)[0]
-    geo_files = sorted([os.path.join(f_bpath, i) for i in os.listdir(f_bpath) if i[-6:] ==  '.i3.gz'])
-    if len(geo_files) > 0:
-        use_geo = str(geo_files[0])
+    if args.gcd is None:
+        geo_files = sorted([os.path.join(f_bpath, i) for i in os.listdir(f_bpath) if i[-6:] ==  '.i3.gz'])
+        if len(geo_files) > 0:
+            use_geo = str(geo_files[0])
+        else:
+            use_geo = str(dataset_configparser.get('Basics', 'geometry_file'))
     else:
-        use_geo = str(dataset_configparser.get('Basics', 'geometry_file'))
+        use_geo = args.gcd
     res_dicts.append(process_i3.run(args.files, -1 , settings, use_geo, pulsemap_key, do_classification=True)['reco_vals'])
 
     result =np.array([tuple(i) for i in np.concatenate(res_dicts)], dtype=dtype)

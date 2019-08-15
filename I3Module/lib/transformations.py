@@ -2,7 +2,10 @@
 # coding: utf-8
 
 import numpy as np
+#from keras.utils import to_categorical
 from scipy.stats import norm
+#from icecube import dataclasses
+#import icecube.MuonGun
 from six.moves import configparser
 
 def IC_divide_1000(x, r_vals=None):
