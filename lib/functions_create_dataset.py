@@ -1,11 +1,9 @@
-from icecube import dataclasses
+
 import logging
 import numpy as np
-import icecube.MuonGun
-from icecube import dataclasses, dataio, simclasses
+#import icecube.MuonGun
+#from icecube import dataclasses, dataio, simclasses
 import scipy.stats as st
-from icecube.weighting.weighting import from_simprod
-
 
 def get_t0(frame, puls_key='InIceDSTPulses'):
     pulses = frame[puls_key]
@@ -74,17 +72,17 @@ def time_of_percentage(charges, times, percentage):
 # calculate a quantile
 # based on the waveform
 def wf_quantiles(wfs, quantile, srcs=['ATWD', 'FADC']):
-    ret = dict()
-    src_loc = [wf.source.name for wf in wfs]
-    for src in srcs:
-        ret[src] = 0
-        if src not in src_loc:
-            continue
-        wf = wfs[src_loc.index(src)]
-        t = wf.time + np.linspace(0, len(wf.waveform) * wf.bin_width, len(wf.waveform))
-        charge_pdf = np.cumsum(wf.waveform) / np.cumsum(wf.waveform)[-1]
-        ret[src] = t[np.where(charge_pdf > quantile)[0][0]]
-    return ret
+    return 0
+#    ret = dict()
+#    src_loc = [wf.source.name for wf in wfs]
+#    for src in srcs:
+#        ret[src] = 0
+#        if src not in src_loc:
+#            continue
+#        wf = wfs[src_loc.index(src)]
+#        t = wf.time + np.linspace(0, len(wf.waveform) * wf.bin_width, len(wf.waveform))
+#        charge_pdf = np.cumsum(wf.waveform) / np.cumsum(wf.waveform)[-1]
+#        ret[src] = t[np.where(charge_pdf > quantile)[0][0]]
 
 #based on the pulses
 def pulses_quantiles(charges, times, quantile):

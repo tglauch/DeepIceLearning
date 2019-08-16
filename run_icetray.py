@@ -1,7 +1,9 @@
+# coding: utf-8
+
 import argparse
 import os, sys
 from configparser import ConfigParser
-from lib.functions_create_dataset import *
+from lib.functions_create_dataset import read_variables
 import numpy as np
 import importlib
 
@@ -52,8 +54,8 @@ if __name__ == "__main__":
     sys.path.append(os.path.dirname(i3tray_file))
     sys.path.append(os.getcwd()+"/"+os.path.dirname(i3tray_file))
     mname = os.path.splitext(os.path.basename(i3tray_file))[0]
-    process_i3 = importlib.import_module(mname)
-    
+    print(' import {}'.format(mname))
+    process_i3 = importlib.import_module(mname) 
     res_dicts = []
     f = args.files[0]
     f_bpath = os.path.split(f)[0]

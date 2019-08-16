@@ -28,12 +28,12 @@ nu_pdg = [12, 14, 16, -12, -14, -16]
 
 
 def is_data(frame):
-    if ('I3MCWeightDict' in frame) or ('CorsikaWeightMap' in frame):
+    if ('I3MCWeightDict' in frame) or ('CorsikaWeightMap' in frame) or ('MCPrimary' in frame):
         return False
     else:
         return True
 
-def calc_depositedE(frame, gcdfile=None, surface=None):
+def calc_depositedE(frame, gcdfile=None, surface=None, key='I3MCTree'):
     if is_data(frame):
         return True
     if surface is None:
@@ -41,7 +41,10 @@ def calc_depositedE(frame, gcdfile=None, surface=None):
             surface = icecube.MuonGun.ExtrudedPolygon.from_I3Geometry(frame['I3Geometry'])
         else:
             surface = icecube.MuonGun.ExtrudedPolygon.from_file(gcdfile, padding=0)
-    I3Tree = frame['I3MCTree']
+    if isinstance(frame[key], icecube.dataclasses.I3Particle):
+        I3Tree = [frame[key]]
+    else:
+        I3Tree = frame[key]
     losses = 0
     for p in I3Tree:
         if not p.is_cascade: continue
@@ -345,10 +348,28 @@ def classify(p_frame, gcdfile=None, surface=None):
     p_frame.Put("classification", icetray.I3Int(pclass))
     return
 
-def get_inelasticity(p_frame):
+
+def classify_muongun(p_frame, gcdfile=None, surface=None):
     if is_data(p_frame):
         return True
-    I3Tree = p_frame['I3MCTree']
+    if surface is None:
+        if gcdfile is None:
+            surface = icecube.MuonGun.ExtrudedPolygon.from_I3Geometry(p_frame['I3Geometry'])
+        else:
+            surface = icecube.MuonGun.ExtrudedPolygon.from_file(gcdfile, padding=0)
+    p = p_frame['MCPrimary']
+    if has_signature(p, surface) == 1:
+        pclass = 2  # Through Going Track
+    elif has_signature(p, surface) == 2:
+        pclass = 4  # Stopping Track
+    p_frame.Put("classification", icetray.I3Int(pclass))
+    p_frame.Put("visible_track", p)
+    return
+
+def get_inelasticity(p_frame, mctree='I3MCTree'):
+    if is_data(p_frame):
+        return True
+    I3Tree = p_frame[mctree]
     if 'I3MCWeightDict' not  in p_frame.keys():
         return
     interaction_type = p_frame['I3MCWeightDict']['InteractionType']
@@ -366,29 +387,39 @@ def get_inelasticity(p_frame):
 def millipede_rel_highest_loss(frame):
     e_losses = [i.energy for i in frame['SplineMPE_MillipedeHighEnergyMIE'] if i.energy > 0.]
     if len(e_losses) == 0:
-        return 0
-    return np.max(e_losses) / np.sum(e_losses)
+        val = 0
+    else:
+        val = np.max(e_losses) / np.sum(e_losses)
+    frame.Put("millipede_rel_highest_loss", dataclasses.I3Double(val))
+    return
 
 
 def millipede_n_losses(frame):
     e_losses = [i.energy for i in frame['SplineMPE_MillipedeHighEnergyMIE'] if i.energy > 0.]
-    return len(e_losses)
+    frame.Put("millipede_n_loss", dataclasses.I3Double(len(e_losses)))
+    return
 
 
 def millipede_std(frame):
     e_losses = [i.energy for i in frame['SplineMPE_MillipedeHighEnergyMIE'] if i.energy>0.]
     if len(e_losses) == 0:
-        return 0
-    return np.std(e_losses)/np.mean(e_losses)
+        val = 0
+    else:
+        val = np.std(e_losses)/np.mean(e_losses)
+    frame.Put("millipede_std", dataclasses.I3Double(val))
+    return
 
 
 def millipede_max_loss(frame):
     e_losses = [i.energy for i in frame['SplineMPE_MillipedeHighEnergyMIE'] if i.energy>0.]
     if len(e_losses) == 0:
-        return 0
-    return np.amax(e_losses)
+        val= 0
+    else:
+        val = np.amax(e_losses)
+    frame.Put("millipede_max_loss", dataclasses.I3Double(val))
+    return
 
-def get_most_E_muon_info(frame, gcdfile=None, surface=None):
+def get_most_E_muon_info(frame, gcdfile=None, surface=None, tracklist='MMCTrackList', mctree='I3MCTree'):
     if is_data(frame):
         return True
     if surface is None:
@@ -399,7 +430,11 @@ def get_most_E_muon_info(frame, gcdfile=None, surface=None):
     e0_list = []
     edep_list = []
     particle_list = []
-    for track in icecube.MuonGun.Track.harvest(frame['I3MCTree'], frame['MMCTrackList']):
+    if isinstance(frame[tracklist], icecube.dataclasses.I3Particle):
+        tlist = [frame[tracklist]]
+    else:
+        tlist=icecube.MuonGun.Track.harvest(frame[mctree], frame[tracklist])
+    for track in tlist:
         # Find distance to entrance and exit from sampling volume
         intersections = surface.intersection(track.pos, track.dir)
         # Get the corresponding energies
@@ -487,9 +522,10 @@ def track_length_in_detector(frame, gcdfile=None, surface=None,  key="visible_tr
             val = np.min([p.length-intersections.first,intersections.second-intersections.first])
         else:
             val = 0.
-    #print("track length {}".format(val))
     frame.Put("track_length", dataclasses.I3Double(val))
     return
+
+
 
 
 def first_interaction_point(frame, gcdfile=None, surface=None):
@@ -510,7 +546,7 @@ def first_interaction_point(frame, gcdfile=None, surface=None):
         particle.pos= vis_nu.pos + vis_nu.dir * vis_nu.length
     else:
         return
-    #print particle.pos
+    print particle.pos
     frame.Put("first_interaction_pos", particle)
     return
 

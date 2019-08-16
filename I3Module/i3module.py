@@ -1,10 +1,11 @@
 import sys
 import os
 dirname = os.path.dirname(__file__)
-sys.path.append(os.path.join(dirname, 'lib/'))
+sys.path.insert(0, '/home/tglauch/virtualenvs/tf_env3/lib/python2.7/site-packages')
+sys.path.insert(0, os.path.join(dirname, 'lib/'))
 import tensorflow as tf
-from lib.model_parse import parse_functional_model
-from lib.functions_create_dataset import *
+from model_parser import parse_functional_model
+from helpers import *
 import numpy as np
 from icecube import icetray
 from I3Tray import I3Tray

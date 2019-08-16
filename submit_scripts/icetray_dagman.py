@@ -39,8 +39,8 @@ def parseArguments():
         help="strings that must be in filename",
         type=str, nargs='+')
     parser.add_argument(
-        "--ignore",
-        help="ignore files with these names",
+        "--exclude",
+        help="strings that must be in filename",
         type=str, nargs='+')
     parser.add_argument(
         "--rescue",
@@ -122,7 +122,8 @@ if __name__ == '__main__':
                     dataset_parser['Basics'].keys() if 'mc_path' in key]
         filelist = dataset_parser.get("Basics", "file_list")
         
-        run_filelist = get_files_from_folder(basepath, folderlist, args['compression_format'], filelist, args['must_contain'])
+        run_filelist = get_files_from_folder(basepath, folderlist, args['compression_format'], filelist,
+                                             args['must_contain'], args['exclude'])
         run_filelist = np.concatenate(run_filelist)
         run_filelist = [run_filelist[i:i+args['files_per_job']] for i in np.arange(0, len(run_filelist),
                         args['files_per_job'])] 
@@ -137,7 +138,7 @@ if __name__ == '__main__':
             logfile = os.path.join(log_path,fname)
             stream = os.path.join(dataset_parser.get('Basics', 'out_folder'), 'logs', fname)
             PATH = ' '.join(run_filelist[i])
-            print PATH
+            print(PATH)
             outfile = os.path.join(dataset_parser.get('Basics', 'out_folder'), fname +'.npy')
             dagArgs = pydag.dagman.Macros(LOGFILE=logfile,
                                           PATHs=PATH,
