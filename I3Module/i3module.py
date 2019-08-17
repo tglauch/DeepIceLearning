@@ -13,7 +13,7 @@ from configparser import ConfigParser
 from collections import OrderedDict
 import time
 from icecube.dataclasses import I3MapStringDouble
-from icecube import dataclasses
+from icecube import dataclasses, dataio
 import argparse
 
 class DeepLearningClassifier(icetray.I3ConditionalModule):

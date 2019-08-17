@@ -28,7 +28,7 @@ nu_pdg = [12, 14, 16, -12, -14, -16]
 
 
 def is_data(frame):
-    if ('I3MCWeightDict' in frame) or ('CorsikaWeightMap' in frame) or ('MCPrimary' in frame):
+    if ('I3MCWeightDict' in frame) or ('CorsikaWeightMap' in frame) or ('MCPrimary' in frame) or ('I3MCTree' in frame):
         return False
     else:
         return True
@@ -78,11 +78,11 @@ def calc_depositedE_single_p(p, I3Tree, surface):
             losses += p.energy
     return losses
 
-def calc_hitDOMs(frame):
+def calc_hitDOMs(frame, pulsemap="InIceDSTPulses"):
     IC_hitDOMs = 0
     DC_hitDOMs = 0
     DC = [79, 80, 81, 82, 83, 84, 85, 86]
-    pulses = frame["InIceDSTPulses"]
+    pulses = frame[pulsemap]
     # apply the pulsemask --> make it an actual mapping of omkeys to pulses
     try:
         pulses = pulses.apply(frame)
@@ -349,7 +349,7 @@ def classify(p_frame, gcdfile=None, surface=None):
     return
 
 
-def classify_muongun(p_frame, gcdfile=None, surface=None):
+def classify_muongun(p_frame, gcdfile=None, surface=None, primary_key='MCPrimary'):
     if is_data(p_frame):
         return True
     if surface is None:
@@ -357,11 +357,13 @@ def classify_muongun(p_frame, gcdfile=None, surface=None):
             surface = icecube.MuonGun.ExtrudedPolygon.from_I3Geometry(p_frame['I3Geometry'])
         else:
             surface = icecube.MuonGun.ExtrudedPolygon.from_file(gcdfile, padding=0)
-    p = p_frame['MCPrimary']
+    p = p_frame[primary_key]
     if has_signature(p, surface) == 1:
         pclass = 2  # Through Going Track
     elif has_signature(p, surface) == 2:
         pclass = 4  # Stopping Track
+    else:
+        pclass = 0
     p_frame.Put("classification", icetray.I3Int(pclass))
     p_frame.Put("visible_track", p)
     return
@@ -492,7 +494,6 @@ def set_signature(frame, gcdfile=None, surface=None):
                 val = 2  # stopping event
         else:
             val = -1 # vertex behind detector
-    #print("signature: {}".format(val))
     frame.Put("signature", icetray.I3Int(val))
     return
 

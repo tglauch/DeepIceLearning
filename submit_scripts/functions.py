@@ -2,6 +2,32 @@ import os
 import numpy as np
 
 
+def harvest_generators(infiles):
+    """
+    Harvest serialized generator configurations from a set of I3 files.
+    """
+    import icecube
+    import icecube.icetray
+    from icecube import dataclasses, dataio, icetray
+    import icecube.MuonGun
+    from icecube.icetray.i3logging import log_info as log
+    generator = None
+    for fname in infiles:
+        print fname
+        f = dataio.I3File(str(fname))
+        fr = f.pop_frame(icetray.I3Frame.Stream('S'))
+        f.close()
+        if fr is not None:
+            for k in fr.keys():
+                v = fr[k]
+                if isinstance(v, icecube.MuonGun.GenerationProbability):
+    #                log('%s: found "%s" (%s)' % (fname, k, type(v).__name__), unit="MuonGun")
+                    if generator is None:
+                        generator = v
+                    else:
+                        generator += v
+    return generator
+
 def keep_valid(list1, remove_keys):
     nlist = []
     for l in list1:

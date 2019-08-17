@@ -8,8 +8,9 @@ import time
 import numpy as np
 from configparser import ConfigParser
 import math
-from functions import get_files_from_folder
+from functions import get_files_from_folder, harvest_generators
 import shutil
+import pickle
 
 def parseArguments():
     # Create argument parser
@@ -53,6 +54,10 @@ def parseArguments():
     parser.add_argument(
         "--gcd",
         help="path to gcd file",
+        type=str)
+    parser.add_argument(
+        "--muongun",
+        help="If create generator with this savepath",
         type=str)
     args = parser.parse_args()
     return args.__dict__
@@ -124,7 +129,13 @@ if __name__ == '__main__':
         
         run_filelist = get_files_from_folder(basepath, folderlist, args['compression_format'], filelist,
                                              args['must_contain'], args['exclude'])
+        lengths = [len(i) for i in run_filelist]
+        print(lengths)
         run_filelist = np.concatenate(run_filelist)
+        if args['muongun'] is not None:
+            with open(args['muongun'], 'w+') as f:
+                f.write('\n'.join(list(run_filelist)))
+            exit()
         run_filelist = [run_filelist[i:i+args['files_per_job']] for i in np.arange(0, len(run_filelist),
                         args['files_per_job'])] 
         
@@ -138,7 +149,6 @@ if __name__ == '__main__':
             logfile = os.path.join(log_path,fname)
             stream = os.path.join(dataset_parser.get('Basics', 'out_folder'), 'logs', fname)
             PATH = ' '.join(run_filelist[i])
-            print(PATH)
             outfile = os.path.join(dataset_parser.get('Basics', 'out_folder'), fname +'.npy')
             dagArgs = pydag.dagman.Macros(LOGFILE=logfile,
                                           PATHs=PATH,
