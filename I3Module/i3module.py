@@ -3,7 +3,8 @@ import os
 dirname = os.path.dirname(__file__)
 sys.path.insert(0, '/home/tglauch/virtualenvs/tf_env3/lib/python2.7/site-packages')
 sys.path.insert(0, os.path.join(dirname, 'lib/'))
-import tensorflow as tf
+
+
 from model_parser import parse_functional_model
 from helpers import *
 import numpy as np

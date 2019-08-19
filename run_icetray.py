@@ -62,10 +62,16 @@ if __name__ == "__main__":
     process_i3 = importlib.import_module(mname) 
     res_dicts = []
     if args.files is not None:
-        files = args.files
+        files = []
+        for j in np.atleast_1d(args.files):
+            if os.path.isdir(j):
+                files.extend([os.path.join(j,i) for i in os.listdir(j) if '.i3' in i])
+            else:
+                files.append(j)
     else:
         with open(args.filelist, 'r') as f:
-            files = f.read().splitlines()
+            files = sorted(f.read().splitlines())
+    print files
     f = files[0]
     f_bpath = os.path.split(f)[0]
     if args.gcd is None:

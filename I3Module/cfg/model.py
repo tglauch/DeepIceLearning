@@ -4,9 +4,12 @@ second part: model definition, name must be def model(input_shape):
 '''
 
 import numpy as np
+import tensorflow as tf
+sess = tf.Session()
+from keras import backend as K
+K.set_session(sess)
 import keras
 import keras.layers
-from keras import backend as K
 from keras import regularizers
 from keras.utils import to_categorical
 import sys
