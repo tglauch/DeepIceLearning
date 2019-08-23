@@ -620,3 +620,62 @@ def find_muons(p, I3Tree, surface, level=0, plist = []):
         for child in children:
             find_muons(child, I3Tree, surface, level=level+1, plist=plist)
     return plist
+
+
+def intersection_depth(x, y, z, zenith, azimuth, radius=500., length=1000.):
+    b = x * numpy.cos(azimuth) + y * numpy.sin(azimuth)
+    d = b * b + radius * radius - x * x - y * y
+
+    h = [numpy.nan, numpy.nan]
+    r = [numpy.nan, numpy.nan]
+
+    if d > 0:
+        d = numpy.sqrt(d)
+
+        # Down-track distance to the endcaps
+        costh = numpy.cos(zenith)
+
+        if costh != 0.:
+            h[0] = (z - length / 2.) / costh
+            h[1] = (z + length / 2.) / costh
+            h = sorted(h)
+
+        # Down-track distance to the side surfaces
+        sinth = numpy.sin(zenith)
+
+        if sinth != 0.:
+            r[0] = (b - d) / sinth
+            r[1] = (b + d) / sinth
+            r = sorted(r)
+
+        # Perfectly horizontal tracks never intersect the endcaps.
+        if costh == 0.:
+            if ((z > -length / 2.) and (z < length / 2.)):
+                h = r
+            else:
+                h = [numpy.nan, numpy.nan]
+        # Perfectly vertical tracks never intersect the sides.
+        elif sinth == 0.:
+            if numpy.hypot(x, y) >= radius:
+                h = [numpy.nan, numpy.nan]
+        # For general tracks, take the last entrace and first exit.
+        else:
+            if (h[0] >= r[1]) or (h[1] <= r[0]):
+                h = [numpy.nan, numpy.nan]
+            else:
+                h[0] = max(r[0], h[0])
+                h[1] = min(r[1], h[1])
+
+    return z + numpy.cos(numpy.pi - zenith) * min(h)
+
+
+def calc_depth(phy_frame, primary_key='MCPrimary'):
+    if is_data(p_frame):
+        return True
+    primary = phy_frame[primary_key]
+    vertex = (primary.dir.x, primary.dir.y, primary.dir.z)
+    zentry = intersection(*vertex,
+                          zenith=primary.dir.zenith,
+                          azimuth=primary.dir.azimuth)
+    phy_frame.Put('depth', dataclasses.I3Double(1950. - zentry))
+    return True

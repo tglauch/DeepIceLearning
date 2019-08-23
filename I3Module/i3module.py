@@ -66,6 +66,9 @@ class DeepLearningClassifier(icetray.I3ConditionalModule):
         timer_t0 = time.time()
         #This runs on P-frames
         pulse_key = self._pulsemap
+        if pulse_key not in frame.keys():
+            print('No Pulsemap called {}'.format(pulse_key))
+            return False
         f_slice = []
         t0 = get_t0(frame, puls_key=pulse_key)
         pulses = frame[pulse_key].apply(frame)
@@ -130,7 +133,7 @@ def plot_prediction(prediction, figax=(None,None)):
     plt.clf()
     ax = fig.add_subplot(111)
     ax.barh(data, width=prediction, height=0.2,
-    tick_label=['Non-Starting Cascade', 'Starting Cascade', 'Through-Going Track',
+    tick_label=['Skimming', 'Starting Cascade', 'Through-Going Track',
                 'Starting Track', 'Stopping Track'], alpha=0.9)
     ax.set_xlabel('Prediction Score')
     return fig, ax
@@ -147,7 +150,8 @@ def make_plot(frame, key="Deep_Learning_Classification"):
                   frame[key]['Stopping_Track']]
     prediction = np.array(prediction)
     fig, ax = plot_prediction(prediction)
-    fig.savefig(os.path.join(ofolder, '{}_{}.pdf'.format(frame['I3EventHeader'].run_id, frame['I3EventHeader'].event_id)))
+    fig.savefig(os.path.join(ofolder, '{}_{}.pdf'.format(frame['I3EventHeader'].run_id,
+               frame['I3EventHeader'].event_id)), bbox_inches='tight')
     return
 
 
