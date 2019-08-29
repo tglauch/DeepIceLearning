@@ -116,6 +116,7 @@ if __name__ == '__main__':
         		             #"Requirements" : "HAS_CVMFS_icecube_opensciencegrid_org",
         #                    "Requirements" : '(Machine != "n-15.icecube.wisc.edu")',
                              "request_memory": RAM_str,
+                             "request_cpus" : 4,
                              "arguments": arguments}
         submitFile = pydag.htcondor.HTCondorSubmit(submitFile,
                                                    script,
@@ -127,8 +128,8 @@ if __name__ == '__main__':
                     dataset_parser['Basics'].keys() if 'mc_path' in key]
         filelist = dataset_parser.get("Basics", "file_list")
         
-        run_filelist = get_files_from_folder(basepath, folderlist, args['compression_format'], filelist,
-                                             args['must_contain'], args['exclude'])
+        run_filelist, num_files  = get_files_from_folder(basepath, folderlist, args['compression_format'], filelist,
+                                                         args['must_contain'], args['exclude'])
         lengths = [len(i) for i in run_filelist]
         print(lengths)
         run_filelist = np.concatenate(run_filelist)

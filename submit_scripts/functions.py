@@ -95,7 +95,7 @@ def get_files_from_folder(basepath, folderlist, compression_format, filelist, mu
             b = [os.path.join(subpath, s_file) for s_file in i3_files]
             print('Number of I3Files found {}'.format(len(b)))
             run_filelist[j].extend(b)
-    return run_filelist
+    return run_filelist, num_files
 
 
 def split_filelist():

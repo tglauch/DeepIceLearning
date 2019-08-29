@@ -53,6 +53,10 @@ def parseArguments():
         "--files_per_dataset",
         help="number of files per dataset",
         type=int)
+    parser.add_argument(
+        "--exclude",
+        help="strings that must be in filename",
+        type=str, nargs='+')
     args = parser.parse_args()
     return args.__dict__
 
@@ -119,9 +123,9 @@ if __name__ == '__main__':
         print(basepath)
         
 
-        run_filelist = get_files_from_folder(basepath, folderlist, args['compression_format'], filelist, args['must_contain'])
+        run_filelist, num_files = get_files_from_folder(basepath, folderlist, args['compression_format'],
+                                                         filelist, args['must_contain'], args['exclude'])
         print run_filelist
-        lasjdf
         if args['files_per_dataset'] is not None:
             filesjob = [args["files_per_job"] for j in range(len(run_filelist))]
             inds = [np.arange(0, int(args['files_per_dataset']), int(args["files_per_job"])) for j in range(len(run_filelist))]

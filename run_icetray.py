@@ -83,7 +83,7 @@ if __name__ == "__main__":
     else:
         use_geo = args.gcd
 
-    res_dicts.append(process_i3.run(files, -1 , settings, use_geo, pulsemap_key, do_classification=True)['reco_vals'])
+    res_dicts.append(process_i3.run(files, -1, settings, use_geo, pulsemap_key, do_classification=True)['reco_vals'])
 
     result =np.array([tuple(i) for i in np.concatenate(res_dicts)], dtype=dtype)
     print result
