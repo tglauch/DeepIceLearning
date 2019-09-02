@@ -1,6 +1,6 @@
 import os
 import numpy as np
-
+import scandir
 
 def harvest_generators(infiles):
     """
@@ -55,7 +55,11 @@ def get_files_from_folder(basepath, folderlist, compression_format, filelist, mu
         folderlists = []
         for p in basepath:
             tlist = []
-            for root, dirs, files in os.walk(p):
+            for root, dirs, files in scandir.walk(p):
+                print root
+                if root == 'logs':
+                    print('Skip Logs')
+                    continue
                 a =  [s_file for s_file in files
                      if (s_file[-6:] in compression_format) &
                         (not '_SLOP.' in s_file) & (not '_IT.' in s_file)&
@@ -73,15 +77,13 @@ def get_files_from_folder(basepath, folderlist, compression_format, filelist, mu
     if not filelist == 'allinfolder':
         filelist = filelist.split(',')
     num_files = []
-   # print folderlists
     run_filelist = []
     for j, bfolder in enumerate(folderlists):
 
         run_filelist.append([])
         for subpath in bfolder:
-            files = [f for f in os.listdir(subpath) if not os.path.isdir(f)]
-            i3_files_all = [s_file for s_file in files
-                            if (s_file[-6:] in compression_format) &
+            i3_files_all = [os.path.join(subpath, s_file) for s_file in os.listdir(subpath)
+                            if (s_file[-6:] in compression_format) & (not os.path.isdir(s_file)) & 
                             (not '_SLOP.' in s_file) & (not '_IT.' in s_file) &
                             (not 'GCD.' in s_file) & (not 'EHE.' in s_file)]
             if must_contain is not None:
@@ -92,9 +94,8 @@ def get_files_from_folder(basepath, folderlist, compression_format, filelist, mu
                 i3_files = [f for f in filelist if f in i3_files_all]
             else:
                 i3_files = i3_files_all
-            b = [os.path.join(subpath, s_file) for s_file in i3_files]
-            print('Number of I3Files found {}'.format(len(b)))
-            run_filelist[j].extend(b)
+            print('Number of I3Files found {}'.format(len(i3_files)))
+            run_filelist[j].extend(i3_files)
     return run_filelist, num_files
 
 

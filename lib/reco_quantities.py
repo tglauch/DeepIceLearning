@@ -186,7 +186,7 @@ def get_primary_nu(p_frame):
     if is_data(p_frame):
         return True
     if 'I3MCWeightDict' not in p_frame.keys():
-        return
+        return True
     I3Tree = p_frame['I3MCTree']
     # find first neutrino as seed for find_particle
     for p in I3Tree.get_primaries():
@@ -424,6 +424,8 @@ def millipede_max_loss(frame):
 def get_most_E_muon_info(frame, gcdfile=None, surface=None, tracklist='MMCTrackList', mctree='I3MCTree'):
     if is_data(frame):
         return True
+    if tracklist not in frame:
+        return True
     if surface is None:
         if gcdfile is None:
             surface = icecube.MuonGun.ExtrudedPolygon.from_I3Geometry(frame['I3Geometry'])
@@ -552,14 +554,14 @@ def first_interaction_point(frame, gcdfile=None, surface=None):
     return
 
 
-def classify_wrapper(p_frame, surface):
+def classify_wrapper(p_frame, surface, gcdfile=None):
     if is_data(p_frame):
         return True
     if 'I3MCWeightDict' in p_frame.keys():
-        classify(p_frame, surface=surface)
+        classify(p_frame, surface=surface, gcdfile=gcdfile)
         return
     else:
-        classify_corsika(p_frame, surface=surface)
+        classify_corsika(p_frame, surface=surface, gcdfile=gcdfile)
         return
 
 
