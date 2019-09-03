@@ -125,7 +125,6 @@ if __name__ == '__main__':
 
         run_filelist, num_files = get_files_from_folder(basepath, folderlist, args['compression_format'],
                                                          filelist, args['must_contain'], args['exclude'])
-        print run_filelist
         if args['files_per_dataset'] is not None:
             filesjob = [args["files_per_job"] for j in range(len(run_filelist))]
             inds = [np.arange(0, int(args['files_per_dataset']), int(args["files_per_job"])) for j in range(len(run_filelist))]

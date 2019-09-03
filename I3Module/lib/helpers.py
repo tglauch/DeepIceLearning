@@ -21,7 +21,6 @@ def median(arr, weights=None):
     rv = st.rv_discrete(values=(arr, weights / weights.sum()))
     return rv.median()
 
-
 #def read_variables(cfg_parser):
 #    """Function reading a config file, defining the variables to be read
 #       from the MC files.
