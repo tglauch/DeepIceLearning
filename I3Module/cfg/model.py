@@ -5,11 +5,7 @@ second part: model definition, name must be def model(input_shape):
 
 import numpy as np
 import tensorflow as tf
-sess = tf.Session()
 from keras import backend as K
-K.set_session(K.tf.Session(config=K.tf.ConfigProto(intra_op_parallelism_threads=4,
-                                                   inter_op_parallelism_threads=4)))
-#K.set_session(sess)
 import keras
 import keras.layers
 from keras import regularizers

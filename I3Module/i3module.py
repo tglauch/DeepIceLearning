@@ -1,8 +1,11 @@
+# coding: utf-8
+
 import sys
 import os
 dirname = os.path.dirname(__file__)
 sys.path.insert(0, '/home/tglauch/virtualenvs/tf_env3/lib/python2.7/site-packages')
 sys.path.insert(0, os.path.join(dirname, 'lib/'))
+sys.path.insert(0, os.path.join(dirname, 'models/'))
 from model_parser import parse_functional_model
 from helpers import *
 import numpy as np
@@ -15,40 +18,71 @@ from icecube.dataclasses import I3MapStringDouble
 from icecube import dataclasses, dataio
 import argparse
 from plotting import figsize, make_plot, plot_prediction
+from keras import backend as K
+import tensorflow as tf
 
 class DeepLearningClassifier(icetray.I3ConditionalModule):
+    """IceTray compatible class of the  Deep Learning Classifier
+    """
+
     def __init__(self,context):
+        """Initialize the Class
+        """
         icetray.I3ConditionalModule.__init__(self, context)
         self.AddParameter("pulsemap","Define the name of the pulsemap",
                           "InIceDSTPulses")
         self.AddParameter("save_as", "Define the Output key",
                           "Deep_Learning_Classification")
-        print('Init Deep Learning Classifier..this may take a while')
+        self.AddParameter("batch_size", "Size of the batches", 40)
+        self.AddParameter("n_cores", "number of cores to be used", 4)
+        self.AddParameter("keep_daq", "whether or not to keep Q-Frames", True)
+        self.AddParameter("model", "which model to use", 'classification')
 
     def Configure(self):
-        self._runinfo = np.load(os.path.join(dirname,'cfg/run_info.npy'), allow_pickle=True)[()]
-        self._grid = np.load(os.path.join(dirname, 'cfg/grid.npy'), allow_pickle=True)[()]
-        self._inp_shapes = self._runinfo['inp_shapes']
-        self._out_shapes = self._runinfo['out_shapes']
-        self._inp_trans = self._runinfo['inp_trans']
-        self._out_trans = self._runinfo['out_trans']
-        self._pulsemap = self.GetParameter("pulsemap") 
-        self._save_as =  self.GetParameter("save_as")
-        print("Im configured with {} and {}".format(self._pulsemap,self._save_as))
-        import cfg.model as func_model_def
-        self._model = func_model_def.model(self._inp_shapes, self._out_shapes)
-        self._model.load_weights(os.path.join(dirname, 'cfg/weights.npy'))
+        """Read the network architecture and input, output information from config files
+        """
+
+        print('Initialize the Deep Learning classifier..this may take a few seconds')
+        self.__runinfo = np.load(os.path.join(dirname,'models/{}/run_info.npy'.format(self.GetParameter("model"))),
+                                 allow_pickle=True)[()]
+        self.__grid = np.load(os.path.join(dirname, 'lib/grid.npy'),
+                              allow_pickle=True)[()]
+        self.__inp_shapes = self.__runinfo['inp_shapes']
+        self.__out_shapes = self.__runinfo['out_shapes']
+        self.__inp_trans = self.__runinfo['inp_trans']
+        self.__out_trans = self.__runinfo['out_trans']
+        self.__pulsemap = self.GetParameter("pulsemap") 
+        self.__save_as =  self.GetParameter("save_as")
+        self.__batch_size =  self.GetParameter("batch_size")
+        self.__n_cores =  self.GetParameter("n_cores")
+        self.__keep_daq = self.GetParameter("keep_daq") 
+        self.__frame_buffer = []
+        self.__buffer_length = 0
+        print("Pulsemap {},  Store results under {}".format(self.__pulsemap,self.__save_as))
+#        K.set_session(K.tf.Session(config=K.tf.ConfigProto(intra_op_parallelism_threads=self.__n_cores,
+#                                                           inter_op_parallelism_threads=self.__n_cores)))
+        exec 'import models.{}.model as func_model_def'.format(self.GetParameter("model"))
+        #import model as func_model_def
+        self.__output_names = func_model_def.output_names
+        print self.__output_names
+        self.__model = func_model_def.model(self.__inp_shapes, self.__out_shapes)
+        tf_session = K.tf.ConfigProto(intra_op_parallelism_threads=self.__n_cores,
+                                      inter_op_parallelism_threads=self.__n_cores)
+        K.set_session(K.tf.Session(graph=self.__model.output.graph, config= tf_session))
+        init = K.tf.global_variables_initializer()
+        K.get_session().run(init)
+        self.__model.load_weights(os.path.join(dirname, 'models/{}/weights.npy'.format(self.GetParameter("model"))))
         dataset_configparser = ConfigParser()
-        dataset_configparser.read(os.path.join(dirname,'cfg/config.cfg'))
+        dataset_configparser.read(os.path.join(dirname,'models/{}/config.cfg'.format(self.GetParameter("model"))))
         inp_defs = dict()
         for key in dataset_configparser['Input_Times']:
             inp_defs[key] = dataset_configparser['Input_Times'][key]
         for key in dataset_configparser['Input_Charges']:
             inp_defs[key] = dataset_configparser['Input_Charges'][key]
-        self._inputs = []
-        for key in self._inp_shapes.keys():
+        self.__inputs = []
+        for key in self.__inp_shapes.keys():
             binput = []
-            branch = self._inp_shapes[key]
+            branch = self.__inp_shapes[key]
             for bkey in branch.keys():
                 if bkey == 'general':
                     continue
@@ -56,76 +90,112 @@ class DeepLearningClassifier(icetray.I3ConditionalModule):
                     feature = 'pulses_quantiles(charges, times, {})'.format(float('0.' + bkey.split('_')[3]))
                 else:
                     feature = inp_defs[bkey.replace('IC_','')]
-                trans = self._inp_trans[key][bkey]
+                trans = self.__inp_trans[key][bkey]
                 binput.append((feature, trans))
-            self._inputs.append(binput)
+            self.__inputs.append(binput)
 
+    def BatchProcessBuffer(self, frames):
+        """Batch Process a list of frames. This includes pre-processing, prediction and storage of the results  
+        """        
+        timer_t0 = time.time()
+        f_slices = []
+        for frame in frames:
+            if frame.Stop != icetray.I3Frame.Physics:
+                continue
+            pulse_key = self.__pulsemap
+            if pulse_key not in frame.keys():
+                print('No Pulsemap called {}'.format(pulse_key))
+                return
+            f_slice = []
+            t0 = get_t0(frame, puls_key=pulse_key)
+            pulses = frame[pulse_key].apply(frame)
+            for key in self.__inp_shapes.keys():
+                f_slice.append(np.zeros(self.__inp_shapes[key]['general']))
+            for omkey in pulses.keys():
+                dom = (omkey.string, omkey.om)
+                if not dom in self.__grid.keys():
+                    continue
+                gpos = self.__grid[dom]
+                charges = np.array([p.charge for p in pulses[omkey][:]])
+                times = np.array([p.time for p in pulses[omkey][:]]) - t0
+                widths = np.array([p.width for p in pulses[omkey][:]])
+                for branch_c, inp_branch in enumerate(self.__inputs):
+                    for inp_c, inp in enumerate(inp_branch):
+                        f_slice[branch_c][gpos[0]][gpos[1]][gpos[2]][inp_c] = inp[1](eval(inp[0]))
+            processing_time = time.time() - timer_t0
+            f_slices.append(f_slice)
+        predictions = self.__model.predict(np.squeeze(f_slices, axis=1), batch_size=self.__batch_size,
+                                         verbose=0, steps=None)
+        prediction_time = time.time() - processing_time - timer_t0
+        i = 0
+        for frame in frames:
+            if frame.Stop != icetray.I3Frame.Physics:
+                continue
+            output = I3MapStringDouble()
+            prediction = np.concatenate(np.atleast_2d(predictions[i]))
+            for j in range(len(prediction)):
+                output[self.__output_names[j]] = float(prediction[j])
+            frame.Put(self.__save_as, output)
+            i += 1
+        tot_time = time.time() - timer_t0
+        print('Total Time {:.2f}s [{:.2f}s], Processing Time {:.2f}s [{:.2f}s], Prediction Time {:.2f}s [{:.2f}s]'.format(
+                tot_time, tot_time/i, processing_time, processing_time/i,
+                prediction_time, prediction_time/i))
 
     def Physics(self, frame):
-        timer_t0 = time.time()
-        #This runs on P-frames
-        pulse_key = self._pulsemap
-        if pulse_key not in frame.keys():
-            print('No Pulsemap called {}'.format(pulse_key))
-            return
-        f_slice = []
-        t0 = get_t0(frame, puls_key=pulse_key)
-        pulses = frame[pulse_key].apply(frame)
-        for key in self._inp_shapes.keys():
-            f_slice.append(np.zeros(self._inp_shapes[key]['general']))
-        for omkey in pulses.keys():
-            dom = (omkey.string, omkey.om)
-            if not dom in self._grid.keys():
-                continue
-            gpos = self._grid[dom]
-            charges = np.array([p.charge for p in pulses[omkey][:]])
-            times = np.array([p.time for p in pulses[omkey][:]]) - t0
-            widths = np.array([p.width for p in pulses[omkey][:]])
-            for branch_c, inp_branch in enumerate(self._inputs):
-                for inp_c, inp in enumerate(inp_branch):
-                    f_slice[branch_c][gpos[0]][gpos[1]][gpos[2]][inp_c] = inp[1](eval(inp[0]))
-        processing_time = time.time() - timer_t0
-        prediction = self._model.predict(np.array(f_slice, ndmin=5), batch_size=None, verbose=0,
-                                   steps=None)
-        prediction_time = time.time() - processing_time - timer_t0
-        output = I3MapStringDouble()
-        output['Skimming'] = float(prediction[0][0])
-        output['Cascade'] = float(prediction[0][1])
-        output['Through_Going_Track'] = float(prediction[0][2])
-        output['Starting_Track'] = float(prediction[0][3])
-        output['Stopping_Track'] = float(prediction[0][4])
-        frame.Put(self._save_as, output)
-        #print('Total Time {:.2f} s, Processing Time {:.2f}s, Prediction Time {:.2f}s'.format(time.time() - timer_t0, processing_time, prediction_time))
-        self.PushFrame(frame)
+        """ Buffer physics frames until batch size is reached, then start processing  
+        """
+        self.__frame_buffer.append(frame)
+        self.__buffer_length += 1
+        if self.__buffer_length == self.__batch_size:
+            self.BatchProcessBuffer(self.__frame_buffer)
+            for frame in self.__frame_buffer:
+                self.PushFrame(frame)
+            self.__frame_buffer[:] = []
+            self.__buffer_length = 0
 
     def DAQ(self,frame):
-        #This runs on Q-Frames
-        self.PushFrame(frame)
+        """ Handel Q-Frames. Append to buffer if they should be kept
+        """
+        if self.__keep_daq:
+            self.__frame_buffer.append(frame)
 
     def Finish(self):
-        #Here we can perform cleanup work (closing file handles etc.)
-        pass
+        """ Process the remaining (incomplete) batch of frames  
+        """
+        self.BatchProcessBuffer(self.__frame_buffer)
+        for frame in self.__frame_buffer:
+            self.PushFrame(frame)
+        self.__frame_buffer[:] = []
+
 
 def print_info(phy_frame):
-    print('run_id {} ev_id {}'.format(phy_frame['I3EventHeader'].run_id, phy_frame['I3EventHeader'].event_id))
+    print('Run_ID {} Event_ID {}'.format(phy_frame['I3EventHeader'].run_id,
+                                         phy_frame['I3EventHeader'].event_id))
     print(phy_frame["Deep_Learning_Classification"])
     return
+
 
 def parseArguments():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--files",
-        help="files to be processed",
+        "--files", help="files to be processed",
         type=str, nargs="+", required=True)
     parser.add_argument(
-        "--plot",
-        action="store_true",
-        default=False)
+        "--plot", action="store_true", default=False)
     parser.add_argument(
-        "--pulsemap",
-        type=str, default="InIceDSTPulses")    
+        "--pulsemap", type=str, default="InIceDSTPulses")
+    parser.add_argument(
+        "--batch_size", type=int, default=40)
+    parser.add_argument(
+        "--n_cores", type=int, default=4)
+    parser.add_argument(
+        "--keep_daq", action='store_true', default=False)
+    parser.add_argument(
+        "--model", type=str, default='classification')    
     args = parser.parse_args()
     return args
+
 
 if __name__ == "__main__":
     args = parseArguments()
@@ -139,9 +209,16 @@ if __name__ == "__main__":
     tray = I3Tray()
     tray.AddModule('I3Reader','reader',
                    FilenameList = files)
-    tray.AddModule(DeepLearningClassifier, "DeepLearningClassifier", pulsemap=args.pulsemap)
+    tray.AddModule(DeepLearningClassifier, "DeepLearningClassifier",
+                   pulsemap=args.pulsemap,
+                   batch_size=args.batch_size,
+                   n_cores=args.n_cores,
+                   keep_daq=args.keep_daq,
+                   model=args.model)
     tray.AddModule(print_info, 'printer',
                    Streams=[icetray.I3Frame.Physics])
+    tray.AddModule("I3Writer", 'writer',
+                   Filename=os.path.expanduser("~/myhdf.i3.bz2"))
     if args.plot:
         tray.AddModule(make_plot, 'plotter',
                        Streams=[icetray.I3Frame.Physics])
