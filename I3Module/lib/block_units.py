@@ -1,7 +1,7 @@
 from keras.models import Model
 from keras.layers import *
 from keras.layers.core import Activation, Layer
-
+from keras import backend as K
 
 def conv_block(feat_maps_out, prev, kernel_size=(3, 3, 5)):
     # Specifying the axis and mode allows for later merging

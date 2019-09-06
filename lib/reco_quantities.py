@@ -387,6 +387,8 @@ def get_inelasticity(p_frame, mctree='I3MCTree'):
     return
 
 def millipede_rel_highest_loss(frame):
+    if not 'SplineMPE_MillipedeHighEnergyMIE' in frame:
+        return
     e_losses = [i.energy for i in frame['SplineMPE_MillipedeHighEnergyMIE'] if i.energy > 0.]
     if len(e_losses) == 0:
         val = 0
@@ -397,12 +399,16 @@ def millipede_rel_highest_loss(frame):
 
 
 def millipede_n_losses(frame):
+    if not 'SplineMPE_MillipedeHighEnergyMIE' in frame:
+        return
     e_losses = [i.energy for i in frame['SplineMPE_MillipedeHighEnergyMIE'] if i.energy > 0.]
     frame.Put("millipede_n_loss", dataclasses.I3Double(len(e_losses)))
     return
 
 
 def millipede_std(frame):
+    if not 'SplineMPE_MillipedeHighEnergyMIE' in frame:
+        return
     e_losses = [i.energy for i in frame['SplineMPE_MillipedeHighEnergyMIE'] if i.energy>0.]
     if len(e_losses) == 0:
         val = 0
@@ -413,6 +419,8 @@ def millipede_std(frame):
 
 
 def millipede_max_loss(frame):
+    if not 'SplineMPE_MillipedeHighEnergyMIE' in frame:
+        return
     e_losses = [i.energy for i in frame['SplineMPE_MillipedeHighEnergyMIE'] if i.energy>0.]
     if len(e_losses) == 0:
         val= 0

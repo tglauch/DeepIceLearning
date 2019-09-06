@@ -30,7 +30,7 @@ def parseArguments():
     parser.add_argument(
         "--request_RAM",
         help="amount of RAM in GB",
-        type=int, default=3)
+        type=int, default=5)
     parser.add_argument(
         "--compression_format",
         help="which compression format to use",
@@ -83,11 +83,9 @@ if __name__ == '__main__':
             os.makedirs(PROCESS_DIR)
 
         WORKDIR = os.path.join(PROCESS_DIR, "jobs/")
-        script = os.path.join(
-            dataset_parser.get("Basics", "thisfolder"),
-            'submit_scripts/icetray_env.sh')
+        dirname =os.path.abspath(os.path.dirname(__file__))
+        script = os.path.join(dirname,'icetray_env.sh')
         print('Submit Script:\n {}'.format(script))
-
         dag_name = args["name"]
         dagFile = os.path.join(
             WORKDIR, "job_{}.dag".format(dag_name))

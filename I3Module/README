@@ -1,7 +1,5 @@
 This I3Module can be used to perform a DeepLearning Classification on IceCube events. There are two ways to run
-this module as explained below.  Report any problems to Theo Glauch (theo.glauch@tum.de). Note that the module is 
-currently optimized for running the Deep Learning predictions on the GPU, this is currently limiting speed.
-
+this module as explained below.  Report any problems to Theo Glauch (theo.glauch@tum.de).
 
 # Requirements of the module
 
@@ -10,7 +8,7 @@ The module requires an installation of icerec as well as a short list of python 
 - configparser
 - numpy
 - scipy
-
+- keras
 
 # How to install the module
 
@@ -19,15 +17,16 @@ Before the installation of the required packages copy all the files of the I3Mod
     1. source /cvmfs/icecube.opensciencegrid.org/py2-v3.0.1/RHEL_7_x86_64/metaprojects/icerec/V05-02-03/env-shell.sh
     2. virtualenv -p /cvmfs/icecube.opensciencegrid.org/py2-v3.0.1/RHEL_7_x86_64/bin/python venv
     3. source venv/bin/activate
-    4. pip install tensorflow numpy scipy configparser
-    5. change the PYTHONPATH in the i3module.sh to your venv site-packages location, e.g. /A/B/venv/lib/python2.7/site-packages  
-    6. start a clean shell
+    4. pip install tensorflow numpy scipy configparser keras
+       (note that this only installs the cpu version of tensorflow, if you want to run a on a gpu use tensorflow-gpu)
+    5. change the PY_ENV variable in i3module.sh to the path of your virtualenv  
+    6. change the IC_ENV variable according with your installation
     7. run the script as explaind below in 1.)
 
 Remark: In case you get the error `ImportError: No module named google.protobuf` just add an __init__.py to the google.protobuf installation in your
-        site-packages by running something like: 
+        site-packages by running: 
         
-        touch /A/B/venv/lib/python2.7/site-packages/google/__init__.py
+        touch /path/to/your/venv/lib/python2.7/site-packages/google/__init__.py
 
 # How to use the module
 
@@ -35,7 +34,8 @@ Remark: In case you get the error `ImportError: No module named google.protobuf`
 
     bash i3module.sh --files path_file1 path_file2 ...
 
-    example: bash i3module.sh --files /data/ana/Diffuse/IC2010-2014_NuMu/IC86-2012/datasets/finallevel/sim/2012/neutrino-generator/BDT_training/11029_00000-01999/FinalLevel_NuMu_IC86-2018_168.i3.zst
+    example:
+    bash i3module.sh --files /data/ana/Diffuse/IC2010-2014_NuMu/IC86-2012/datasets/finallevel/sim/2012/neutrino-generator/BDT_training/11029_00000-01999/FinalLevel_NuMu_IC86-2018_116.i3.zst --batch_size 100 --n_cores 4
 
     For each event run and evend number as well as the Deep Learning prediction are printed.
     The output contains the p-scores for each class in the form of 
@@ -44,6 +44,8 @@ Remark: In case you get the error `ImportError: No module named google.protobuf`
 
 2.) Include the module in another icetray script by importing from i3module.py
 
+    import sys
+    sys.path.append('/path/to/the/I3Module')
     from i3module import DeepLearningClassifier
 
 

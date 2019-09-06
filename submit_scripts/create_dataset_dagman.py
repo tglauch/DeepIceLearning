@@ -36,7 +36,7 @@ def parseArguments():
     parser.add_argument(
         "--request_RAM",
         help="amount of RAM in GB",
-        type=int, default=2)
+        type=int, default=4)
     parser.add_argument(
         "--compression_format",
         help="which compression format to use",

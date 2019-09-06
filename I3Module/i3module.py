@@ -2,8 +2,13 @@
 
 import sys
 import os
+with open('./i3module.sh', 'r') as f:
+    x=f.read().splitlines()
+for i in x:
+    if '#' in i: continue
+    if 'PY_ENV=' in i: break
 dirname = os.path.dirname(__file__)
-sys.path.insert(0, '/home/tglauch/virtualenvs/tf_env3/lib/python2.7/site-packages')
+sys.path.insert(0,os.path.join(i.split('=')[1], 'lib/python2.7/site-packages/'))
 sys.path.insert(0, os.path.join(dirname, 'lib/'))
 sys.path.insert(0, os.path.join(dirname, 'models/'))
 from model_parser import parse_functional_model
@@ -18,7 +23,7 @@ from icecube.dataclasses import I3MapStringDouble
 from icecube import dataclasses, dataio
 import argparse
 from plotting import figsize, make_plot, plot_prediction
-from keras import backend as K
+from keras.backend.tensorflow_backend import set_session
 import tensorflow as tf
 
 class DeepLearningClassifier(icetray.I3ConditionalModule):
@@ -59,18 +64,13 @@ class DeepLearningClassifier(icetray.I3ConditionalModule):
         self.__frame_buffer = []
         self.__buffer_length = 0
         print("Pulsemap {},  Store results under {}".format(self.__pulsemap,self.__save_as))
-#        K.set_session(K.tf.Session(config=K.tf.ConfigProto(intra_op_parallelism_threads=self.__n_cores,
-#                                                           inter_op_parallelism_threads=self.__n_cores)))
         exec 'import models.{}.model as func_model_def'.format(self.GetParameter("model"))
-        #import model as func_model_def
         self.__output_names = func_model_def.output_names
-        print self.__output_names
         self.__model = func_model_def.model(self.__inp_shapes, self.__out_shapes)
-        tf_session = K.tf.ConfigProto(intra_op_parallelism_threads=self.__n_cores,
-                                      inter_op_parallelism_threads=self.__n_cores)
-        K.set_session(K.tf.Session(graph=self.__model.output.graph, config= tf_session))
-        init = K.tf.global_variables_initializer()
-        K.get_session().run(init)
+        config = tf.ConfigProto(intra_op_parallelism_threads=self.__n_cores,
+                                inter_op_parallelism_threads=self.__n_cores)
+        sess = tf.Session(config=config)
+        set_session(sess)
         self.__model.load_weights(os.path.join(dirname, 'models/{}/weights.npy'.format(self.GetParameter("model"))))
         dataset_configparser = ConfigParser()
         dataset_configparser.read(os.path.join(dirname,'models/{}/config.cfg'.format(self.GetParameter("model"))))
