@@ -21,32 +21,6 @@ def median(arr, weights=None):
     rv = st.rv_discrete(values=(arr, weights / weights.sum()))
     return rv.median()
 
-#def read_variables(cfg_parser):
-#    """Function reading a config file, defining the variables to be read
-#       from the MC files.
-#
-#    Arguments:
-#    cfg_parser: config parser object for the config file
-#
-#    Returns:
-#    dtype : the dtype object defining the shape and names of the MC output
-#    data_source: list defining the types,names and ranges of monte carlo data
-#                to be saved from a physics frame
-#                (e.g [('variable',['MCMostEnergeticTrack'].energy, [1e2,1e9])])
-#    """
-#    dtype = []
-#    data_source = []
-#    cut = [-np.inf, np.inf]
- #   for i in cfg_parser['Variables'].keys():
-#        data_source.append(('variable', cfg_parser['Variables'][i], cut))
-#        dtype.append((str(i), np.float64))
-#    for i in cfg_parser['Functions'].keys():
-#        data_source.append(('function', cfg_parser['Functions'][i]+'(_icframe_)', cut))
-#        dtype.append((str(i), np.float64))
-#    dtype = np.dtype(dtype)
-#    return dtype, data_source
-
-
 def charge_after_time(charges, times, t=100):
     mask = (times - np.min(times)) < t
     return np.sum(charges[mask])

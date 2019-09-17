@@ -65,6 +65,7 @@ class DeepLearningClassifier(icetray.I3ConditionalModule):
         self.__keep_daq = self.GetParameter("keep_daq") 
         self.__frame_buffer = []
         self.__buffer_length = 0
+        self.__num_pframes = 0
         print("Pulsemap {},  Store results under {}".format(self.__pulsemap,self.__save_as))
         exec 'import models.{}.model as func_model_def'.format(self.GetParameter("model"))
         self.__output_names = func_model_def.output_names
@@ -103,13 +104,14 @@ class DeepLearningClassifier(icetray.I3ConditionalModule):
         """        
         timer_t0 = time.time()
         f_slices = []
-        num_pframes = 0
+        if self.__num_pframes == 0:
+            return
         for frame in frames:
             if frame.Stop != icetray.I3Frame.Physics:
                 continue
             pulse_key = self.__pulsemap
             if pulse_key not in frame.keys():
-                print('No Pulsemap called {}'.format(pulse_key))
+                print('No Pulsemap called {}..continue without prediction'.format(pulse_key))
                 return
             f_slice = []
             t0 = get_t0(frame, puls_key=pulse_key)
@@ -129,38 +131,38 @@ class DeepLearningClassifier(icetray.I3ConditionalModule):
                         f_slice[branch_c][gpos[0]][gpos[1]][gpos[2]][inp_c] = inp[1](eval(inp[0]))
             processing_time = time.time() - timer_t0
             f_slices.append(f_slice)
-            num_pframes += 1
-        if num_pframes > 0:
-            predictions = self.__model.predict(np.array(np.squeeze(f_slices, axis=1), ndmin=5),
-                                               batch_size=self.__batch_size,
-                                               verbose=0, steps=None)
-            prediction_time = time.time() - processing_time - timer_t0
-            i = 0
-            for frame in frames:
-                if frame.Stop != icetray.I3Frame.Physics:
-                    continue
-                output = I3MapStringDouble()
-                prediction = np.concatenate(np.atleast_2d(predictions[i]))
-                for j in range(len(prediction)):
-                    output[self.__output_names[j]] = float(prediction[j])
-                frame.Put(self.__save_as, output)
-                i += 1
-            tot_time = time.time() - timer_t0
-            print('Total Time {:.2f}s [{:.2f}s], Processing Time {:.2f}s [{:.2f}s], Prediction Time {:.2f}s [{:.2f}s]'.format(
-                    tot_time, tot_time/i, processing_time, processing_time/i,
-                    prediction_time, prediction_time/i))
+        predictions = self.__model.predict(np.array(np.squeeze(f_slices, axis=1), ndmin=5),
+                                           batch_size=self.__batch_size,
+                                           verbose=0, steps=None)
+        prediction_time = time.time() - processing_time - timer_t0
+        i = 0
+        for frame in frames:
+            if frame.Stop != icetray.I3Frame.Physics:
+                continue
+            output = I3MapStringDouble()
+            prediction = np.concatenate(np.atleast_2d(predictions[i]))
+            for j in range(len(prediction)):
+                output[self.__output_names[j]] = float(prediction[j])
+            frame.Put(self.__save_as, output)
+            i += 1
+        tot_time = time.time() - timer_t0
+        print('Total Time {:.2f}s [{:.2f}s], Processing Time {:.2f}s [{:.2f}s], Prediction Time {:.2f}s [{:.2f}s]'.format(
+                tot_time, tot_time/i, processing_time, processing_time/i,
+                prediction_time, prediction_time/i))
 
     def Physics(self, frame):
         """ Buffer physics frames until batch size is reached, then start processing  
         """
         self.__frame_buffer.append(frame)
         self.__buffer_length += 1
+        self.__num_pframes += 1
         if self.__buffer_length == self.__batch_size:
             self.BatchProcessBuffer(self.__frame_buffer)
             for frame in self.__frame_buffer:
                 self.PushFrame(frame)
             self.__frame_buffer[:] = []
             self.__buffer_length = 0
+            self.__num_pframes = 0
 
     def DAQ(self,frame):
         """ Handel Q-Frames. Append to buffer if they should be kept
