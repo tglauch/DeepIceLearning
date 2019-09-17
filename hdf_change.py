@@ -32,23 +32,27 @@ def parseArguments():
         "--datadir",
         help=" data directory",
         type=str)
+    parser.add_argument(
+        "--picker",
+        help="which picker function to use",
+        type=str, default='mu_e_reco')
     args = parser.parse_args()
     return args
 
 
 args = parseArguments().__dict__
 print args
-
-DATA_DIR = args["datadir"]
+exec 'import pickers.{} as picker'.format(args['picker'])
 input_shape = [10, 10, 60]
 FILTERS = tables.Filters(complib='zlib', complevel=9)
 
 if args['filelist'] is not None:
     file_list = args["filelist"]
     print file_list
-elif DATA_DIR is not None:
+elif args["datadir"] is not None:
+    DATA_DIR = args["datadir"]
     file_list = [i for i in os.listdir(DATA_DIR) if '.h5' in i]
-tfile = os.path.join(DATA_DIR, file_list[0])
+tfile = file_list[0]
 print('Try to open {}'.format(tfile))
 hf1 = h5.File(tfile, 'r')
 keys = hf1.keys()
@@ -71,11 +75,11 @@ with tables.open_file(args['outfile'], mode="w", title="Events for training the 
     a= time.time()
     for fili in file_list:
         print('Open {}'.format(fili))
-        one_h5file = h5.File(os.path.join(DATA_DIR, fili), 'r')
+        one_h5file = h5.File(fili, 'r')
         num_events = len(one_h5file["reco_vals"])
         for k in np.random.choice(num_events, num_events, replace=False):
             print k
-            if pick_events(one_h5file["reco_vals"][k]) == False:
+            if picker.pick_events(one_h5file["reco_vals"][k]) == False:
                 print('continue')
                 continue             
             for i, okey in enumerate(keys[:-1]):

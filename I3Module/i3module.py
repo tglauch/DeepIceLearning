@@ -2,12 +2,14 @@
 
 import sys
 import os
-with open('./i3module.sh', 'r') as f:
+print(os.system("nvidia-smi"))
+os.environ["TF_USE_CUDNN"] = "0"
+dirname = os.path.dirname(__file__)
+with open(os.path.join(dirname,'./i3module.sh'), 'r') as f:
     x=f.read().splitlines()
 for i in x:
     if '#' in i: continue
     if 'PY_ENV=' in i: break
-dirname = os.path.dirname(__file__)
 sys.path.insert(0,os.path.join(i.split('=')[1], 'lib/python2.7/site-packages/'))
 sys.path.insert(0, os.path.join(dirname, 'lib/'))
 sys.path.insert(0, os.path.join(dirname, 'models/'))
@@ -68,7 +70,9 @@ class DeepLearningClassifier(icetray.I3ConditionalModule):
         self.__output_names = func_model_def.output_names
         self.__model = func_model_def.model(self.__inp_shapes, self.__out_shapes)
         config = tf.ConfigProto(intra_op_parallelism_threads=self.__n_cores,
-                                inter_op_parallelism_threads=self.__n_cores)
+                                inter_op_parallelism_threads=self.__n_cores,
+                                device_count = {'GPU': 1 , 'CPU': 1},
+                                log_device_placement=True)
         sess = tf.Session(config=config)
         set_session(sess)
         self.__model.load_weights(os.path.join(dirname, 'models/{}/weights.npy'.format(self.GetParameter("model"))))
@@ -99,6 +103,7 @@ class DeepLearningClassifier(icetray.I3ConditionalModule):
         """        
         timer_t0 = time.time()
         f_slices = []
+        num_pframes = 0
         for frame in frames:
             if frame.Stop != icetray.I3Frame.Physics:
                 continue
@@ -124,23 +129,26 @@ class DeepLearningClassifier(icetray.I3ConditionalModule):
                         f_slice[branch_c][gpos[0]][gpos[1]][gpos[2]][inp_c] = inp[1](eval(inp[0]))
             processing_time = time.time() - timer_t0
             f_slices.append(f_slice)
-        predictions = self.__model.predict(np.squeeze(f_slices, axis=1), batch_size=self.__batch_size,
-                                         verbose=0, steps=None)
-        prediction_time = time.time() - processing_time - timer_t0
-        i = 0
-        for frame in frames:
-            if frame.Stop != icetray.I3Frame.Physics:
-                continue
-            output = I3MapStringDouble()
-            prediction = np.concatenate(np.atleast_2d(predictions[i]))
-            for j in range(len(prediction)):
-                output[self.__output_names[j]] = float(prediction[j])
-            frame.Put(self.__save_as, output)
-            i += 1
-        tot_time = time.time() - timer_t0
-        print('Total Time {:.2f}s [{:.2f}s], Processing Time {:.2f}s [{:.2f}s], Prediction Time {:.2f}s [{:.2f}s]'.format(
-                tot_time, tot_time/i, processing_time, processing_time/i,
-                prediction_time, prediction_time/i))
+            num_pframes += 1
+        if num_pframes > 0:
+            predictions = self.__model.predict(np.array(np.squeeze(f_slices, axis=1), ndmin=5),
+                                               batch_size=self.__batch_size,
+                                               verbose=0, steps=None)
+            prediction_time = time.time() - processing_time - timer_t0
+            i = 0
+            for frame in frames:
+                if frame.Stop != icetray.I3Frame.Physics:
+                    continue
+                output = I3MapStringDouble()
+                prediction = np.concatenate(np.atleast_2d(predictions[i]))
+                for j in range(len(prediction)):
+                    output[self.__output_names[j]] = float(prediction[j])
+                frame.Put(self.__save_as, output)
+                i += 1
+            tot_time = time.time() - timer_t0
+            print('Total Time {:.2f}s [{:.2f}s], Processing Time {:.2f}s [{:.2f}s], Prediction Time {:.2f}s [{:.2f}s]'.format(
+                    tot_time, tot_time/i, processing_time, processing_time/i,
+                    prediction_time, prediction_time/i))
 
     def Physics(self, frame):
         """ Buffer physics frames until batch size is reached, then start processing  
