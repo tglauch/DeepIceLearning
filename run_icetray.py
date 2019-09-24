@@ -40,7 +40,7 @@ if __name__ == "__main__":
     dataset_configparser = ConfigParser()
     try:
         dataset_configparser.read(args.dataset_config)
-        print "Config is found {}".format(dataset_configparser)
+        print "Config is found {}".format(args.dataset_config)
     except Exception as ex:
         raise Exception('Config File is missing or unreadable!!!!')
         print ex

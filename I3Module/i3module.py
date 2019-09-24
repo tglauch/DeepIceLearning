@@ -3,14 +3,13 @@
 import sys
 import os
 print(os.system("nvidia-smi"))
-os.environ["TF_USE_CUDNN"] = "0"
 dirname = os.path.dirname(__file__)
 with open(os.path.join(dirname,'./i3module.sh'), 'r') as f:
     x=f.read().splitlines()
 for i in x:
     if '#' in i: continue
     if 'PY_ENV=' in i: break
-sys.path.insert(0,os.path.join(i.split('=')[1], 'lib/python2.7/site-packages/'))
+#sys.path.insert(0,os.path.join(i.split('=')[1], 'lib/python2.7/site-packages/'))
 sys.path.insert(0, os.path.join(dirname, 'lib/'))
 sys.path.insert(0, os.path.join(dirname, 'models/'))
 from model_parser import parse_functional_model
@@ -18,7 +17,7 @@ from helpers import *
 import numpy as np
 from icecube import icetray
 from I3Tray import I3Tray
-from configparser import ConfigParser
+import ConfigParser
 from collections import OrderedDict
 import time
 from icecube.dataclasses import I3MapStringDouble
@@ -66,24 +65,13 @@ class DeepLearningClassifier(icetray.I3ConditionalModule):
         self.__frame_buffer = []
         self.__buffer_length = 0
         self.__num_pframes = 0
-        print("Pulsemap {},  Store results under {}".format(self.__pulsemap,self.__save_as))
-        exec 'import models.{}.model as func_model_def'.format(self.GetParameter("model"))
-        self.__output_names = func_model_def.output_names
-        self.__model = func_model_def.model(self.__inp_shapes, self.__out_shapes)
-        config = tf.ConfigProto(intra_op_parallelism_threads=self.__n_cores,
-                                inter_op_parallelism_threads=self.__n_cores,
-                                device_count = {'GPU': 1 , 'CPU': 1},
-                                log_device_placement=True)
-        sess = tf.Session(config=config)
-        set_session(sess)
-        self.__model.load_weights(os.path.join(dirname, 'models/{}/weights.npy'.format(self.GetParameter("model"))))
-        dataset_configparser = ConfigParser()
+        dataset_configparser = ConfigParser.ConfigParser()
         dataset_configparser.read(os.path.join(dirname,'models/{}/config.cfg'.format(self.GetParameter("model"))))
         inp_defs = dict()
-        for key in dataset_configparser['Input_Times']:
-            inp_defs[key] = dataset_configparser['Input_Times'][key]
-        for key in dataset_configparser['Input_Charges']:
-            inp_defs[key] = dataset_configparser['Input_Charges'][key]
+        for key in dataset_configparser.options('Input_Times'):
+            inp_defs[key] = dataset_configparser.get('Input_Times', key)
+        for key in dataset_configparser.options('Input_Charges'):
+            inp_defs[key] = dataset_configparser.get('Input_Charges', key)
         self.__inputs = []
         for key in self.__inp_shapes.keys():
             binput = []
@@ -98,6 +86,20 @@ class DeepLearningClassifier(icetray.I3ConditionalModule):
                 trans = self.__inp_trans[key][bkey]
                 binput.append((feature, trans))
             self.__inputs.append(binput)
+
+
+        print("Pulsemap {},  Store results under {}".format(self.__pulsemap,self.__save_as))
+        exec 'import models.{}.model as func_model_def'.format(self.GetParameter("model"))
+        self.__output_names = func_model_def.output_names
+        self.__model = func_model_def.model(self.__inp_shapes, self.__out_shapes)
+        config = tf.ConfigProto(intra_op_parallelism_threads=self.__n_cores,
+                                inter_op_parallelism_threads=self.__n_cores,
+                                device_count = {'GPU': 1 , 'CPU': 1},
+                                log_device_placement=False)
+        sess = tf.Session(config=config)
+        set_session(sess)
+        self.__model.load_weights(os.path.join(dirname, 'models/{}/weights.npy'.format(self.GetParameter("model"))))
+
 
     def BatchProcessBuffer(self, frames):
         """Batch Process a list of frames. This includes pre-processing, prediction and storage of the results  
@@ -146,7 +148,7 @@ class DeepLearningClassifier(icetray.I3ConditionalModule):
             frame.Put(self.__save_as, output)
             i += 1
         tot_time = time.time() - timer_t0
-        print('Total Time {:.2f}s [{:.2f}s], Processing Time {:.2f}s [{:.2f}s], Prediction Time {:.2f}s [{:.2f}s]'.format(
+        print('Total Time {:.2f}s [{:.2f}s], Processing Time {:.2f}s [{:.2f}s], Prediction Time {:.3f}s [{:.3f}s]'.format(
                 tot_time, tot_time/i, processing_time, processing_time/i,
                 prediction_time, prediction_time/i))
 
@@ -202,7 +204,9 @@ def parseArguments():
     parser.add_argument(
         "--keep_daq", action='store_true', default=False)
     parser.add_argument(
-        "--model", type=str, default='classification')    
+        "--model", type=str, default='classification')
+    parser.add_argument(
+        "--outfile", type=str, default="~/myhdf.i3.bz2")    
     args = parser.parse_args()
     return args
 
@@ -228,7 +232,7 @@ if __name__ == "__main__":
     tray.AddModule(print_info, 'printer',
                    Streams=[icetray.I3Frame.Physics])
     tray.AddModule("I3Writer", 'writer',
-                   Filename=os.path.expanduser("~/myhdf.i3.bz2"))
+                   Filename=args.outfile)
     if args.plot:
         tray.AddModule(make_plot, 'plotter',
                        Streams=[icetray.I3Frame.Physics])
