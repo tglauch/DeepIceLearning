@@ -24,11 +24,11 @@ def plot_prediction(prediction, figax=(None,None)):
     ax.set_xlabel('Prediction Score')
     return fig, ax
 
-def make_plot(frame, key="Deep_Learning_Classification"):
-    ofolder = os.path.join(dirname, 'plots')
-    if not os.path.exists(ofolder):
-        os.makedirs(ofolder)
-
+def make_plot(frame, key="Deep_Learning_Classification", figpath=''):
+    if figpath =='':
+        ofolder = '/home/tglauch/'
+        figpath = os.path.join(ofolder, '{}_{}.pdf'.format(frame['I3EventHeader'].run_id,
+                                                 frame['I3EventHeader'].event_id))
     prediction = [frame[key]['Skimming'],
                   frame[key]['Cascade'],
                   frame[key]['Through_Going_Track'],
@@ -36,7 +36,6 @@ def make_plot(frame, key="Deep_Learning_Classification"):
                   frame[key]['Stopping_Track']]
     prediction = np.array(prediction)
     fig, ax = plot_prediction(prediction)
-    fig.savefig(os.path.join(ofolder, '{}_{}.pdf'.format(frame['I3EventHeader'].run_id,
-               frame['I3EventHeader'].event_id)), bbox_inches='tight')
+    fig.savefig(figpath, bbox_inches='tight')
     return
 

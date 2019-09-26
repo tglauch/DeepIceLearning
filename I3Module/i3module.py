@@ -9,9 +9,10 @@ with open(os.path.join(dirname,'./i3module.sh'), 'r') as f:
 for i in x:
     if '#' in i: continue
     if 'PY_ENV=' in i: break
-#sys.path.insert(0,os.path.join(i.split('=')[1], 'lib/python2.7/site-packages/'))
+#sys.path.append(os.path.join(i.split('=')[1], 'lib/python2.7/site-packages/'))
 sys.path.insert(0, os.path.join(dirname, 'lib/'))
 sys.path.insert(0, os.path.join(dirname, 'models/'))
+print sys.path
 from model_parser import parse_functional_model
 from helpers import *
 import numpy as np
