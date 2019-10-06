@@ -2,14 +2,7 @@
 
 import sys
 import os
-print(os.system("nvidia-smi"))
 dirname = os.path.dirname(__file__)
-with open(os.path.join(dirname,'./i3module.sh'), 'r') as f:
-    x=f.read().splitlines()
-for i in x:
-    if '#' in i: continue
-    if 'PY_ENV=' in i: break
-#sys.path.append(os.path.join(i.split('=')[1], 'lib/python2.7/site-packages/'))
 sys.path.insert(0, os.path.join(dirname, 'lib/'))
 sys.path.insert(0, os.path.join(dirname, 'models/'))
 print sys.path
