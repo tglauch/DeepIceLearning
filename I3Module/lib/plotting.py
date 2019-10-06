@@ -2,6 +2,7 @@ import matplotlib
 matplotlib.use('pdf')
 import matplotlib.pyplot as plt
 import numpy as np
+import os 
 
 def figsize(scale, ratio=(np.sqrt(5.0)-1.0)/2.0):
     fig_width_pt = 455.8843                         # Get this from LaTeX using \the\textwidth
@@ -24,9 +25,9 @@ def plot_prediction(prediction, figax=(None,None)):
     ax.set_xlabel('Prediction Score')
     return fig, ax
 
-def make_plot(frame, key="Deep_Learning_Classification", figpath=''):
+def make_plot(frame, key="Deep_Learning_Classification", ofolder='~', figpath=''):
+    ofolder = os.path.expanduser(ofolder)
     if figpath =='':
-        ofolder = '/home/tglauch/'
         figpath = os.path.join(ofolder, '{}_{}.pdf'.format(frame['I3EventHeader'].run_id,
                                                  frame['I3EventHeader'].event_id))
     prediction = [frame[key]['Skimming'],
