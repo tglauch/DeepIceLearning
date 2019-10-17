@@ -6,6 +6,8 @@ from configparser import ConfigParser
 from lib.functions_create_dataset import read_variables
 import numpy as np
 import importlib
+print('pythonpath {}'.format(os.environ['pythonpath']))
+sys.path.insert(0, os.environ['pythonpath'])
 
 def parseArguments():
     parser = argparse.ArgumentParser()

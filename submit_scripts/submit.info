@@ -1,0 +1,8 @@
+executable   = ./hdf_change.sh
+request_cpus= {ncpus} 
+request_memory = {mem}GB
+log          = {flog}/{fname}.log 
+output       = {fcondor}/{fname}.out 
+error        = {fcondor}/{fname}.err 
+arguments =  {args} 
+queue 1 

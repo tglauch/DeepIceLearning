@@ -59,6 +59,8 @@ def parseArguments():
         "--muongun",
         help="If create generator with this savepath",
         type=str)
+    parser.add_argument(
+        "--gpu", action='store_true', default=False)
     args = parser.parse_args()
     return args.__dict__
 
@@ -98,7 +100,10 @@ if __name__ == '__main__':
 
     WORKDIR = os.path.join(PROCESS_DIR, "jobs/")
     dirname =os.path.abspath(os.path.dirname(__file__))
-    script = os.path.join(dirname,'icetray_env.sh')
+    if args['gpu']:
+        script = os.path.join(dirname,'icetray_env_gpu.sh')
+    else:
+        script = os.path.join(dirname,'icetray_env.sh')
     print('Submit Script:\n {}'.format(script))
     dag_name = args["name"] + add_str
     dagFile = os.path.join(
@@ -128,13 +133,12 @@ if __name__ == '__main__':
                          #"Requirements" : "HAS_CVMFS_icecube_opensciencegrid_org",
     #                    "Requirements" : '(Machine != "n-15.icecube.wisc.edu")',
                          #"Requirements" : '(CUDARuntimeVersion >= 10.0)',
-                         "Requirements" : ' CUDACapability',
-                         "+SingularityImage" : '\"/home/tglauch/tensorflow.simg\"',
-                         #"+SingularityImage" : ' \"/home/tglauch/tensorflow_latest.sif\"',
                          "request_memory": RAM_str,
-                         "request_gpus": 1,
-                        # "request_cpus" : 1,
+                         "request_cpus" : 1,
                          "arguments": arguments}
+    if args['gpu']:
+        submitFileContent["request_gpus"] = 1
+        submitFileContent["Requirements"] = 'CUDACapability && has_avx'
     submitFile = pydag.htcondor.HTCondorSubmit(submitFile,
                                                script,
                                                **submitFileContent)
