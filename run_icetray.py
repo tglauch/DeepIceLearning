@@ -6,8 +6,9 @@ from configparser import ConfigParser
 from lib.functions_create_dataset import read_variables
 import numpy as np
 import importlib
-print('pythonpath {}'.format(os.environ['pythonpath']))
-sys.path.insert(0, os.environ['pythonpath'])
+if 'pythonpath' in os.environ.keys():
+    print('pythonpath {}'.format(os.environ['pythonpath']))
+    sys.path.insert(0, os.environ['pythonpath'])
 
 def parseArguments():
     parser = argparse.ArgumentParser()
@@ -40,6 +41,7 @@ if __name__ == "__main__":
     print('Outfile {}'.format(args.outfile))
     print('In Files {}'.format(args.files))
     dataset_configparser = ConfigParser()
+    dataset_configparser.optionxform = lambda option: option
     try:
         dataset_configparser.read(args.dataset_config)
         print "Config is found {}".format(args.dataset_config)

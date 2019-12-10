@@ -152,7 +152,10 @@ if __name__ == "__main__":
     for a in args.keys():
         print(str(a) + ": " + str(args[a]))
     print("---------------------\n")
-    geo = dataio.I3File(geometry_file).pop_frame()['I3Geometry'].omgeo
+    geo = dataio.I3File(geometry_file)
+    f = geo.pop_frame()
+    f = geo.pop_frame()
+    geo = geo.pop_frame()['I3Geometry'].omgeo
     input_shape_par = dataset_configparser.get('Basics', 'input_shape')
     if input_shape_par != "auto":
         input_shape = eval(input_shape_par)

@@ -18,4 +18,4 @@ export SINGULARITY_TMPDIR=/data/user/tglauch/tmp/
 export SINGULARITY_CACHEDIR=/data/user/tglauch/cache/
 export DNN_BASE=/home/tglauch/I3Module/
 export pythonpath=/usr/local/lib/
-singularity exec --nv -B /home/tglauch/:/home/tglauch/ -B /mnt/lfs3/user/:/data/user/ -B /mnt/lfs6/ana/:/data/ana/ -B /mnt/lfs6/sim/:/data/sim/ /data/user/tglauch/icetray_combo-stable-tensorflow.1.13.2-ubuntu18.04.sif /usr/local/icetray/env-shell.sh python "$SDIR/run_icetray.py" $@
+singularity exec --nv -B /home/tglauch/:/home/tglauch/ -B /mnt/lfs7/user/:/data/user/ -B /mnt/lfs7/ana/:/data/ana/ -B /mnt/lfs6/sim/:/data/sim/ /data/user/tglauch/icetray_combo-stable-tensorflow.1.13.2-ubuntu18.04.sif /usr/local/icetray/env-shell.sh python "$SDIR/run_icetray.py" $@

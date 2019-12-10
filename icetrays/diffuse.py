@@ -10,14 +10,11 @@ import numpy as np
 from icecube.weighting import weighting, get_weighted_primary
 import icecube.MuonGun
 sys.path.append(os.environ['DNN_BASE'])
-from i3deepice.i3module import DeepLearningClassifier
+from i3deepice.i3module import DeepLearningModule
 from icecube import DomTools, linefit
 from icecube import gulliver,paraboloid,lilliput
 from icecube import NewNuFlux
 from icecube.icetray import I3Units
-
-#from te_segment import Truncated
-#from dedx_module import dEdx_fit
 
 def cuts(phy_frame):
     """Performe a pre-selection of events according
@@ -60,6 +57,16 @@ def get_stream(phy_frame):
         return True
     else:
         return False
+
+
+def avg_paraboloid(phy_frame):
+    if 'SplineMPEParaboloidFitParams' not in phy_frame.keys():
+        return
+    err1 = phy_frame['SplineMPEParaboloidFitParams'].pbfErr1
+    err2 = phy_frame['SplineMPEParaboloidFitParams'].pbfErr2
+    avg_paraboloid = np.hypot(err1,err2) / np.sqrt(2)
+    phy_frame.Put("avg_paraboloid", dataclasses.I3Double(avg_paraboloid))
+    return
 
 soft = weighting.from_simprod(11029)
 hard_lowE = weighting.from_simprod(11069)
@@ -192,36 +199,22 @@ def run(i3_file, num_events, settings, geo_file, pulsemap_key,  do_classificatio
                    Streams=[icetray.I3Frame.Physics])
     tray.AddModule(cuts, 'cuts',
                    Streams=[icetray.I3Frame.Physics])
+    tray.AddModule(avg_paraboloid, 'avg_paraboloid',
+                   Streams=[icetray.I3Frame.Physics])
     if do_classification:
-#        tray.AddModule(DeepLearningClassifier, 'dl_class',
-#                       batch_size=8,
-#                       n_cores=4,
-#                       keep_daq=True,
+#        tray.AddModule(DeepLearningModule, 'dl_class',
+#                       batch_size=128,
+#                       cpu_cores=1,
+#                        gpu_cores=1,
+#                        pulsemap='HVInIcePulses'
 #                       model='classification')
-        tray.AddModule(DeepLearningClassifier, 'dl_energy',
+        tray.AddModule(DeepLearningModule, 'dl_energy',
                        batch_size=128,
-                       n_cores=1,
+                       cpu_cores=1,
+                       gpu_cores=1,
                        model='mu_energy_reco_full_range',
+                       pulsemap='HVInIcePulses',
                        save_as='dnn_reco')
-
-
-    # Stuff for Hans
-#    tray.AddService( "I3PhotonicsServiceFactory", "PhotonicsServiceMu_SpiceMie",
-#        PhotonicsTopLevelDirectory="/cvmfs/icecube.opensciencegrid.org/data/photon-tables/SPICEMie/",
-#        DriverFileDirectory="/cvmfs/icecube.opensciencegrid.org/data/photon-tables/SPICEMie/driverfiles",
-#        PhotonicsLevel2DriverFile="mu_photorec.list",
-#        PhotonicsTableSelection=2,
-#        ServiceName="PhotonicsServiceMu_SpiceMie")
-
-#    tray.AddSegment(Truncated,
-#        Pulses="TWSRTHVInIcePulsesIC",
-#        Seed="SplineMPE",
-#        Suffix="",
-#        PhotonicsService="PhotonicsServiceMu_SpiceMie",
-#        Model="_SPICEMie")
-
-#    tray.AddModule(dEdx_fit, 'dEdx_fit1', losses='newPS_SplineMPETruncatedEnergy_SPICEMie_BINS_dEdxVector')
-#    tray.AddModule(dEdx_fit, 'dEdx_fit2', losses='SplineMPE_MillipedeHighEnergyMIE')
     tray.AddModule(reco_q.get_inelasticity, 'inela',
                    Streams=[icetray.I3Frame.Physics])
     tray.AddModule(reco_q.millipede_max_loss, 'max_loss',

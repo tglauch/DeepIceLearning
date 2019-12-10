@@ -436,7 +436,7 @@ def get_most_E_muon_info(frame, gcdfile=None, surface=None, tracklist='MMCTrackL
         return True
     if surface is None:
         if gcdfile is None:
-            surface = icecube.MuonGun.ExtrudedPolygon.from_I3Geometry(frame['I3Geometry'])
+            surface = icecube.MuonGun.ExtrudedPolygon.from_I3Geometry(frame['I3Geometry'], padding=0)
         else:
             surface = icecube.MuonGun.ExtrudedPolygon.from_file(gcdfile, padding=0)
     e0_list = []
