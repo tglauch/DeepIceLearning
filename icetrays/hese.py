@@ -200,6 +200,10 @@ def run(i3_file, num_events, settings, geo_file, pulsemap_key,  do_classificatio
                        batch_size=8,
                        n_cores=4,
                        keep_daq=True,
+                       calib_errata='CalibrationErrata',
+                       bad_dom_list='BadDomsList',
+                       saturation_windows='SaturationWindows',
+                       bright_doms='BrightDOMs',
                        model='classification')
 
 #    tray.AddSegment(ApplyDNNRecos, 'ApplyDNNRecos',

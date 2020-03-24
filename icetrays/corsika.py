@@ -2,19 +2,18 @@ from icecube import dataio, icetray, WaveCalibrator
 from icecube import dataclasses #, paraboloid, simclasses, recclasses, spline_reco
 from I3Tray import *
 import sys
-sys.path.append(os.path.abspath(".."))
-sys.path.append(os.path.join(os.path.abspath(".."),'lib'))
-sys.path.append('/data/user/tglauch/Software/combo_v2/source/sim-services/python')
+dil_path = '/data/user/tglauch/DeepIceLearning'
+sys.path.append(dil_path)
+sys.path.append(os.path.join(dil_path,'lib'))
 import lib.reco_quantities as reco_q
+#sys.path.append('/data/user/tglauch/Software/combo_v2/source/sim-services/python')
 from lib.functions_create_dataset import get_t0
 import numpy as np
 from icecube.weighting.fluxes import GaisserH4a
 from icecube.weighting import weighting, get_weighted_primary
 import icecube.MuonGun
-from propagation import RecreateMCTree
-sys.path.append('/data/user/tglauch/DeepIceLearning/I3Module')
-from i3module import DeepLearningClassifier
-
+sys.path.append('/home/tglauch/I3Module/')
+from i3deepice.i3module import DeepLearningModule
 def cuts(phy_frame):
     """Performe a pre-selection of events according
        to the cuts defined in the config file
@@ -62,10 +61,7 @@ def corsika_weight(phy_frame):
 
 
 def get_stream(phy_frame):
-    if (phy_frame['I3EventHeader'].sub_event_stream == 'InIceSplit') & (phy_frame['I3EventHeader'].sub_event_id==0):
-        return True
-    else:
-        return False
+    return True
     
 def run(i3_file, num_events, settings, geo_file, pulsemap_key, do_classification=False):
     """IceTray script that wraps around an i3file and fills the events dict
@@ -132,19 +128,14 @@ def run(i3_file, num_events, settings, geo_file, pulsemap_key, do_classification
         files.extend(i3_file)
     else:
         files = [geo_file, i3_file]
-    print files
+    print(files)
     tray = I3Tray()
     tray.AddModule("I3Reader", "source",
                    FilenameList=files)
-#    tray.AddModule("Delete",
-#                   "old_keys_cleanup",
-#                   keys=['MMCTrackList'])
-    
     tray.AddModule(get_stream, "get_stream",
                     Streams=[icetray.I3Frame.Physics])
     tray.AddModule(cuts, 'cuts',
                    Streams=[icetray.I3Frame.Physics])
-#    tray.AddSegment(RecreateMCTree, "get_I3MCTree", RawMCTree="I3MCTree_preMuonProp", Paranoia=False)
     tray.AddModule(add_weighted_primary, "add_primary",
                     Streams=[icetray.I3Frame.Physics])
     tray.AddModule(corsika_weight, 'weighting',
@@ -164,11 +155,16 @@ def run(i3_file, num_events, settings, geo_file, pulsemap_key, do_classification
     tray.AddModule(reco_q.track_length_in_detector, 'track_length',
                    surface=surface,
                    Streams=[icetray.I3Frame.Physics])
-    if do_classification:
-        tray.AddModule(DeepLearningClassifier, 'dl_class')
+    tray.AddModule(DeepLearningModule, 'dl_class',
+                   batch_size=32,
+                   cpu_cores=1,
+                   gpu_cores=1,
+                   pulsemap='SplitInIcePulses',
+                   model='classification',
+                   save_as='TUM_classification',
+                   benchmark=True)
     tray.AddModule(reco_q.calc_hitDOMs, 'hitDOMs',
                    Streams=[icetray.I3Frame.Physics])
-
     tray.AddModule(save_to_array, 'save',
                    Streams=[icetray.I3Frame.Physics])
     if num_events == -1:

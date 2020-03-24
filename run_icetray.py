@@ -38,6 +38,7 @@ def parseArguments():
 if __name__ == "__main__":
 
     args = parseArguments()
+    print(args)
     print('Outfile {}'.format(args.outfile))
     print('In Files {}'.format(args.files))
     dataset_configparser = ConfigParser()
@@ -50,14 +51,6 @@ if __name__ == "__main__":
         print ex
     pulsemap_key = str(dataset_configparser.get('Basics', 'PulseSeriesMap'))
     dtype, settings = read_variables(dataset_configparser)
-    dt_new = list(dtype.names)
-    dt_new.extend(['skimming', 'cascade', 'through_going', 'starting', 'stopping'])
-    dtype = np.dtype(zip(dt_new, ['<f8'] * len(dt_new)))
-    settings.extend([('variable', u"[\"Deep_Learning_Classification\"][\'Skimming\']", [-np.inf, np.inf]),
-                    ('variable', u"[\"Deep_Learning_Classification\"][\'Cascade\']", [-np.inf, np.inf]),
-                    ('variable', u"[\"Deep_Learning_Classification\"][\'Through_Going_Track\']", [-np.inf, np.inf]),
-                    ('variable', u"[\"Deep_Learning_Classification\"][\'Starting_Track\']", [-np.inf, np.inf]),
-                    ('variable', u"[\"Deep_Learning_Classification\"][\'Stopping_Track\']", [-np.inf, np.inf])])
     i3tray_file = str(dataset_configparser.get('Basics', 'tray_script'))
     sys.path.append(os.path.dirname(i3tray_file))
     sys.path.append(os.getcwd()+"/"+os.path.dirname(i3tray_file))

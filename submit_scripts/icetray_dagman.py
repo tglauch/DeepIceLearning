@@ -60,6 +60,10 @@ def parseArguments():
         help="If create generator with this savepath",
         type=str)
     parser.add_argument(
+        "--py_script",
+        help="python exectuable",
+        type=str, default='default')
+    parser.add_argument(
         "--gpu", action='store_true', default=False)
     args = parser.parse_args()
     return args.__dict__
@@ -104,6 +108,10 @@ if __name__ == '__main__':
         script = os.path.join(dirname,'icetray_env_gpu.sh')
     else:
         script = os.path.join(dirname,'icetray_env.sh')
+    if args['py_script'] == 'default':
+        py_script = os.path.join(dirname,'..' ,'run_icetray.py')
+    else:
+        py_script = args['py_script']
     print('Submit Script:\n {}'.format(script))
     dag_name = args["name"] + add_str
     dagFile = os.path.join(
@@ -121,9 +129,11 @@ if __name__ == '__main__':
     print("Write Dagman Files to: {}".format(submitFile))
     RAM_str = "{} GB".format(args["request_RAM"])
     if args['gcd'] is not None:
-        arguments = " --files $(PATHs) --dataset_config $(DATASET) --outfile $(OFILE) --gcd {}".format(args['gcd'])
+        arguments = "{} --files $(PATHs) --dataset_config $(DATASET) --outfile $(OFILE) --gcd {}".format(py_script, args['gcd'])
     else:
-        arguments = " --files $(PATHs) --dataset_config $(DATASET) --outfile $(OFILE) "
+        arguments = "{} --files $(PATHs) --dataset_config $(DATASET) --outfile $(OFILE) ".format(py_script)
+    if args['muongun'] is not None:
+        arguments = arguments + ' --muongun'
     print(arguments)
     submitFileContent = {"notification": "Error",
                          "log": "$(LOGFILE).log",
@@ -157,7 +167,7 @@ if __name__ == '__main__':
     if args['muongun'] is not None:
         with open(args['muongun'], 'w+') as f:
            f.write('\n'.join(list(run_filelist)))
-        exit()
+    #    exit()
     run_filelist = [run_filelist[i:i+args['files_per_job']] for i in np.arange(0, len(run_filelist),
                     args['files_per_job'])] 
     
@@ -173,7 +183,10 @@ if __name__ == '__main__':
         fname = 'File_{}'.format(i)
         logfile = os.path.join(log_path,fname)
         stream = os.path.join(dataset_parser.get('Basics', 'out_folder'), 'logs', fname)
-        PATH = ' '.join(run_filelist[i])
+        print('Logfiles {}'.format(stream))
+        PATH = stream + '.txt'
+        with open(PATH, 'w+') as f:
+           f.write('\n'.join(list(run_filelist[i])))
         outfile = os.path.join(outfolder, fname +'.npy')
         dagArgs = pydag.dagman.Macros(LOGFILE=logfile,
                                       PATHs=PATH,
